@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Eco Track Cusco - UNSAAC
 
-## Getting Started
+Sistema inteligente de recolección de residuos para Cusco, con monitoreo en tiempo real y participación ciudadana.
 
-First, run the development server:
+## Tecnologías
+
+- **Next.js 16** — App Router, Turbopack, React 19
+- **Tailwind CSS v4** — Design system Terra Civic con `@theme`
+- **Nunito Sans** — Tipografía principal vía `next/font`
+- **Material Symbols** — Iconografía
+
+## Screens
+
+| Ruta | Vista |
+|------|-------|
+| `/` | Onboarding / Registro ciudadano |
+| `/inicio` | Inicio ciudadano |
+| `/reportar` | Reportar incidencia |
+| `/mapa` | Mapa de recolección |
+| `/dashboard` | Panel de administración |
+| `/flota` | Monitoreo de flota |
+| `/usuarios` | Gestión de usuarios |
+| `/incidencias` | Gestión de incidencias |
+| `/analisis` | Analíticas y reportes |
+| `/configuracion` | Configuración del sistema |
+
+## Desarrollo
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Build
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Design System
 
-## Learn More
+Basado en el sistema **Terra Civic**: paleta de verdes bosque y tierra arcilla, tipografía Nunito Sans, esquinas redondeadas (8px default), sombras suaves con tinte verde.
 
-To learn more about Next.js, take a look at the following resources:
+### Colores clave
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Token | Uso |
+|-------|-----|
+| `primary` (#154212) | Acciones principales, headers |
+| `primary-container` (#2d5a27) | Tarjetas destacadas |
+| `secondary` (#805533) | Elementos secundarios |
+| `tertiary` (#493700) | Highlights |
+| `waste-organic` (#4CAF50) | Residuos orgánicos |
+| `waste-recyclable` (#2196F3) | Residuos reciclables |
+| `waste-non-recyclable` (#757575) | Residuos no reciclables |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura del proyecto
 
-## Deploy on Vercel
+```
+app/
+├── globals.css          # Design system (@theme)
+├── layout.tsx           # Root layout + fuentes
+├── page.tsx             # Onboarding
+├── dev-nav.tsx          # Navbar de desarrollo
+├── (citizen)/
+│   ├── layout.tsx       # Layout ciudadano (BottomNavBar)
+│   ├── inicio/
+│   ├── reportar/
+│   └── mapa/
+└── (admin)/
+│   ├── layout.tsx       # Layout admin (Sidebar)
+│   ├── dashboard/
+│   ├── flota/
+│   ├── usuarios/
+│   ├── incidencias/
+│   ├── analisis/
+│   └── configuracion/
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Hecho con ❤️ para la Municipalidad del Cusco.
