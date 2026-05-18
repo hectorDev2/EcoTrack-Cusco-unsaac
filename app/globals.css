@@ -56,26 +56,6 @@
   --color-surface-card: #FFFFFF;
 
   --font-sans: "Nunito Sans", sans-serif;
-
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-container-margin: 20px;
-  --spacing-gutter: 12px;
-  --spacing-base: 4px;
-
-  --radius-default: 0.25rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-full: 9999px;
-}
-
-@layer base {
-  body {
-    font-family: "Nunito Sans", sans-serif;
-  }
 }
 
 .andean-pattern {

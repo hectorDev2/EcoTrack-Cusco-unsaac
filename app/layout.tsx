@@ -22,13 +22,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${nunitoSans.variable} h-full antialiased`}>
-      <head>
+      <body className="min-h-full bg-background text-on-background font-sans">
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
-      </head>
-      <body className="min-h-full bg-background text-on-background font-sans">
         <DevNav />
         {children}
       </body>

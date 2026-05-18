@@ -1,8 +1,8 @@
 export default function AdminDashboardPage() {
   return (
     <>
-      <header className="flex justify-between items-center w-full px-lg py-sm sticky top-0 z-10 bg-surface border-b border-outline-variant/30 shadow-sm">
-        <div className="flex items-center gap-xl flex-1">
+      <header className="flex justify-between items-center w-full px-6 py-2 sticky top-0 z-10 bg-surface border-b border-outline-variant/30 shadow-sm">
+        <div className="flex items-center gap-8 flex-1">
           <h2 className="text-[24px] leading-[32px] font-bold text-primary">
             Panel de Administración
           </h2>
@@ -17,7 +17,7 @@ export default function AdminDashboardPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-lg ml-lg">
+        <div className="flex items-center gap-6 ml-lg">
           <button className="relative p-2 text-on-surface-variant hover:text-primary transition-colors">
             <span className="material-symbols-outlined">notifications</span>
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-status-alert rounded-full" />
@@ -41,24 +41,24 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      <div className="p-lg max-w-[1440px] mx-auto space-y-lg">
-        <section className="flex flex-col md:flex-row md:items-end justify-between gap-md mb-xl">
+      <div className="p-6 max-w-[1440px] mx-auto space-y-lg">
+        <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
             <h3 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-on-surface">
               Bienvenido, Eco Track Cusco
             </h3>
-            <p className="text-[16px] leading-[24px] text-on-surface-variant mt-sm">
+            <p className="text-[16px] leading-[24px] text-on-surface-variant mt-2">
               Resumen operativo para el sector Cusco Metropolitano.
             </p>
           </div>
-          <div className="flex gap-sm">
-            <button className="flex items-center gap-2 px-md py-sm bg-surface-container-highest text-on-surface rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold hover:bg-surface-variant transition-colors">
+          <div className="flex gap-2">
+            <button className="flex items-center gap-2 px-4 py-2 bg-surface-container-highest text-on-surface rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold hover:bg-surface-variant transition-colors">
               <span className="material-symbols-outlined text-[20px]">
                 calendar_today
               </span>
               Hoy, 24 May
             </button>
-            <button className="flex items-center gap-2 px-md py-sm bg-primary-container text-on-primary-container rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold active:scale-95 transition-transform">
+            <button className="flex items-center gap-2 px-4 py-2 bg-primary-container text-on-primary-container rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold active:scale-95 transition-transform">
               <span className="material-symbols-outlined text-[20px]">
                 refresh
               </span>
@@ -67,11 +67,11 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-lg">
-          <div className="bg-surface-card p-xl rounded-xl shadow-sm border border-outline-variant/20 relative overflow-hidden group">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20 relative overflow-hidden group">
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full group-hover:scale-110 transition-transform duration-500" />
             <div className="flex items-start justify-between">
-              <div className="bg-primary/10 p-sm rounded-lg">
+              <div className="bg-primary/10 p-2 rounded-lg">
                 <span
                   className="material-symbols-outlined text-primary"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -86,15 +86,15 @@ export default function AdminDashboardPage() {
                 +2.4%
               </span>
             </div>
-            <div className="mt-md">
+            <div className="mt-4">
               <p className="text-[16px] leading-[24px] text-on-surface-variant">
                 Cobertura de Recolección
               </p>
-              <h4 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-primary mt-xs">
+              <h4 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-primary mt-1">
                 92%
               </h4>
             </div>
-            <div className="mt-md w-full bg-surface-container rounded-full h-1.5">
+            <div className="mt-4 w-full bg-surface-container rounded-full h-1.5">
               <div
                 className="bg-primary h-full rounded-full"
                 style={{ width: "92%" }}
@@ -102,10 +102,10 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-surface-card p-xl rounded-xl shadow-sm border border-outline-variant/20 relative overflow-hidden group">
+          <div className="bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20 relative overflow-hidden group">
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-status-alert/5 rounded-full group-hover:scale-110 transition-transform duration-500" />
             <div className="flex items-start justify-between">
-              <div className="bg-status-alert/10 p-sm rounded-lg">
+              <div className="bg-status-alert/10 p-2 rounded-lg">
                 <span
                   className="material-symbols-outlined text-status-alert"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -120,24 +120,24 @@ export default function AdminDashboardPage() {
                 Crítico
               </span>
             </div>
-            <div className="mt-md">
+            <div className="mt-4">
               <p className="text-[16px] leading-[24px] text-on-surface-variant">
                 Incidencias Pendientes
               </p>
-              <h4 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-on-surface mt-xs">
+              <h4 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-on-surface mt-1">
                 14
               </h4>
             </div>
-            <p className="mt-md text-[14px] leading-[20px] text-on-surface-variant flex items-center gap-2">
+            <p className="mt-4 text-[14px] leading-[20px] text-on-surface-variant flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-status-alert animate-pulse" />
               8 reportadas en la última hora
             </p>
           </div>
 
-          <div className="bg-surface-card p-xl rounded-xl shadow-sm border border-outline-variant/20 relative overflow-hidden group">
+          <div className="bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20 relative overflow-hidden group">
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-secondary/5 rounded-full group-hover:scale-110 transition-transform duration-500" />
             <div className="flex items-start justify-between">
-              <div className="bg-secondary/10 p-sm rounded-lg">
+              <div className="bg-secondary/10 p-2 rounded-lg">
                 <span
                   className="material-symbols-outlined text-secondary"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -149,11 +149,11 @@ export default function AdminDashboardPage() {
                 En ruta
               </span>
             </div>
-            <div className="mt-md">
+            <div className="mt-4">
               <p className="text-[16px] leading-[24px] text-on-surface-variant">
                 Flota Activa
               </p>
-              <div className="flex items-baseline gap-1 mt-xs">
+              <div className="flex items-baseline gap-1 mt-1">
                 <h4 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-on-surface">
                   28
                 </h4>
@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
             </div>
-            <div className="mt-md flex gap-1">
+            <div className="mt-4 flex gap-1">
               {[1, 2, 3, 4, 5].map((i) => (
                 <div
                   key={i}
@@ -173,9 +173,9 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-lg">
-          <div className="lg:col-span-8 bg-surface-card p-xl rounded-xl shadow-sm border border-outline-variant/20">
-            <div className="flex justify-between items-center mb-xl">
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20">
+            <div className="flex justify-between items-center mb-8">
               <div>
                 <h5 className="text-[24px] leading-[32px] font-bold text-on-surface">
                   Resumen por Zona
@@ -184,12 +184,12 @@ export default function AdminDashboardPage() {
                   Eficiencia de recolección semanal por distrito
                 </p>
               </div>
-              <select className="bg-surface-container-low border-none text-[14px] leading-[20px] rounded-lg px-md py-sm">
+              <select className="bg-surface-container-low border-none text-[14px] leading-[20px] rounded-lg px-4 py-2">
                 <option>Esta semana</option>
                 <option>Mes pasado</option>
               </select>
             </div>
-            <div className="h-64 flex items-end justify-between gap-xl pt-lg relative">
+            <div className="h-64 flex items-end justify-between gap-8 pt-6 relative">
               <div className="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none opacity-20">
                 <div className="border-b border-on-surface" />
                 <div className="border-b border-on-surface" />
@@ -205,7 +205,7 @@ export default function AdminDashboardPage() {
               ].map((bar) => (
                 <div
                   key={bar.label}
-                  className="flex-1 flex flex-col items-center gap-sm group"
+                  className="flex-1 flex flex-col items-center gap-2 group"
                 >
                   <div
                     className="w-full bg-primary-container rounded-t-lg transition-all duration-500 group-hover:bg-primary"
@@ -219,8 +219,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-4 bg-surface-card p-xl rounded-xl shadow-sm border border-outline-variant/20 flex flex-col">
-            <div className="mb-lg">
+          <div className="lg:col-span-4 bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20 flex flex-col">
+            <div className="mb-6">
               <h5 className="text-[24px] leading-[32px] font-bold text-on-surface">
                 Actividad Reciente
               </h5>
@@ -263,7 +263,7 @@ export default function AdminDashboardPage() {
               ].map((item) => (
                 <div
                   key={item.title}
-                  className="flex gap-md p-md hover:bg-surface-container rounded-xl transition-colors cursor-pointer group"
+                  className="flex gap-4 p-4 hover:bg-surface-container rounded-xl transition-colors cursor-pointer group"
                 >
                   <div className="w-12 h-12 rounded-lg bg-surface-container-high flex-shrink-0 flex items-center justify-center overflow-hidden">
                     {item.hasImage ? (
@@ -288,7 +288,7 @@ export default function AdminDashboardPage() {
                     <p className="text-[14px] leading-[20px] text-on-surface-variant line-clamp-1">
                       {item.location}
                     </p>
-                    <div className="mt-xs flex items-center gap-2">
+                    <div className="mt-1 flex items-center gap-2">
                       <span
                         className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full ${item.statusStyle}`}
                       >
@@ -304,15 +304,15 @@ export default function AdminDashboardPage() {
                 </div>
               ))}
             </div>
-            <button className="mt-auto pt-lg w-full text-center text-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold hover:underline">
+            <button className="mt-auto pt-6 w-full text-center text-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold hover:underline">
               Ver todas las incidencias
             </button>
           </div>
         </section>
 
         <section className="bg-surface-card rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden">
-          <div className="p-lg flex justify-between items-center border-b border-outline-variant/30">
-            <div className="flex items-center gap-md">
+          <div className="p-6 flex justify-between items-center border-b border-outline-variant/30">
+            <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="material-symbols-outlined text-primary">
                   location_on
@@ -327,7 +327,7 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-sm">
+            <div className="flex items-center gap-2">
               <div className="flex -space-x-2 mr-md">
                 <div className="w-8 h-8 rounded-full border-2 border-surface-card bg-primary-fixed flex items-center justify-center text-[10px] font-bold" />
                 <div className="w-8 h-8 rounded-full border-2 border-surface-card bg-primary-fixed flex items-center justify-center text-[10px] font-bold" />
@@ -335,7 +335,7 @@ export default function AdminDashboardPage() {
                   +26
                 </div>
               </div>
-              <button className="px-md py-sm bg-primary text-on-primary rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-2">
+              <button className="px-4 py-2 bg-primary text-on-primary rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">
                   fullscreen
                 </span>
@@ -352,13 +352,13 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             </div>
-            <div className="absolute bottom-md left-md right-md flex flex-wrap gap-md pointer-events-none">
-              <div className="bg-surface/80 backdrop-blur-md p-md rounded-xl shadow-lg border border-white/20 pointer-events-auto min-w-[200px]">
+            <div className="absolute bottom-md left-md right-md flex flex-wrap gap-4 pointer-events-none">
+              <div className="bg-surface/80 backdrop-blur-md p-4 rounded-xl shadow-lg border border-white/20 pointer-events-auto min-w-[200px]">
                 <p className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant mb-sm">
                   CAMIÓN ACTIVO - RUTA A24
                 </p>
-                <div className="flex items-center gap-md">
-                  <div className="p-sm bg-primary rounded-lg text-white">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-primary rounded-lg text-white">
                     <span className="material-symbols-outlined">
                       local_shipping
                     </span>
@@ -373,12 +373,12 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-surface/80 backdrop-blur-md p-md rounded-xl shadow-lg border border-white/20 pointer-events-auto min-w-[200px]">
+              <div className="bg-surface/80 backdrop-blur-md p-4 rounded-xl shadow-lg border border-white/20 pointer-events-auto min-w-[200px]">
                 <p className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant mb-sm">
                   ESTADÍSTICA DE RUTA
                 </p>
-                <div className="flex items-center gap-md">
-                  <div className="p-sm bg-secondary rounded-lg text-white">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-secondary rounded-lg text-white">
                     <span className="material-symbols-outlined">schedule</span>
                   </div>
                   <div>
@@ -392,7 +392,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
             </div>
-            <button className="absolute top-md right-md w-12 h-12 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform pointer-events-auto">
+            <button className="absolute top-4 right-md w-12 h-12 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform pointer-events-auto">
               <span className="material-symbols-outlined">my_location</span>
             </button>
           </div>

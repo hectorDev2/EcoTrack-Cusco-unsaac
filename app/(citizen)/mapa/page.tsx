@@ -1,8 +1,8 @@
 export default function MapaPage() {
   return (
     <>
-      <header className="flex justify-between items-center w-full px-container-margin py-sm bg-surface shadow-sm shadow-primary/10 sticky top-0 z-50">
-        <div className="flex items-center gap-md">
+      <header className="flex justify-between items-center w-full px-5 py-2 bg-surface shadow-sm shadow-primary/10 sticky top-0 z-50">
+        <div className="flex items-center gap-4">
           <button className="text-primary active:scale-95 transition-transform duration-200">
             <span className="material-symbols-outlined">menu</span>
           </button>
@@ -75,18 +75,18 @@ export default function MapaPage() {
           </div>
         </div>
 
-        <button className="absolute right-container-margin bottom-[240px] z-20 w-14 h-14 bg-primary text-on-primary rounded-xl shadow-lg flex items-center justify-center active:scale-90 transition-transform">
+        <button className="absolute right-5 bottom-[240px] z-20 w-14 h-14 bg-primary text-on-primary rounded-xl shadow-lg flex items-center justify-center active:scale-90 transition-transform">
           <span className="material-symbols-outlined">my_location</span>
         </button>
 
-        <div className="absolute bottom-6 left-container-margin right-container-margin z-20">
-          <div className="bg-surface-card rounded-xl p-md shadow-2xl shadow-primary/20 border border-outline-variant/20 flex flex-col gap-md">
+        <div className="absolute bottom-6 left-5 right-5 z-20">
+          <div className="bg-surface-card rounded-xl p-4 shadow-2xl shadow-primary/20 border border-outline-variant/20 flex flex-col gap-4">
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
                 <h2 className="text-[20px] leading-[28px] font-bold text-primary">
                   Camión en camino
                 </h2>
-                <div className="flex items-center gap-sm mt-1">
+                <div className="flex items-center gap-2 mt-1">
                   <span className="material-symbols-outlined text-on-surface-variant text-md">
                     schedule
                   </span>
@@ -96,7 +96,7 @@ export default function MapaPage() {
                   </p>
                 </div>
               </div>
-              <div className="bg-waste-recyclable/10 text-waste-recyclable px-3 py-1 rounded-full flex items-center gap-xs">
+              <div className="bg-waste-recyclable/10 text-waste-recyclable px-3 py-1 rounded-full flex items-center gap-1">
                 <span
                   className="material-symbols-outlined text-sm"
                   style={{ fontVariationSettings: "'FILL' 1" }}
@@ -108,8 +108,8 @@ export default function MapaPage() {
                 </span>
               </div>
             </div>
-            <div className="flex gap-sm">
-              <button className="flex-1 bg-primary text-on-primary py-3 rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center justify-center gap-sm active:opacity-80 transition-opacity">
+            <div className="flex gap-2">
+              <button className="flex-1 bg-primary text-on-primary py-3 rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity">
                 <span className="material-symbols-outlined">
                   notifications_active
                 </span>

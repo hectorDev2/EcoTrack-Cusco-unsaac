@@ -17,7 +17,7 @@ export default function AdminLayout({
   return (
     <div className="bg-background text-on-surface min-h-screen flex">
       <aside className="h-screen w-64 fixed left-0 top-0 flex flex-col p-4 border-r border-outline-variant bg-surface-container shadow-sm shadow-primary/10 z-50">
-        <div className="mb-xl px-2">
+        <div className="mb-8 px-2">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary">
               <span className="material-symbols-outlined text-sm">

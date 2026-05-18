@@ -40,7 +40,7 @@ const trucks = [
 export default function FlotaPage() {
   return (
     <div className="bg-background text-on-surface font-body-md overflow-hidden h-screen">
-      <header className="flex justify-between items-center w-full px-lg py-sm bg-surface border-b border-outline-variant/30 sticky top-0 z-40">
+      <header className="flex justify-between items-center w-full px-6 py-2 bg-surface border-b border-outline-variant/30 sticky top-0 z-40">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative w-full max-w-md">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
@@ -53,7 +53,7 @@ export default function FlotaPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-md">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <button className="p-2 hover:bg-surface-variant rounded-full text-on-surface-variant relative transition-colors">
               <span className="material-symbols-outlined">notifications</span>

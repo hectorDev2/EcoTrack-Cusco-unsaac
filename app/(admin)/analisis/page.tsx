@@ -1,8 +1,8 @@
 export default function AnalisisPage() {
   return (
     <>
-      <header className="flex justify-between items-center w-full px-lg py-sm sticky top-0 bg-surface border-b border-outline-variant/30 z-10">
-        <div className="flex items-center gap-md">
+      <header className="flex justify-between items-center w-full px-6 py-2 sticky top-0 bg-surface border-b border-outline-variant/30 z-10">
+        <div className="flex items-center gap-4">
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline">
               search
@@ -14,14 +14,14 @@ export default function AnalisisPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-lg">
+        <div className="flex items-center gap-6">
           <button className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">
             notifications
           </button>
           <button className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">
             help
           </button>
-          <div className="flex items-center gap-sm">
+          <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full border-2 border-primary-fixed bg-primary-container flex items-center justify-center text-on-primary-container font-bold">
               <span className="material-symbols-outlined">person</span>
             </div>
@@ -35,8 +35,8 @@ export default function AnalisisPage() {
         </div>
       </header>
 
-      <div className="p-lg space-y-lg">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-md">
+      <div className="p-6 space-y-lg">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
             { label: "Residuos Totales", value: "1,284 T", icon: "delete", style: "bg-primary-fixed text-primary" },
             { label: "Tasa de Reciclaje", value: "38.4%", icon: "recycling", style: "bg-secondary-fixed text-secondary" },
@@ -45,7 +45,7 @@ export default function AnalisisPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="bg-surface-card p-md rounded-xl shadow-sm border border-outline-variant/20 flex items-center gap-md"
+              className="bg-surface-card p-4 rounded-xl shadow-sm border border-outline-variant/20 flex items-center gap-4"
             >
               <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.style}`}>
                 <span className="material-symbols-outlined">{stat.icon}</span>
@@ -58,14 +58,14 @@ export default function AnalisisPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-          <div className="lg:col-span-2 bg-surface-card p-lg rounded-xl shadow-sm border border-outline-variant/20">
-            <div className="flex justify-between items-center mb-xl">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-surface-card p-6 rounded-xl shadow-sm border border-outline-variant/20">
+            <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-[24px] leading-[32px] font-bold text-on-surface">Volumen de Residuos (Ton)</h3>
                 <p className="text-[14px] leading-[20px] text-on-surface-variant">Tendencia de los últimos 30 días</p>
               </div>
-              <div className="flex gap-sm">
+              <div className="flex gap-2">
                 <span className="px-3 py-1 bg-primary-fixed text-primary font-bold rounded-full text-xs">DIARIO</span>
                 <span className="px-3 py-1 bg-surface-container-high text-on-surface-variant font-bold rounded-full text-xs">MENSUAL</span>
               </div>
@@ -100,7 +100,7 @@ export default function AnalisisPage() {
             </div>
           </div>
 
-          <div className="bg-surface-card p-lg rounded-xl shadow-sm border border-outline-variant/20 flex flex-col items-center justify-between">
+          <div className="bg-surface-card p-6 rounded-xl shadow-sm border border-outline-variant/20 flex flex-col items-center justify-between">
             <div className="w-full text-left">
               <h3 className="text-[24px] leading-[32px] font-bold text-on-surface">Composición de Residuos</h3>
               <p className="text-[14px] leading-[20px] text-on-surface-variant">Distribución por categoría</p>
@@ -130,9 +130,9 @@ export default function AnalisisPage() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="flex items-center justify-between p-sm rounded-lg bg-surface-container-low"
+                  className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low"
                 >
-                  <div className="flex items-center gap-sm">
+                  <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${item.color}`} />
                     <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                       {item.label}
@@ -146,12 +146,12 @@ export default function AnalisisPage() {
         </div>
 
         <div className="bg-surface-card rounded-xl shadow-sm border border-outline-variant/20 overflow-hidden">
-          <div className="p-lg border-b border-outline-variant/20 flex justify-between items-center">
+          <div className="p-6 border-b border-outline-variant/20 flex justify-between items-center">
             <div>
               <h3 className="text-[24px] leading-[32px] font-bold text-on-surface">Zonas con Mayor Participación</h3>
               <p className="text-[14px] leading-[20px] text-on-surface-variant">Ranking de compromiso ciudadano por distrito</p>
             </div>
-            <button className="text-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-sm hover:underline">
+            <button className="text-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-2 hover:underline">
               Ver Mapa Detallado
               <span className="material-symbols-outlined">open_in_new</span>
             </button>
@@ -160,11 +160,11 @@ export default function AnalisisPage() {
             <table className="w-full text-left">
               <thead className="bg-surface-container-high text-on-surface-variant text-[11px] leading-[14px] tracking-[0.08em] font-extrabold uppercase">
                 <tr>
-                  <th className="px-lg py-md">Distrito / Zona</th>
-                  <th className="px-lg py-md">Tasa Part.</th>
-                  <th className="px-lg py-md">Volumen Semanal</th>
-                  <th className="px-lg py-md">Puntos Verdes</th>
-                  <th className="px-lg py-md">Estado</th>
+                  <th className="px-6 py-md">Distrito / Zona</th>
+                  <th className="px-6 py-md">Tasa Part.</th>
+                  <th className="px-6 py-md">Volumen Semanal</th>
+                  <th className="px-6 py-md">Puntos Verdes</th>
+                  <th className="px-6 py-md">Estado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/20">
@@ -175,23 +175,23 @@ export default function AnalisisPage() {
                   { rank: "04", name: "San Sebastián", rate: 64, volume: "31.8 Ton", points: 15, status: "REGULAR", statusStyle: "bg-surface-variant text-on-surface-variant" },
                 ].map((row) => (
                   <tr key={row.rank} className="hover:bg-surface-container-low transition-colors">
-                    <td className="px-lg py-md">
-                      <div className="flex items-center gap-sm">
+                    <td className="px-6 py-md">
+                      <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center text-xs font-bold">
                           {row.rank}
                         </div>
                         <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">{row.name}</span>
                       </div>
                     </td>
-                    <td className="px-lg py-md">
+                    <td className="px-6 py-md">
                       <div className="w-32 h-2 bg-surface-variant rounded-full overflow-hidden">
                         <div className="bg-primary h-full" style={{ width: `${row.rate}%` }} />
                       </div>
                       <span className="text-xs font-bold mt-1 inline-block">{row.rate}%</span>
                     </td>
-                    <td className="px-lg py-md text-[16px] leading-[24px]">{row.volume}</td>
-                    <td className="px-lg py-md text-[16px] leading-[24px]">{row.points}</td>
-                    <td className="px-lg py-md">
+                    <td className="px-6 py-md text-[16px] leading-[24px]">{row.volume}</td>
+                    <td className="px-6 py-md text-[16px] leading-[24px]">{row.points}</td>
+                    <td className="px-6 py-md">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${row.statusStyle}`}>
                         {row.status}
                       </span>

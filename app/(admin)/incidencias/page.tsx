@@ -15,7 +15,7 @@ const stats = [
 export default function IncidenciasPage() {
   return (
     <>
-      <header className="flex justify-between items-center w-full px-lg py-sm sticky top-0 z-10 bg-surface border-b border-outline-variant/30 shadow-sm">
+      <header className="flex justify-between items-center w-full px-6 py-2 sticky top-0 z-10 bg-surface border-b border-outline-variant/30 shadow-sm">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative w-full max-w-md">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
@@ -28,7 +28,7 @@ export default function IncidenciasPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-md">
+        <div className="flex items-center gap-4">
           <button className="p-2 text-on-surface-variant hover:text-primary transition-colors active:opacity-80">
             <span className="material-symbols-outlined">notifications</span>
           </button>
@@ -47,24 +47,24 @@ export default function IncidenciasPage() {
         </div>
       </header>
 
-      <main className="p-lg">
+      <main className="p-6">
         <div className="max-w-7xl mx-auto space-y-lg">
-          <div className="flex flex-col gap-lg">
+          <div className="flex flex-col gap-6">
             <div className="flex justify-between items-end">
               <div>
                 <h2 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-on-surface">Gestión de Incidencias</h2>
                 <p className="text-[16px] leading-[24px] text-on-surface-variant">Real-time citizen reports across Cusco's districts.</p>
               </div>
-              <div className="flex gap-sm">
-                <button className="bg-primary text-on-primary px-lg py-2 rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-2 active:scale-[0.98] transition-transform">
+              <div className="flex gap-2">
+                <button className="bg-primary text-on-primary px-6 py-2 rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-2 active:scale-[0.98] transition-transform">
                   <span className="material-symbols-outlined">add</span>
                   Nuevo Reporte
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-md">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {stats.map((stat) => (
-                <div key={stat.label} className="bg-surface-card p-md rounded-xl border border-outline-variant/30 shadow-sm flex items-center gap-md">
+                <div key={stat.label} className="bg-surface-card p-4 rounded-xl border border-outline-variant/30 shadow-sm flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.style}`}>
                     <span className="material-symbols-outlined">{stat.icon}</span>
                   </div>
@@ -78,8 +78,8 @@ export default function IncidenciasPage() {
           </div>
 
           <div className="bg-surface-card rounded-xl border border-outline-variant/30 shadow-sm overflow-hidden">
-            <div className="p-md bg-surface-container-low border-b border-outline-variant/30 flex flex-wrap gap-md items-center justify-between">
-              <div className="flex gap-md items-center">
+            <div className="p-4 bg-surface-container-low border-b border-outline-variant/30 flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex gap-4 items-center">
                 <select className="bg-surface border border-outline-variant rounded-lg px-md py-2 text-[14px] leading-[20px] text-on-surface focus:ring-primary focus:border-primary">
                   <option>Estado: Todos</option>
                   <option>Pendiente</option>
@@ -93,7 +93,7 @@ export default function IncidenciasPage() {
                   <option>Santa Ana</option>
                 </select>
               </div>
-              <div className="flex gap-sm">
+              <div className="flex gap-2">
                 <button className="p-2 border border-outline-variant rounded-lg hover:bg-surface-variant transition-colors">
                   <span className="material-symbols-outlined">filter_list</span>
                 </button>
@@ -107,32 +107,32 @@ export default function IncidenciasPage() {
               <table className="w-full text-left">
                 <thead className="bg-surface-container-high border-b border-outline-variant/30">
                   <tr>
-                    <th className="px-lg py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">ID</th>
-                    <th className="px-lg py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Tipo</th>
-                    <th className="px-lg py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Zona</th>
-                    <th className="px-lg py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Estado</th>
-                    <th className="px-lg py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Fecha</th>
-                    <th className="px-lg py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Acción</th>
+                    <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">ID</th>
+                    <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Tipo</th>
+                    <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Zona</th>
+                    <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Estado</th>
+                    <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Fecha</th>
+                    <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/20">
                   {incidents.map((inc) => (
                     <tr key={inc.id} className="hover:bg-surface-container-lowest transition-colors">
-                      <td className="px-lg py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface">{inc.id}</td>
-                      <td className="px-lg py-4">
+                      <td className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface">{inc.id}</td>
+                      <td className="px-6 py-4">
                         <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-[12px] leading-[16px] tracking-[0.05em] ${inc.typeStyle}`}>
                           <span className="material-symbols-outlined text-sm">{inc.typeIcon}</span>
                           {inc.type}
                         </div>
                       </td>
-                      <td className="px-lg py-4 text-[16px] leading-[24px] text-on-surface">{inc.zone}</td>
-                      <td className="px-lg py-4">
+                      <td className="px-6 py-4 text-[16px] leading-[24px] text-on-surface">{inc.zone}</td>
+                      <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${inc.statusStyle}`}>
                           {inc.status}
                         </span>
                       </td>
-                      <td className="px-lg py-4 text-[14px] leading-[20px] text-on-surface-variant">{inc.date}</td>
-                      <td className="px-lg py-4">
+                      <td className="px-6 py-4 text-[14px] leading-[20px] text-on-surface-variant">{inc.date}</td>
+                      <td className="px-6 py-4">
                         <button className="text-primary hover:underline text-[12px] leading-[16px] tracking-[0.05em] font-bold">Ver Detalles</button>
                       </td>
                     </tr>
@@ -141,9 +141,9 @@ export default function IncidenciasPage() {
               </table>
             </div>
 
-            <div className="p-lg flex items-center justify-between border-t border-outline-variant/30">
+            <div className="p-6 flex items-center justify-between border-t border-outline-variant/30">
               <p className="text-[14px] leading-[20px] text-on-surface-variant">Mostrando 1-4 de 24 incidentes</p>
-              <div className="flex gap-sm">
+              <div className="flex gap-2">
                 <button className="p-2 rounded-lg border border-outline-variant hover:bg-surface-variant/50 disabled:opacity-50" disabled>
                   <span className="material-symbols-outlined">chevron_left</span>
                 </button>
@@ -173,7 +173,7 @@ export default function IncidenciasPage() {
                 <span className="material-symbols-outlined">fullscreen</span>
               </button>
             </div>
-            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md p-md rounded-xl border border-white/50 shadow-xl max-w-xs">
+            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md p-4 rounded-xl border border-white/50 shadow-xl max-w-xs">
               <h3 className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary mb-1">Mapa de Calor</h3>
               <p className="text-[14px] leading-[20px] text-on-surface-variant">Alta concentración de residuos reciclables en Cusco Centro hoy.</p>
             </div>

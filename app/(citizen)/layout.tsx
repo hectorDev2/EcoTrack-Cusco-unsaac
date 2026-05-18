@@ -8,7 +8,7 @@ export default function CitizenLayout({
   return (
     <div className="min-h-screen bg-background text-on-background pb-32 font-sans">
       {children}
-      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-container-margin pb-md pt-sm bg-surface-container border-t border-outline-variant/30 shadow-[0_-4px_12px_rgba(45,90,39,0.08)] rounded-t-xl">
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-5 pb-4 pt-2 bg-surface-container border-t border-outline-variant/30 shadow-[0_-4px_12px_rgba(45,90,39,0.08)] rounded-t-xl">
         <Link
           className="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 transition-all duration-150"
           href="/inicio"

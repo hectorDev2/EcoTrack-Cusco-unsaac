@@ -1,8 +1,8 @@
 export default function ReportarPage() {
   return (
     <>
-      <header className="bg-surface shadow-sm shadow-primary/10 flex justify-between items-center w-full px-container-margin py-sm sticky top-0 z-50">
-        <div className="flex items-center gap-sm">
+      <header className="bg-surface shadow-sm shadow-primary/10 flex justify-between items-center w-full px-5 py-2 sticky top-0 z-50">
+        <div className="flex items-center gap-2">
           <button className="active:scale-95 transition-transform duration-200 text-primary p-1">
             <span className="material-symbols-outlined">menu</span>
           </button>
@@ -15,8 +15,8 @@ export default function ReportarPage() {
         </div>
       </header>
 
-      <main className="flex-grow px-container-margin pt-lg max-w-2xl mx-auto w-full pb-8">
-        <div className="flex items-center gap-sm mb-lg">
+      <main className="flex-grow px-5 pt-6 max-w-2xl mx-auto w-full pb-8">
+        <div className="flex items-center gap-2 mb-6">
           <span className="material-symbols-outlined text-primary">
             report_problem
           </span>
@@ -25,7 +25,7 @@ export default function ReportarPage() {
           </h2>
         </div>
 
-        <div className="bg-surface-container rounded-xl p-md mb-lg flex gap-md items-center shadow-sm">
+        <div className="bg-surface-container rounded-xl p-4 mb-6 flex gap-4 items-center shadow-sm">
           <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold">
             1
           </div>
@@ -39,13 +39,13 @@ export default function ReportarPage() {
           </div>
         </div>
 
-        <form className="space-y-lg">
-          <div className="space-y-xs">
+        <form className="space-y-6">
+          <div className="space-y-1">
             <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary px-1">
               TIPO DE INCIDENCIA
             </label>
             <div className="relative">
-              <select className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-lg p-md text-[16px] leading-[24px] focus:border-primary focus:ring-0 appearance-none transition-colors">
+              <select className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-lg p-4 text-[16px] leading-[24px] focus:border-primary focus:ring-0 appearance-none transition-colors">
                 <option disabled selected value="">
                   Seleccione una opción
                 </option>
@@ -59,23 +59,23 @@ export default function ReportarPage() {
             </div>
           </div>
 
-          <div className="space-y-xs">
+          <div className="space-y-1">
             <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary px-1">
               DESCRIPCIÓN
             </label>
             <textarea
-              className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-lg p-md text-[16px] leading-[24px] focus:border-primary focus:ring-0 transition-colors"
+              className="w-full bg-surface-container-low border-2 border-outline-variant/30 rounded-lg p-4 text-[16px] leading-[24px] focus:border-primary focus:ring-0 transition-colors"
               placeholder="Describa brevemente lo que observa..."
               rows={4}
             />
           </div>
 
-          <div className="space-y-xs">
+          <div className="space-y-1">
             <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary px-1">
               FOTOGRAFÍA
             </label>
             <button
-              className="w-full border-2 border-dashed border-outline-variant/50 rounded-lg py-xl flex flex-col items-center justify-center gap-sm hover:bg-surface-container-high transition-all active:scale-[0.98]"
+              className="w-full border-2 border-dashed border-outline-variant/50 rounded-lg py-8 flex flex-col items-center justify-center gap-2 hover:bg-surface-container-high transition-all active:scale-[0.98]"
               type="button"
             >
               <span className="material-symbols-outlined text-primary text-[40px]">
@@ -87,12 +87,12 @@ export default function ReportarPage() {
             </button>
           </div>
 
-          <div className="space-y-xs">
+          <div className="space-y-1">
             <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary px-1">
               UBICACIÓN DETECTADA
             </label>
-            <div className="bg-surface-container-low border-2 border-outline-variant/30 rounded-lg p-md flex items-center justify-between">
-              <div className="flex items-center gap-sm">
+            <div className="bg-surface-container-low border-2 border-outline-variant/30 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-status-alert">
                   location_on
                 </span>
@@ -100,11 +100,11 @@ export default function ReportarPage() {
                   Av. Sol, Cusco, Perú
                 </p>
               </div>
-              <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary bg-primary-container/10 px-sm py-xs rounded">
+              <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary bg-primary-container/10 px-2 py-1 rounded">
                 AUTOMÁTICO
               </span>
             </div>
-            <div className="w-full h-32 rounded-lg overflow-hidden mt-sm border border-outline-variant/30 bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+            <div className="w-full h-32 rounded-lg overflow-hidden mt-2 border border-outline-variant/30 bg-surface-container-high flex items-center justify-center text-on-surface-variant">
               <span className="material-symbols-outlined text-4xl">
                 map
               </span>
@@ -112,7 +112,7 @@ export default function ReportarPage() {
           </div>
 
           <button
-            className="w-full bg-primary text-on-primary text-[24px] leading-[32px] font-bold py-md rounded-lg shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-sm"
+            className="w-full bg-primary text-on-primary text-[24px] leading-[32px] font-bold py-md rounded-lg shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
             type="submit"
           >
             <span className="text-[16px] leading-[24px]">Enviar Reporte</span>
@@ -120,7 +120,7 @@ export default function ReportarPage() {
           </button>
         </form>
 
-        <div className="mt-xl p-md bg-primary-container text-on-primary-container rounded-lg border border-primary/20 flex items-center gap-md">
+        <div className="mt-xl p-4 bg-primary-container text-on-primary-container rounded-lg border border-primary/20 flex items-center gap-4">
           <span
             className="material-symbols-outlined text-primary-fixed-dim"
             style={{ fontVariationSettings: "'FILL' 1" }}

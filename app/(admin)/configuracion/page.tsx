@@ -19,8 +19,8 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background overflow-hidden">
-      <header className="flex justify-between items-center w-full px-lg py-md max-w-[1440px] mx-auto bg-surface border-b border-outline-variant shadow-sm z-10 shrink-0">
-        <div className="flex items-center gap-lg">
+      <header className="flex justify-between items-center w-full px-6 py-4 max-w-[1440px] mx-auto bg-surface border-b border-outline-variant shadow-sm z-10 shrink-0">
+        <div className="flex items-center gap-6">
           <span className="text-[24px] leading-[32px] font-extrabold text-primary">
             Terra Civic Admin
           </span>
@@ -35,7 +35,7 @@ export default function ConfiguracionPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-md">
+        <div className="flex items-center gap-4">
           <button className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high transition-colors active:scale-95">
             <span className="material-symbols-outlined text-on-surface-variant">
               notifications
@@ -47,7 +47,7 @@ export default function ConfiguracionPage() {
             </span>
           </button>
           <div className="w-px h-6 bg-outline-variant mx-2" />
-          <div className="flex items-center gap-sm cursor-pointer hover:bg-surface-container-high p-1 rounded-lg transition-colors">
+          <div className="flex items-center gap-2 cursor-pointer hover:bg-surface-container-high p-1 rounded-lg transition-colors">
             <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold">
               <span className="material-symbols-outlined text-sm">person</span>
             </div>
@@ -58,9 +58,9 @@ export default function ConfiguracionPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-lg custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
         <div className="max-w-[1200px] mx-auto space-y-lg">
-          <div className="flex flex-col gap-xs mb-xl">
+          <div className="flex flex-col gap-1 mb-8">
             <h2 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-primary">
               Configuración del Sistema
             </h2>
@@ -70,9 +70,9 @@ export default function ConfiguracionPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-lg">
-            <div className="lg:col-span-7 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-lg flex flex-col gap-lg">
-              <div className="flex items-center gap-md">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-7 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-6 flex flex-col gap-6">
+              <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-primary p-2 bg-primary-fixed rounded-lg">
                   settings_applications
                 </span>
@@ -80,8 +80,8 @@ export default function ConfiguracionPage() {
                   Configuración General
                 </h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
-                <div className="flex flex-col gap-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-1">
                   <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
                     System Language
                   </label>
@@ -91,7 +91,7 @@ export default function ConfiguracionPage() {
                     <option>Inglés</option>
                   </select>
                 </div>
-                <div className="flex flex-col gap-xs">
+                <div className="flex flex-col gap-1">
                   <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
                     Timezone
                   </label>
@@ -101,7 +101,7 @@ export default function ConfiguracionPage() {
                   </select>
                 </div>
               </div>
-              <div className="bg-surface-container p-md rounded-lg flex items-center justify-between border border-outline-variant">
+              <div className="bg-surface-container p-4 rounded-lg flex items-center justify-between border border-outline-variant">
                 <div>
                   <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface">
                     Modo Mantenimiento
@@ -125,8 +125,8 @@ export default function ConfiguracionPage() {
               </div>
             </div>
 
-            <div className="lg:col-span-5 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-lg flex flex-col gap-md">
-              <div className="flex items-center gap-md">
+            <div className="lg:col-span-5 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-6 flex flex-col gap-4">
+              <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-secondary p-2 bg-secondary-fixed rounded-lg">
                   palette
                 </span>
@@ -134,13 +134,13 @@ export default function ConfiguracionPage() {
                   Marca e Identidad
                 </h3>
               </div>
-              <div className="flex items-center gap-lg">
+              <div className="flex items-center gap-6">
                 <div className="relative w-20 h-20 bg-surface-container rounded-lg flex items-center justify-center border-2 border-dashed border-outline">
                   <span className="material-symbols-outlined text-outline text-3xl">
                     cloud_upload
                   </span>
                 </div>
-                <div className="flex-1 flex flex-col gap-xs">
+                <div className="flex-1 flex flex-col gap-1">
                   <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                     System Logo
                   </p>
@@ -152,20 +152,20 @@ export default function ConfiguracionPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex flex-col gap-xs pt-md border-t border-outline-variant">
+              <div className="flex flex-col gap-1 pt-4 border-t border-outline-variant">
                 <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
                   Correo de Soporte
                 </label>
                 <input
-                  className="bg-surface border-outline-variant rounded-lg text-[14px] leading-[20px] py-xs focus:ring-primary focus:border-primary"
+                  className="bg-surface border-outline-variant rounded-lg text-[14px] leading-[20px] py-1 focus:ring-primary focus:border-primary"
                   type="email"
                   defaultValue="soporte@llaqtalimpia.cusco.gob.pe"
                 />
               </div>
             </div>
 
-            <div className="lg:col-span-6 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-lg flex flex-col gap-lg">
-              <div className="flex items-center gap-md">
+            <div className="lg:col-span-6 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-6 flex flex-col gap-6">
+              <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-tertiary p-2 bg-tertiary-fixed rounded-lg">
                   notifications_active
                 </span>
@@ -174,7 +174,7 @@ export default function ConfiguracionPage() {
                 </h3>
               </div>
               <div className="space-y-md">
-                <div className="flex flex-col gap-sm">
+                <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                       Citizen Proximity Threshold
@@ -193,7 +193,7 @@ export default function ConfiguracionPage() {
                     Radius for &quot;Truck nearby&quot; push notifications.
                   </p>
                 </div>
-                <div className="flex flex-col gap-sm pt-md border-t border-outline-variant">
+                <div className="flex flex-col gap-2 pt-4 border-t border-outline-variant">
                   <div className="flex justify-between items-center">
                     <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                       Delay Alert Trigger
@@ -215,8 +215,8 @@ export default function ConfiguracionPage() {
               </div>
             </div>
 
-            <div className="lg:col-span-6 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-lg flex flex-col gap-lg">
-              <div className="flex items-center gap-md">
+            <div className="lg:col-span-6 bg-surface-card rounded-xl shadow-sm border border-outline-variant p-6 flex flex-col gap-6">
+              <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-primary p-2 bg-primary-fixed rounded-lg">
                   schedule
                 </span>
@@ -224,8 +224,8 @@ export default function ConfiguracionPage() {
                   Zonas y Horarios
                 </h3>
               </div>
-              <div className="grid grid-cols-2 gap-md">
-                <div className="flex flex-col gap-xs">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
                   <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
                     Default Start Hour
                   </label>
@@ -235,7 +235,7 @@ export default function ConfiguracionPage() {
                     defaultValue="05:00"
                   />
                 </div>
-                <div className="flex flex-col gap-xs">
+                <div className="flex flex-col gap-1">
                   <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
                     Default End Hour
                   </label>
@@ -246,24 +246,24 @@ export default function ConfiguracionPage() {
                   />
                 </div>
               </div>
-              <div className="flex flex-col gap-sm">
+              <div className="flex flex-col gap-2">
                 <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                   Waste Assignments
                 </p>
-                <div className="flex flex-wrap gap-sm">
-                  <span className="flex items-center gap-xs px-3 py-1 bg-green-100 text-green-900 rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold">
+                <div className="flex flex-wrap gap-2">
+                  <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-900 rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                     <span className="material-symbols-outlined text-sm">eco</span>
                     Orgánico
                   </span>
-                  <span className="flex items-center gap-xs px-3 py-1 bg-blue-100 text-blue-900 rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold">
+                  <span className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-900 rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                     <span className="material-symbols-outlined text-sm">recycling</span>
                     Reciclable
                   </span>
-                  <span className="flex items-center gap-xs px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold">
+                  <span className="flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold">
                     <span className="material-symbols-outlined text-sm">delete</span>
                     General
                   </span>
-                  <button className="flex items-center gap-xs px-3 py-1 border border-dashed border-outline rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold text-outline hover:border-primary hover:text-primary transition-colors">
+                  <button className="flex items-center gap-1 px-3 py-1 border border-dashed border-outline rounded-full text-[12px] leading-[16px] tracking-[0.05em] font-bold text-outline hover:border-primary hover:text-primary transition-colors">
                     <span className="material-symbols-outlined text-sm">add</span>
                     Assign New
                   </button>
@@ -271,9 +271,9 @@ export default function ConfiguracionPage() {
               </div>
             </div>
 
-            <div className="lg:col-span-12 bg-inverse-surface text-inverse-on-surface rounded-xl shadow-xl p-lg flex flex-col md:flex-row gap-xl">
-              <div className="md:w-1/3 flex flex-col gap-md">
-                <div className="flex items-center gap-md">
+            <div className="lg:col-span-12 bg-inverse-surface text-inverse-on-surface rounded-xl shadow-xl p-6 flex flex-col md:flex-row gap-8">
+              <div className="md:w-1/3 flex flex-col gap-4">
+                <div className="flex items-center gap-4">
                   <span className="material-symbols-outlined text-primary-fixed-dim p-2 bg-primary-container rounded-lg">
                     security
                   </span>
@@ -285,13 +285,13 @@ export default function ConfiguracionPage() {
                   Configure critical data flow between municipal databases and
                   the Llaqta Limpia cloud engine.
                 </p>
-                <button className="w-full bg-primary-fixed-dim text-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold py-md rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-sm">
+                <button className="w-full bg-primary-fixed-dim text-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold py-4 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined">history</span> View
                   Audit Logs
                 </button>
               </div>
-              <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-lg">
-                <div className="bg-primary-container/30 p-md rounded-lg border border-primary-container">
+              <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="bg-primary-container/30 p-4 rounded-lg border border-primary-container">
                   <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary-fixed-dim uppercase tracking-widest text-[10px]">
                     API Sync Interval
                   </p>
@@ -304,7 +304,7 @@ export default function ConfiguracionPage() {
                     </button>
                   </div>
                 </div>
-                <div className="bg-primary-container/30 p-md rounded-lg border border-primary-container">
+                <div className="bg-primary-container/30 p-4 rounded-lg border border-primary-container">
                   <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary-fixed-dim uppercase tracking-widest text-[10px]">
                     Last Backup
                   </p>
@@ -317,7 +317,7 @@ export default function ConfiguracionPage() {
                     </button>
                   </div>
                 </div>
-                <div className="sm:col-span-2 flex items-center gap-md p-md bg-white/5 rounded-lg border border-white/10">
+                <div className="sm:col-span-2 flex items-center gap-4 p-4 bg-white/5 rounded-lg border border-white/10">
                   <span className="material-symbols-outlined text-status-alert">
                     warning
                   </span>
@@ -338,12 +338,12 @@ export default function ConfiguracionPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-md pt-lg mb-xl">
-            <button className="px-xl py-md text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-container-high transition-colors">
+          <div className="flex justify-end gap-4 pt-6 mb-8">
+            <button className="px-8 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-container-high transition-colors">
               Descartar Cambios
             </button>
             <button
-              className={`px-xl py-md text-[12px] leading-[16px] tracking-[0.05em] font-bold text-white rounded-lg shadow-sm transition-all flex items-center gap-2 ${
+              className={`px-8 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-white rounded-lg shadow-sm transition-all flex items-center gap-2 ${
                 saveState === "saved"
                   ? "bg-waste-organic"
                   : "bg-primary hover:opacity-90"
@@ -367,11 +367,11 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
-      <footer className="w-full py-lg px-xl flex justify-between items-center max-w-[1440px] mx-auto bg-surface-container border-t border-outline-variant shrink-0">
+      <footer className="w-full py-lg px-8 flex justify-between items-center max-w-[1440px] mx-auto bg-surface-container border-t border-outline-variant shrink-0">
         <p className="text-[14px] leading-[20px] text-on-surface-variant">
           © 2024 Municipalidad del Cusco - Gestión de Residuos
         </p>
-        <div className="flex gap-lg">
+        <div className="flex gap-6">
           <a
             className="text-[14px] leading-[20px] text-on-surface-variant hover:text-primary transition-colors"
             href="#"
