@@ -1,0 +1,157 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  role         String   @default("CITIZEN")
+  status       String   @default("ACTIVE")
+  createdAt    String   @map("created_at")
+
+  zones     UserZone[]
+  routes    Route[]
+  incidents Incident[]
+
+  @@map("users")
+}
+
+model Zone {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  status      String  @default("ACTIVE")
+  createdAt   String  @map("created_at")
+
+  users              UserZone[]
+  pickupPoints       PickupPoint[]
+  collectionSchedules CollectionSchedule[]
+  routes             Route[]
+  incidents          Incident[]
+
+  @@map("zones")
+}
+
+model UserZone {
+  id         String @id @default(cuid())
+  userId     String @map("user_id")
+  zoneId     String @map("zone_id")
+  assignedAt String @map("assigned_at")
+
+  user User @relation(fields: [userId], references: [id])
+  zone Zone @relation(fields: [zoneId], references: [id])
+
+  @@unique([userId, zoneId])
+  @@map("user_zones")
+}
+
+model WasteType {
+  id          String @id @default(cuid())
+  name        String
+  category    String
+  description String?
+  createdAt   String @map("created_at")
+
+  collectionSchedules CollectionSchedule[]
+  collections         Collection[]
+
+  @@map("waste_types")
+}
+
+model PickupPoint {
+  id        String  @id @default(cuid())
+  zoneId    String  @map("zone_id")
+  name      String
+  address   String
+  latitude  Float
+  longitude Float
+  status    String  @default("ACTIVE")
+
+  zone       Zone        @relation(fields: [zoneId], references: [id])
+  routeStops RouteStop[]
+
+  @@map("pickup_points")
+}
+
+model CollectionSchedule {
+  id          String @id @default(cuid())
+  zoneId      String @map("zone_id")
+  wasteTypeId String @map("waste_type_id")
+  dayOfWeek   String @map("day_of_week")
+  startTime   String @map("start_time")
+  endTime     String @map("end_time")
+
+  zone      Zone      @relation(fields: [zoneId], references: [id])
+  wasteType WasteType @relation(fields: [wasteTypeId], references: [id])
+
+  @@map("collection_schedules")
+}
+
+model Route {
+  id         String  @id @default(cuid())
+  zoneId     String  @map("zone_id")
+  driverId   String  @map("driver_id")
+  status     String  @default("PENDING")
+  startedAt  String? @map("started_at")
+  finishedAt String? @map("finished_at")
+  createdAt  String  @map("created_at")
+
+  zone      Zone       @relation(fields: [zoneId], references: [id])
+  driver    User       @relation(fields: [driverId], references: [id])
+  stops     RouteStop[]
+  incidents Incident[]
+
+  @@map("routes")
+}
+
+model RouteStop {
+  id            String @id @default(cuid())
+  routeId       String @map("route_id")
+  pickupPointId String @map("pickup_point_id")
+  orderIndex    Int    @map("order_index")
+  status        String @default("PENDING")
+
+  route       Route       @relation(fields: [routeId], references: [id])
+  pickupPoint PickupPoint @relation(fields: [pickupPointId], references: [id])
+  collection  Collection?
+
+  @@map("route_stops")
+}
+
+model Collection {
+  id          String @id @default(cuid())
+  routeStopId String @unique @map("route_stop_id")
+  wasteTypeId String @map("waste_type_id")
+  collectedAt String @map("collected_at")
+  notes       String?
+
+  routeStop RouteStop @relation(fields: [routeStopId], references: [id])
+  wasteType WasteType @relation(fields: [wasteTypeId], references: [id])
+
+  @@map("collections")
+}
+
+model Incident {
+  id          String  @id @default(cuid())
+  reportedBy  String  @map("reported_by")
+  zoneId      String? @map("zone_id")
+  routeId     String? @map("route_id")
+  type        String
+  description String
+  status      String  @default("OPEN")
+  createdAt   String  @map("created_at")
+
+  reporter User  @relation(fields: [reportedBy], references: [id])
+  zone     Zone? @relation(fields: [zoneId], references: [id])
+  route    Route? @relation(fields: [routeId], references: [id])
+
+  @@map("incidents")
+}
