@@ -1,0 +1,145 @@
+
+<div id="erd" style="padding:8px 0"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '12px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#3C3489' : '#EEEDFE',
+    primaryBorderColor: dark ? '#7F77DD' : '#534AB7',
+    primaryTextColor: dark ? '#EEEDFE' : '#26215C',
+  },
+});
+const diagram = `erDiagram
+  users {
+    text id PK
+    text email
+    text password_hash
+    text full_name
+    text role
+    text status
+    text created_at
+  }
+  zones {
+    text id PK
+    text name
+    text description
+    text status
+    text created_at
+  }
+  user_zones {
+    text id PK
+    text user_id FK
+    text zone_id FK
+    text assigned_at
+  }
+  waste_types {
+    text id PK
+    text name
+    text category
+    text description
+    text created_at
+  }
+  pickup_points {
+    text id PK
+    text zone_id FK
+    text name
+    text address
+    text latitude
+    text longitude
+    text status
+  }
+  collection_schedules {
+    text id PK
+    text zone_id FK
+    text waste_type_id FK
+    text day_of_week
+    text start_time
+    text end_time
+  }
+  routes {
+    text id PK
+    text zone_id FK
+    text driver_id FK
+    text status
+    text started_at
+    text finished_at
+    text created_at
+  }
+  route_stops {
+    text id PK
+    text route_id FK
+    text pickup_point_id FK
+    integer order_index
+    text status
+  }
+  collections {
+    text id PK
+    text route_stop_id FK
+    text waste_type_id FK
+    text collected_at
+    text notes
+  }
+  incidents {
+    text id PK
+    text reported_by FK
+    text zone_id FK
+    text route_id FK
+    text type
+    text description
+    text status
+    text created_at
+  }
+
+  users ||--o{ user_zones : "pertenece a"
+  zones ||--o{ user_zones : "tiene"
+  zones ||--o{ pickup_points : "contiene"
+  zones ||--o{ collection_schedules : "tiene"
+  zones ||--o{ routes : "asignada a"
+  zones ||--o{ incidents : "ocurre en"
+  waste_types ||--o{ collection_schedules : "categoriza"
+  waste_types ||--o{ collections : "registrado en"
+  users ||--o{ routes : "conduce"
+  routes ||--o{ route_stops : "compuesta de"
+  pickup_points ||--o{ route_stops : "incluido en"
+  route_stops ||--o| collections : "genera"
+  users ||--o{ incidents : "reporta"
+  routes ||--o{ incidents : "ocurre en"
+`;
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+
+document.querySelectorAll('#erd svg .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 4) return;
+  const xs = nums.filter((_, i) => i % 2 === 0);
+  const ys = nums.filter((_, i) => i % 2 === 1);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  if (w < 10 || h < 10) return;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+
+document.querySelectorAll('#erd svg .row-rect-odd path, #erd svg .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+</script>
