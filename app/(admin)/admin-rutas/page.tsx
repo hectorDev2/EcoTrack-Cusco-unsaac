@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, ApiClientError } from '@/lib/api';
-import MapView, { type MapMarker } from '@/components/map-view';
+import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
+import { calculateRoute, formatDistance, formatDuration, type RouteWaypoint } from '@/lib/routing';
 import type { Zone, User, PickupPoint } from '@/lib/types';
 
 interface RouteStop {
@@ -48,12 +49,16 @@ export default function AdminRutasPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  // Form state
   const [formZone, setFormZone] = useState('');
   const [formDriver, setFormDriver] = useState('');
-  const [selectedStops, setSelectedStops] = useState<PickupPoint[]>([]);
+  const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
+  const [calculatedRoute, setCalculatedRoute] = useState<MapRoute[]>([]);
+  const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
+  const [calculating, setCalculating] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [detalleRuta, setDetalleRuta] = useState<AdminRoute | null>(null);
+  const calcTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const fetchData = () => {
     setLoading(true);
@@ -73,7 +78,6 @@ export default function AdminRutasPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Fetch pickup points when zone changes
   useEffect(() => {
     if (!formZone) { setPickupPoints([]); return; }
     api.get<PickupPoint[]>(`/pickup-points?zoneId=${formZone}`)
@@ -81,43 +85,88 @@ export default function AdminRutasPage() {
       .catch(() => {});
   }, [formZone]);
 
-  const toggleStop = (pp: PickupPoint) => {
-    setSelectedStops((prev) => {
-      const exists = prev.find((s) => s.id === pp.id);
-      if (exists) return prev.filter((s) => s.id !== pp.id);
-      return [...prev, pp];
-    });
-  };
+  // Calculate route when waypoints change
+  useEffect(() => {
+    if (calcTimeout.current) clearTimeout(calcTimeout.current);
 
-  const moveStop = (index: number, direction: -1 | 1) => {
-    setSelectedStops((prev) => {
+    if (waypoints.length < 2) {
+      setCalculatedRoute([]);
+      setRouteInfo(null);
+      return;
+    }
+
+    setCalculating(true);
+    calcTimeout.current = setTimeout(async () => {
+      const result = await calculateRoute(waypoints);
+      if (result) {
+        setCalculatedRoute([{
+          id: 'trazado',
+          points: result.coordinates,
+          color: '#154212',
+        }]);
+        setRouteInfo({ distance: result.distance, duration: result.duration });
+      }
+      setCalculating(false);
+    }, 400);
+
+    return () => { if (calcTimeout.current) clearTimeout(calcTimeout.current); };
+  }, [waypoints]);
+
+  const addWaypoint = useCallback((lng: number, lat: number, label?: string, pickupPointId?: string) => {
+    setWaypoints((prev) => [...prev, { lng, lat, label, pickupPointId }]);
+  }, []);
+
+  const removeWaypoint = useCallback((index: number) => {
+    setWaypoints((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const moveWaypoint = useCallback((index: number, direction: -1 | 1) => {
+    setWaypoints((prev) => {
       const next = [...prev];
       const target = index + direction;
       if (target < 0 || target >= next.length) return prev;
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
-  };
+  }, []);
+
+  const addPickupPoint = useCallback((pp: PickupPoint) => {
+    const exists = waypoints.some((w) => w.pickupPointId === pp.id);
+    if (exists) {
+      setWaypoints((prev) => prev.filter((w) => w.pickupPointId !== pp.id));
+      return;
+    }
+    addWaypoint(pp.longitude, pp.latitude, pp.name, pp.id);
+  }, [waypoints, addWaypoint]);
 
   const handleCreate = async () => {
-    if (!formZone || !formDriver || selectedStops.length === 0) return;
+    if (!formZone || !formDriver || waypoints.length === 0) return;
     setFormLoading(true);
     try {
+      const pickupIds = waypoints
+        .filter((w) => w.pickupPointId)
+        .map((w) => w.pickupPointId!);
       await api.post('/routes', {
         zoneId: formZone,
         driverId: formDriver,
-        pickupPointIds: selectedStops.map((s) => s.id),
+        pickupPointIds: pickupIds,
       });
       setShowForm(false);
-      setFormZone('');
-      setFormDriver('');
-      setSelectedStops([]);
+      resetForm();
       fetchData();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Error al crear ruta');
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFormZone('');
+    setFormDriver('');
+    setWaypoints([]);
+    setCalculatedRoute([]);
+    setRouteInfo(null);
   };
 
   const handleStatusChange = async (id: string, status: string) => {
@@ -135,34 +184,37 @@ export default function AdminRutasPage() {
   const progress = (r: AdminRoute) =>
     r.totalStops > 0 ? Math.round((r.completedStops / r.totalStops) * 100) : 0;
 
-  // Map markers for available pickup points
-  const availableMarkers: MapMarker[] = pickupPoints.map((pp) => ({
-    id: pp.id,
-    lng: pp.longitude,
-    lat: pp.latitude,
-    color: selectedStops.some((s) => s.id === pp.id) ? '#2E7D32' : '#154212',
-    icon: selectedStops.some((s) => s.id === pp.id) ? 'check_circle' : 'location_on',
-    label: pp.name,
-  }));
-
-  // Route line from selected stops
-  const routeLine = selectedStops.length > 1 ? [{
-    id: 'trazado',
-    points: selectedStops.map((s) => [s.longitude, s.latitude] as [number, number]),
-    color: '#154212',
-  }] : [];
-
-  const selectedZone = zones.find((z) => z.id === formZone);
+  // Map markers for pickup points and waypoints
+  const markers: MapMarker[] = [
+    ...pickupPoints.map((pp) => ({
+      id: pp.id,
+      lng: pp.longitude,
+      lat: pp.latitude,
+      color: waypoints.some((w) => w.pickupPointId === pp.id) ? '#2E7D32' : '#154212',
+      icon: (waypoints.some((w) => w.pickupPointId === pp.id) ? 'check_circle' : 'delete') as 'check_circle' | 'delete',
+      label: pp.name,
+    })),
+    ...waypoints
+      .filter((w) => !w.pickupPointId)
+      .map((w, i) => ({
+        id: `waypoint-${i}`,
+        lng: w.lng,
+        lat: w.lat,
+        color: '#C62828',
+        icon: 'flag' as const,
+        label: `Punto ${waypoints.findIndex((wp) => wp === w) + 1}`,
+      })),
+  ];
 
   return (
     <div className="p-6 max-w-[1440px] mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[24px] leading-[32px] font-bold text-primary">Gestión de Rutas</h2>
-          <p className="text-[14px] text-on-surface-variant">Crea rutas trazando puntos en el mapa</p>
+          <p className="text-[14px] text-on-surface-variant">Traza la ruta sobre el mapa</p>
         </div>
         <button
-          onClick={() => { setShowForm(!showForm); setSelectedStops([]); }}
+          onClick={() => { setShowForm(!showForm); if (!showForm) resetForm(); }}
           className="bg-primary text-on-primary px-5 py-3 rounded-xl text-[12px] font-bold flex items-center gap-2 active:opacity-80 transition-opacity"
         >
           <span className="material-symbols-outlined text-[18px]">{showForm ? 'close' : 'add'}</span>
@@ -182,20 +234,20 @@ export default function AdminRutasPage() {
 
       {showForm && (
         <div className="mb-6 bg-surface-card rounded-xl border border-outline-variant/20 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            {/* Map panel */}
-            <div className="h-[500px] relative">
-              {selectedZone ? (
+          <div className="grid grid-cols-1 lg:grid-cols-5">
+            {/* Mapa */}
+            <div className="lg:col-span-3 h-[550px] relative">
+              {formZone ? (
                 <MapView
                   center={pickupPoints.length > 0
                     ? [pickupPoints[0].longitude, pickupPoints[0].latitude]
                     : [-71.9675, -13.5320]}
-                  zoom={14}
-                  markers={availableMarkers}
-                  routes={routeLine}
+                  zoom={15}
+                  markers={markers}
+                  routes={calculatedRoute}
                   onMarkerClick={(m) => {
                     const pp = pickupPoints.find((p) => p.id === m.id);
-                    if (pp) toggleStop(pp);
+                    if (pp) addPickupPoint(pp);
                   }}
                 />
               ) : (
@@ -206,17 +258,38 @@ export default function AdminRutasPage() {
                   </div>
                 </div>
               )}
+
+              {formZone && waypoints.length < 2 && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-full shadow-lg text-[12px] font-bold text-on-surface">
+                  Haz click en los puntos de recojo para trazar la ruta
+                </div>
+              )}
+
+              {routeInfo && (
+                <div className="absolute bottom-4 left-4 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-xl shadow-lg text-[12px] flex gap-4">
+                  <span className="font-bold text-primary">{formatDistance(routeInfo.distance)}</span>
+                  <span className="text-on-surface-variant">·</span>
+                  <span className="font-bold text-primary">{formatDuration(routeInfo.duration)}</span>
+                </div>
+              )}
+
+              {calculating && (
+                <div className="absolute top-4 right-4 z-10 bg-surface/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[11px] font-bold text-on-surface">Calculando ruta...</span>
+                </div>
+              )}
             </div>
 
-            {/* Form panel */}
-            <div className="p-6 flex flex-col gap-4 max-h-[500px] overflow-y-auto">
+            {/* Panel de control */}
+            <div className="lg:col-span-2 p-6 flex flex-col gap-4 max-h-[550px] overflow-y-auto">
               <h3 className="text-[18px] font-bold text-on-surface">Nueva Ruta</h3>
 
               <div>
                 <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">Zona</label>
                 <select
                   value={formZone}
-                  onChange={(e) => { setFormZone(e.target.value); setSelectedStops([]); }}
+                  onChange={(e) => { setFormZone(e.target.value); setWaypoints([]); }}
                   className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none"
                 >
                   <option value="">Seleccionar zona...</option>
@@ -243,62 +316,62 @@ export default function AdminRutasPage() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase">
-                    Paradas ({selectedStops.length})
+                    Paradas ({waypoints.length})
                   </label>
-                  {pickupPoints.length > 0 && (
+                  {routeInfo && (
                     <span className="text-[11px] text-on-surface-variant">
-                      Click en el mapa para agregar
+                      {formatDistance(routeInfo.distance)} · {formatDuration(routeInfo.duration)}
                     </span>
                   )}
                 </div>
-                {selectedStops.length === 0 ? (
+
+                {waypoints.length === 0 ? (
                   <div className="bg-surface-container-low rounded-xl p-4 text-center">
                     <p className="text-[13px] text-on-surface-variant">
                       {formZone ? 'Haz click en los puntos del mapa para trazar la ruta' : 'Selecciona una zona primero'}
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {selectedStops.map((stop, i) => (
-                      <div key={stop.id} className="flex items-center gap-2 bg-surface-container-low rounded-lg p-2">
-                        <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0">
-                          {i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-bold text-on-surface truncate">{stop.name}</p>
-                          <p className="text-[11px] text-on-surface-variant truncate">{stop.address}</p>
+                  <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                    {waypoints.map((wp, i) => {
+                      const pp = pickupPoints.find((p) => p.id === wp.pickupPointId);
+                      return (
+                        <div key={`${wp.pickupPointId ?? 'wp'}-${i}`} className="flex items-center gap-2 bg-surface-container-low rounded-lg p-2">
+                          <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0">
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold text-on-surface truncate">
+                              {pp?.name ?? wp.label ?? `Punto ${i + 1}`}
+                            </p>
+                            {pp?.address && (
+                              <p className="text-[11px] text-on-surface-variant truncate">{pp.address}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-0.5">
+                            <button onClick={() => moveWaypoint(i, -1)} disabled={i === 0}
+                              className="p-1 rounded hover:bg-surface-variant disabled:opacity-30 text-on-surface-variant">
+                              <span className="material-symbols-outlined text-[16px]">keyboard_arrow_up</span>
+                            </button>
+                            <button onClick={() => moveWaypoint(i, 1)} disabled={i === waypoints.length - 1}
+                              className="p-1 rounded hover:bg-surface-variant disabled:opacity-30 text-on-surface-variant">
+                              <span className="material-symbols-outlined text-[16px]">keyboard_arrow_down</span>
+                            </button>
+                            <button onClick={() => removeWaypoint(i)}
+                              className="p-1 rounded hover:bg-error/10 text-error">
+                              <span className="material-symbols-outlined text-[16px]">close</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-0.5">
-                          <button
-                            onClick={() => moveStop(i, -1)}
-                            disabled={i === 0}
-                            className="p-1 rounded hover:bg-surface-variant disabled:opacity-30 text-on-surface-variant"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">keyboard_arrow_up</span>
-                          </button>
-                          <button
-                            onClick={() => moveStop(i, 1)}
-                            disabled={i === selectedStops.length - 1}
-                            className="p-1 rounded hover:bg-surface-variant disabled:opacity-30 text-on-surface-variant"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">keyboard_arrow_down</span>
-                          </button>
-                          <button
-                            onClick={() => toggleStop(stop)}
-                            className="p-1 rounded hover:bg-error/10 text-error"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">close</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
 
               <button
                 onClick={handleCreate}
-                disabled={!formZone || !formDriver || selectedStops.length === 0 || formLoading}
+                disabled={!formZone || !formDriver || waypoints.length === 0 || formLoading}
                 className="w-full bg-primary text-on-primary py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 mt-auto"
               >
                 {formLoading ? (
@@ -306,7 +379,7 @@ export default function AdminRutasPage() {
                 ) : (
                   <span className="material-symbols-outlined text-[18px]">add</span>
                 )}
-                Crear Ruta ({selectedStops.length} paradas)
+                Crear Ruta ({waypoints.length} paradas)
               </button>
             </div>
           </div>
@@ -344,14 +417,16 @@ export default function AdminRutasPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {r.stops.length > 0 && (
-                    <details className="relative">
-                      <summary className="text-[11px] font-bold text-primary cursor-pointer list-none px-3 py-1.5 rounded-lg hover:bg-primary/5">
+                    <>
+                      <button
+                        onClick={() => setDetalleRuta(detalleRuta?.id === r.id ? null : r)}
+                        className="text-[11px] font-bold text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5"
+                      >
                         Ver ruta
-                      </summary>
-                      <div className="absolute right-0 top-8 w-72 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-60 overflow-y-auto">
-                        {r.stops
-                          .sort((a, b) => a.orderIndex - b.orderIndex)
-                          .map((s, i) => (
+                      </button>
+                      {detalleRuta?.id === r.id && (
+                        <div className="absolute right-0 top-8 w-72 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-60 overflow-y-auto">
+                          {r.stops.sort((a, b) => a.orderIndex - b.orderIndex).map((s, i) => (
                             <div key={s.id} className="flex items-center gap-2 py-1.5">
                               <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${
                                 s.status === 'COMPLETED' ? 'bg-waste-organic/10 text-waste-organic' : 'bg-surface-container-high text-on-surface-variant'
@@ -361,28 +436,23 @@ export default function AdminRutasPage() {
                               <span className="text-[12px] text-on-surface truncate">{s.pickupPoint.name}</span>
                             </div>
                           ))}
-                      </div>
-                    </details>
+                        </div>
+                      )}
+                    </>
                   )}
                   {r.status === 'PENDING' && (
-                    <select
-                      value=""
-                      onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
+                    <select value="" onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
                       className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none"
-                      disabled={actionLoading === r.id}
-                    >
+                      disabled={actionLoading === r.id}>
                       <option value="">Acción...</option>
                       <option value="IN_PROGRESS">Iniciar</option>
                       <option value="CANCELLED">Cancelar</option>
                     </select>
                   )}
                   {r.status === 'IN_PROGRESS' && (
-                    <select
-                      value=""
-                      onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
+                    <select value="" onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
                       className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none"
-                      disabled={actionLoading === r.id}
-                    >
+                      disabled={actionLoading === r.id}>
                       <option value="">Acción...</option>
                       <option value="COMPLETED">Completar</option>
                       <option value="CANCELLED">Cancelar</option>
@@ -393,24 +463,15 @@ export default function AdminRutasPage() {
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      r.status === 'COMPLETED' ? 'bg-waste-organic' :
-                      r.status === 'IN_PROGRESS' ? 'bg-primary' : 'bg-outline-variant'
-                    }`}
-                    style={{ width: `${Math.max(progress(r), r.status === 'IN_PROGRESS' ? 4 : 0)}%` }}
-                  />
+                  <div className={`h-full rounded-full transition-all ${
+                    r.status === 'COMPLETED' ? 'bg-waste-organic' :
+                    r.status === 'IN_PROGRESS' ? 'bg-primary' : 'bg-outline-variant'
+                  }`} style={{ width: `${Math.max(progress(r), r.status === 'IN_PROGRESS' ? 4 : 0)}%` }} />
                 </div>
                 <span className="text-[12px] font-bold text-on-surface-variant flex-shrink-0">
                   {r.completedStops}/{r.totalStops}
                 </span>
               </div>
-
-              {r.startedAt && (
-                <p className="mt-2 text-[11px] text-on-surface-variant">
-                  Iniciada: {new Date(r.startedAt).toLocaleString('es-PE')}
-                </p>
-              )}
             </div>
           ))}
         </div>
