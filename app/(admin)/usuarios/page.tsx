@@ -117,7 +117,7 @@ export default function UsuariosPage() {
       <header className="bg-surface border-b border-outline-variant shadow-sm flex justify-between items-center w-full px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-6 flex-1">
           <h2 className="text-[24px] leading-[32px] font-extrabold text-primary">
-            Terra Civic Admin
+            Eco Track Cusco
           </h2>
           <div className="max-w-md w-full relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">

@@ -42,7 +42,7 @@ export default function LoginPage() {
             <span className="material-symbols-outlined">recycling</span>
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-primary">Terra Civic</h1>
+            <h1 className="text-xl font-extrabold text-primary">Eco Track Cusco</h1>
             <p className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant/70 uppercase">
               Iniciar sesión
             </p>

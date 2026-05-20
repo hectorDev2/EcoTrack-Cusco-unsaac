@@ -28,7 +28,7 @@ export default function AdminLayout({
               </div>
               <div>
                 <h1 className="text-[24px] leading-[32px] font-bold font-headline-lg font-extrabold text-primary">
-                  Terra Civic
+                  Eco Track Cusco
                 </h1>
                 <p className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant/70 uppercase">
                   Cusco Waste Management

@@ -22,7 +22,7 @@ export default function ConfiguracionPage() {
       <header className="flex justify-between items-center w-full px-6 py-4 max-w-[1440px] mx-auto bg-surface border-b border-outline-variant shadow-sm z-10 shrink-0">
         <div className="flex items-center gap-6">
           <span className="text-[24px] leading-[32px] font-extrabold text-primary">
-            Terra Civic Admin
+            Eco Track Cusco
           </span>
           <div className="relative w-64 md:w-96">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">
