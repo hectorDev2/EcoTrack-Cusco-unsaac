@@ -65,6 +65,7 @@ export default function AdminRutasPage() {
   const [newPointName, setNewPointName] = useState('');
   const [newPointAddress, setNewPointAddress] = useState('');
   const [creatingPoint, setCreatingPoint] = useState(false);
+  const [resolvingAddress, setResolvingAddress] = useState(false);
 
   const fetchData = () => {
     setLoading(true);
@@ -142,11 +143,38 @@ export default function AdminRutasPage() {
     addWaypoint(pp.longitude, pp.latitude, pp.name, pp.id);
   }, [waypoints, addWaypoint]);
 
+  // Reverse geocode cuando se abre el modal
+  useEffect(() => {
+    if (!newPointModal) return;
+    setResolvingAddress(true);
+    setNewPointAddress('');
+    setNewPointName('');
+
+    const controller = new AbortController();
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newPointModal.lat}&lon=${newPointModal.lng}&addressdetails=1`;
+
+    fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'EcoTrackCusco/1.0' },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.display_name) {
+          const parts = data.display_name.split(',');
+          const street = parts.slice(0, 2).join(',').trim();
+          setNewPointAddress(street);
+          setNewPointName(parts[0]?.trim() ?? '');
+        }
+      })
+      .catch(() => {})
+      .finally(() => setResolvingAddress(false));
+
+    return () => controller.abort();
+  }, [newPointModal]);
+
   // Click en el mapa — abre modal para crear nuevo punto
   const handleMapClick = useCallback((lng: number, lat: number) => {
     setNewPointModal({ lng, lat });
-    setNewPointName('');
-    setNewPointAddress('');
   }, []);
 
   // Crear el nuevo pickup point y agregarlo a la ruta
@@ -387,7 +415,12 @@ export default function AdminRutasPage() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setNewPointModal(null)}>
           <div className="bg-surface-card rounded-2xl p-6 w-full max-w-md shadow-2xl border border-outline-variant/20" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-[18px] font-bold text-on-surface mb-1">Nuevo Punto de Recojo</h3>
-            <p className="text-[13px] text-on-surface-variant mb-5">Agrega un punto en la ubicación seleccionada</p>
+            <p className="text-[13px] text-on-surface-variant mb-2">Agrega un punto en la ubicación seleccionada</p>
+
+            <div className="mb-4 flex gap-4 text-[11px] text-on-surface-variant">
+              <span>Lat: <strong>{newPointModal.lat.toFixed(5)}</strong></span>
+              <span>Lng: <strong>{newPointModal.lng.toFixed(5)}</strong></span>
+            </div>
 
             <div className="space-y-4">
               <div>
@@ -401,11 +434,19 @@ export default function AdminRutasPage() {
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">Dirección (opcional)</label>
+                <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">
+                  Dirección
+                  {resolvingAddress && (
+                    <span className="ml-2 text-on-surface-variant font-normal normal-case">
+                      <span className="inline-block w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin align-middle mr-1" />
+                      resolviendo...
+                    </span>
+                  )}
+                </label>
                 <input
                   value={newPointAddress}
                   onChange={(e) => setNewPointAddress(e.target.value)}
-                  placeholder="Ej: Av. El Sol 350"
+                  placeholder="Cargando dirección..."
                   className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none"
                 />
               </div>
