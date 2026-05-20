@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { DevNav } from "./dev-nav";
+import { Providers } from "./providers";
 
 const nunitoSans = Nunito_Sans({
   variable: "--font-nunito-sans",
@@ -27,8 +28,10 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
-        <DevNav />
-        {children}
+        <Providers>
+          <DevNav />
+          {children}
+        </Providers>
       </body>
     </html>
   );

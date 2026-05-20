@@ -1,20 +1,18 @@
 'use client';
 
-import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
-const publicPaths = ['/auth/login', '/auth/register'];
-
-function AuthGuard({ children }: { children: ReactNode }) {
+export function AdminShell({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user && !publicPaths.includes(pathname)) {
-      router.replace('/');
+    if (!user) {
+      router.replace(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
     }
   }, [user, isLoading, pathname, router]);
 
@@ -31,17 +29,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user && !publicPaths.includes(pathname)) {
-    return null;
-  }
+  if (!user) return null;
 
   return <>{children}</>;
-}
-
-export function AdminShell({ children }: { children: ReactNode }) {
-  return (
-    <AuthProvider>
-      <AuthGuard>{children}</AuthGuard>
-    </AuthProvider>
-  );
 }
