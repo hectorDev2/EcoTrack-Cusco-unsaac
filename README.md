@@ -76,8 +76,8 @@ Web Service desde dashboard de Render:
 | `Incidents` | `POST /incidents`, `GET /incidents/my`, CRUD admin con filtro `?status=` | ✅ Completo |
 | `Routes` | CRUD + `GET /routes/fleet` — rutas con progreso desde RouteStops | ✅ Completo |
 | `Admin` | `GET /admin/dashboard`, `GET /admin/analytics` — datos agregados | ✅ Completo |
-| `WasteType` | Modelo en Prisma, **sin módulo NestJS** | 🔜 Pendiente |
-| `Collections` | Modelo en Prisma, **sin endpoints** | 🔜 Pendiente |
+| `WasteType` | CRUD (GET público, ADMIN create/update/delete) | ✅ Completo |
+| `Collections` | Modelo en Prisma, **sin endpoints públicos** | 🔜 Pendiente |
 
 ### Frontend — Páginas conectadas a API real
 
@@ -100,7 +100,7 @@ Web Service desde dashboard de Render:
 | Gestión rutas | `/admin-rutas` | ✅ Trazado en mapa con OSRM |
 | Panel conductor | `/conductor/*` | ✅ Dashboard + paradas + recolección |
 | Configuración | `/configuracion` | 🔜 Solo estado local |
-| Catálogo residuos | `/residuos` | ❌ No implementado |
+| Catálogo residuos | `/residuos` | ✅ Catálogo ciudadano por categoría |
 
 ### Seguridad
 
@@ -116,8 +116,8 @@ Web Service desde dashboard de Render:
 ## Próximos pasos prioritarios
 
 1. **Inicio ciudadano** — Conectar `/inicio` a datos dinámicos (próxima recolección, incidencias activas)
-2. **Módulo WasteType** — CRUD en backend + páginas de administración y catálogo ciudadano
-3. **Configuración persistente** — Guardar configuración del sistema en backend
+2. **Configuración persistente** — Guardar configuración del sistema en backend
+3. **Paginación** — Agregar skip/take a listas del backend que faltan
 4. **Paginación** — Agregar paginación a listas del backend (solo `/users` tiene)
 
 ---

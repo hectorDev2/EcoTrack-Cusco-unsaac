@@ -164,9 +164,28 @@ npm run prisma:seed
 |--------|------|------|-------------|
 | GET | `/routes` | ADMIN | Todas las rutas con progreso |
 | GET | `/routes/fleet` | ADMIN | Vista flota (stats + rutas activas) |
+| GET | `/routes/my` | DRIVER | Rutas asignadas al conductor |
 | GET | `/routes/:id` | ADMIN | Detalle de ruta con paradas |
-| POST | `/routes` | ADMIN | Crear ruta |
+| POST | `/routes` | ADMIN | Crear ruta (con pickupPointIds opcional) |
 | PATCH | `/routes/:id` | ADMIN | Cambiar estado |
+| PATCH | `/routes/:id/start` | DRIVER | Iniciar ruta |
+| PATCH | `/routes/:id/complete` | DRIVER | Finalizar ruta |
+
+### Collections (`/collections`)
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | `/collections` | DRIVER | Registrar recolección en una parada |
+
+### Waste Types (`/waste-types`)
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/waste-types` | `@Public()` | Todos los tipos de residuo |
+| GET | `/waste-types/:id` | `@Public()` | Detalle |
+| POST | `/waste-types` | ADMIN | Crear tipo |
+| PATCH | `/waste-types/:id` | ADMIN | Editar |
+| DELETE | `/waste-types/:id` | ADMIN | Eliminar |
 
 ### Admin (`/admin`)
 
@@ -206,7 +225,9 @@ backend/
 │   ├── pickup-points/       # PickupPointsModule — puntos de recojo
 │   ├── collection-schedules/# SchedulesModule — horarios por zona
 │   ├── incidents/           # IncidentsModule — reportes + gestión
-│   ├── routes/              # RoutesModule — rutas + fleet overview
+│   ├── routes/              # RoutesModule — CRUD + fleet + driver
+│   ├── collections/         # CollectionsModule — recolecciones
+│   ├── waste-types/         # WasteTypesModule — CRUD residuos
 │   ├── admin/               # AdminModule — dashboard + analytics
 │   ├── prisma/              # PrismaService — dual SQLite/Turso
 │   └── common/              # Guards, decorators, filters, pipes
