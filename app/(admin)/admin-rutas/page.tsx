@@ -688,10 +688,6 @@ export default function AdminRutasPage() {
                 </div>
               )}
               <MapView
-                center={routeMapMarkers.length > 0
-                  ? [routeMapMarkers[0].lng, routeMapMarkers[0].lat]
-                  : [-71.9675, -13.5320]}
-                zoom={14}
                 markers={routeMapMarkers}
                 routes={routeMapRoute}
               />

@@ -179,16 +179,26 @@ export default function MapView({
     mapRef.current.flyTo({ center, zoom, duration: 800 });
   }, [center[0], center[1], zoom]);
 
-  // Markers
+  // Markers + fit bounds
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) {
-      // Remove old markers even if not loaded (they're HTML elements)
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
       return;
     }
     syncMarkers(map, markers, markersRef, onMarkerClick);
+
+    // Fit map to show all markers
+    if (markers.length >= 2) {
+      const bounds = markers.reduce(
+        (b, m) => b.extend([m.lng, m.lat]),
+        new maplibregl.LngLatBounds([markers[0].lng, markers[0].lat], [markers[0].lng, markers[0].lat]),
+      );
+      map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
+    } else if (markers.length === 1) {
+      map.flyTo({ center: [markers[0].lng, markers[0].lat], zoom: 15 });
+    }
   }, [markers, onMarkerClick]);
 
   // Routes
