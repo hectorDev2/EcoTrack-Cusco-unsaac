@@ -26,6 +26,7 @@ const roleRoutes: Record<string, Role> = {
   '/analisis': 'ADMIN',
   '/usuarios': 'ADMIN',
   '/configuracion': 'ADMIN',
+  '/admin-rutas': 'ADMIN',
   '/conductor': 'DRIVER',
   '/inicio': 'CITIZEN',
   '/incidencias': 'CITIZEN',

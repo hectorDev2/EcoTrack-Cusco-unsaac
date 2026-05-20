@@ -10,6 +10,7 @@ const links = [
   { href: "/analisis", label: "📈 Análisis" },
   { href: "/usuarios", label: "👥 Usuarios" },
   { href: "/configuracion", label: "⚙️ Config" },
+  { href: "/admin-rutas", label: "🛣️ Rutas" },
   { href: "/conductor/dashboard", label: "🚛 Conductor" },
   { href: "/conductor/ruta", label: "📍 Paradas" },
 ];
