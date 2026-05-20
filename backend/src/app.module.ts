@@ -8,6 +8,8 @@ import { ZonesModule } from './zones/zones.module';
 import { PickupPointsModule } from './pickup-points/pickup-points.module';
 import { CollectionSchedulesModule } from './collection-schedules/collection-schedules.module';
 import { IncidentsModule } from './incidents/incidents.module';
+import { RoutesModule } from './routes/routes.module';
+import { AdminModule } from './admin/admin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -20,6 +22,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     PickupPointsModule,
     CollectionSchedulesModule,
     IncidentsModule,
+    RoutesModule,
+    AdminModule,
   ],
   providers: [
     {
