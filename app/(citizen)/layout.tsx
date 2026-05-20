@@ -68,6 +68,10 @@ export default function CitizenLayout({ children }: { children: React.ReactNode 
             <span className="material-symbols-outlined">report_problem</span>
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Reportar</span>
           </Link>
+          <Link className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/residuos">
+            <span className="material-symbols-outlined">delete</span>
+            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Residuos</span>
+          </Link>
           <Link className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/perfil">
             <span className="material-symbols-outlined">person</span>
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Perfil</span>

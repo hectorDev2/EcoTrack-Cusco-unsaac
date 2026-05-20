@@ -13,6 +13,8 @@ const links = [
   { href: "/admin-rutas", label: "🛣️ Rutas" },
   { href: "/conductor/dashboard", label: "🚛 Conductor" },
   { href: "/conductor/ruta", label: "📍 Paradas" },
+  { href: "/residuos", label: "♻️ Residuos" },
+  { href: "/admin-residuos", label: "♻️ Residuos Admin" },
 ];
 
 export function DevNav() {

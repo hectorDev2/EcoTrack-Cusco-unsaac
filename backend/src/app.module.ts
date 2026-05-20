@@ -25,6 +25,7 @@ import { CollectionSchedulesModule } from './collection-schedules/collection-sch
 import { IncidentsModule } from './incidents/incidents.module';
 import { RoutesModule } from './routes/routes.module';
 import { CollectionsModule } from './collections/collections.module';
+import { WasteTypesModule } from './waste-types/waste-types.module';
 import { AdminModule } from './admin/admin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -40,6 +41,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     IncidentsModule,
     RoutesModule,
     CollectionsModule,
+    WasteTypesModule,
     AdminModule,
   ],
   controllers: [HealthController],

@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin-rutas", icon: "route", label: "Rutas" },
   { href: "/analisis", icon: "bar_chart", label: "Analíticas" },
   { href: "/usuarios", icon: "group", label: "Usuarios" },
+  { href: "/admin-residuos", icon: "delete", label: "Residuos" },
   { href: "/configuracion", icon: "settings", label: "Configuración" },
 ];
 
