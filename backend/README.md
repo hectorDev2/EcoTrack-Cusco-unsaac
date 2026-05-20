@@ -6,7 +6,7 @@ API REST para el sistema inteligente de recolección de residuos de Cusco.
 
 ---
 
-## Arrancar
+## Arrancar (desarrollo)
 
 ```bash
 cd backend
@@ -16,6 +16,29 @@ npx prisma generate
 npm run prisma:seed    # crear datos de prueba
 npm run start:dev      # http://localhost:3001
 ```
+
+## Deploy en Render
+
+| Campo | Valor |
+|-------|-------|
+| Root Directory | `backend` |
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm run start:prod` |
+
+**Variables de entorno:**
+
+| Variable | Requerido | Descripción |
+|----------|-----------|-------------|
+| `DATABASE_URL` | Para SQLite | `file:./dev.db` |
+| `TURSO_DATABASE_URL` | Para Turso | `libsql://...` |
+| `TURSO_AUTH_TOKEN` | Para Turso | Token de autenticación |
+| `JWT_SECRET` | Sí | Clave para firmar JWT |
+| `JWT_EXPIRATION` | No | Default: `7d` |
+| `FRONTEND_URL` | Sí | `https://tu-frontend.vercel.app` |
+| `PORT` | No | Render asigna automáticamente |
+
+> **Nota:** Render usa un sistema de archivos efímero. Con SQLite los datos
+> se pierden en cada deploy. Usá [Turso](https://turso.tech) para persistencia real.
 
 ## Scripts
 

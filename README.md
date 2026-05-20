@@ -24,6 +24,45 @@ cd backend && npm run prisma:seed
 
 ---
 
+## Deploy
+
+### Frontend → [Vercel](https://vercel.com)
+
+Conectar repo desde dashboard de Vercel. Framework se auto-detecta como Next.js.
+
+| Variable | Valor |
+|----------|-------|
+| `NEXT_PUBLIC_API_URL` | `https://tu-backend.onrender.com` |
+| Build Command | `npm run build` (default) |
+| Output | `.next` (default) |
+
+### Backend → [Render](https://render.com)
+
+Web Service desde dashboard de Render:
+
+| Campo | Valor |
+|-------|-------|
+| Root Directory | `backend` |
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm run start:prod` |
+| Port | `3001` (o el que asigne Render via `PORT`) |
+
+**Variables de entorno:**
+
+| Variable | Descripción |
+|----------|-------------|
+| `DATABASE_URL` | `file:./dev.db` (SQLite local) |
+| `TURSO_DATABASE_URL` | `libsql://...` (Turso, opcional) |
+| `TURSO_AUTH_TOKEN` | Token de Turso |
+| `JWT_SECRET` | Secreto para firmar JWT |
+| `JWT_EXPIRATION` | `7d` |
+| `FRONTEND_URL` | `https://tu-frontend.vercel.app` |
+
+> **Importante:** Con SQLite local los datos se pierden al redeploy.
+> Usá [Turso](https://turso.tech) para persistencia en producción.
+
+---
+
 ## Estado del proyecto
 
 ### Backend — API REST (+30 endpoints)

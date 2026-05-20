@@ -10,7 +10,7 @@ interface RouteStop {
   id: string;
   orderIndex: number;
   status: string;
-  pickupPoint: { id: string; name: string; address: string };
+  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
 }
 
 interface AdminRoute {
@@ -67,6 +67,13 @@ export default function AdminRutasPage() {
   const [creatingPoint, setCreatingPoint] = useState(false);
   const [resolvingAddress, setResolvingAddress] = useState(false);
 
+  // Route map modal
+  const [routeMapModal, setRouteMapModal] = useState<AdminRoute | null>(null);
+  const [routeMapRoute, setRouteMapRoute] = useState<MapRoute[]>([]);
+  const [routeMapMarkers, setRouteMapMarkers] = useState<MapMarker[]>([]);
+  const [routeMapInfo, setRouteMapInfo] = useState<{ distance: number; duration: number } | null>(null);
+  const [routeMapLoading, setRouteMapLoading] = useState(false);
+
   const fetchData = () => {
     setLoading(true);
     Promise.all([
@@ -114,6 +121,46 @@ export default function AdminRutasPage() {
     }, 400);
     return () => { if (calcTimeout.current) clearTimeout(calcTimeout.current); };
   }, [waypoints]);
+
+  // Calcular ruta en el modal de mapa
+  useEffect(() => {
+    if (!routeMapModal) {
+      setRouteMapRoute([]);
+      setRouteMapMarkers([]);
+      setRouteMapInfo(null);
+      return;
+    }
+
+    const stops = routeMapModal.stops.sort((a, b) => a.orderIndex - b.orderIndex);
+    const wps: RouteWaypoint[] = stops.map((s) => ({
+      lng: s.pickupPoint.longitude,
+      lat: s.pickupPoint.latitude,
+      label: s.pickupPoint.name,
+    }));
+
+    setRouteMapMarkers(stops.map((s) => ({
+      id: s.id,
+      lng: s.pickupPoint.longitude,
+      lat: s.pickupPoint.latitude,
+      color: s.status === 'COMPLETED' ? '#2E7D32' : '#154212',
+      icon: (s.status === 'COMPLETED' ? 'check_circle' : 'location_on') as string,
+      label: s.pickupPoint.name,
+    })));
+
+    if (wps.length < 2) {
+      setRouteMapRoute([]);
+      setRouteMapInfo(null);
+      return;
+    }
+
+    setRouteMapLoading(true);
+    calculateRoute(wps).then((result) => {
+      if (result) {
+        setRouteMapRoute([{ id: 'ruta', points: result.coordinates, color: '#154212' }]);
+        setRouteMapInfo({ distance: result.distance, duration: result.duration });
+      }
+    }).finally(() => setRouteMapLoading(false));
+  }, [routeMapModal]);
 
   const addWaypoint = useCallback((lng: number, lat: number, label?: string, pickupPointId?: string) => {
     setWaypoints((prev) => [...prev, { lng, lat, label, pickupPointId }]);
@@ -473,6 +520,7 @@ export default function AdminRutasPage() {
       )}
 
       {/* Listado de rutas */}
+      {/* Listado de rutas en cards tipo flota */}
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="flex flex-col items-center gap-4">
@@ -481,74 +529,190 @@ export default function AdminRutasPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {routes.length === 0 && (
-            <div className="bg-surface-card rounded-xl p-8 text-center border border-outline-variant/20">
+            <div className="col-span-full bg-surface-card rounded-xl p-8 text-center border border-outline-variant/20">
               <span className="material-symbols-outlined text-5xl text-outline mb-4">route</span>
               <p className="text-on-surface-variant text-sm">No hay rutas registradas</p>
             </div>
           )}
-          {routes.map((r) => (
-            <div key={r.id} className="bg-surface-card rounded-xl p-5 border border-outline-variant/20">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-[16px] font-bold text-on-surface">{r.zone?.name ?? 'Sin zona'}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusStyles[r.status] ?? ''}`}>
+          {routes.map((r) => {
+            const cfg = statusStyles[r.status] ?? statusStyles.PENDING;
+            return (
+              <div key={r.id} className="bg-surface-card rounded-xl border border-outline-variant/20 overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+                {/* Header */}
+                <div className="p-4 pb-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        r.status === 'IN_PROGRESS' ? 'bg-primary/10' : 'bg-surface-container-high'
+                      }`}>
+                        <span className={`material-symbols-outlined text-[20px] ${
+                          r.status === 'IN_PROGRESS' ? 'text-primary' : 'text-on-surface-variant'
+                        }`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                          {r.status === 'IN_PROGRESS' ? 'local_shipping' : r.status === 'COMPLETED' ? 'check_circle' : 'schedule'}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="text-[14px] font-bold text-on-surface leading-tight">
+                          {r.zone?.name ?? 'Sin zona'}
+                        </h3>
+                        <p className="text-[11px] text-on-surface-variant">
+                          {r.driver?.fullName ?? 'Sin conductor'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${cfg}`}>
                       {statusLabels[r.status] ?? r.status}
                     </span>
                   </div>
-                  <p className="text-[13px] text-on-surface-variant">
-                    {r.driver?.fullName ?? 'Sin conductor'} · {r.totalStops} paradas
-                  </p>
                 </div>
-                <div className="flex items-center gap-2 relative">
-                  {r.stops.length > 0 && (
-                    <button onClick={() => setDetalleRuta(detalleRuta?.id === r.id ? null : r)}
-                      className="text-[11px] font-bold text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5">
-                      Ver ruta
-                    </button>
-                  )}
-                  {detalleRuta?.id === r.id && (
-                    <div className="absolute right-0 top-8 w-72 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-60 overflow-y-auto">
-                      {r.stops.sort((a, b) => a.orderIndex - b.orderIndex).map((s, i) => (
-                        <div key={s.id} className="flex items-center gap-2 py-1.5">
-                          <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${s.status === 'COMPLETED' ? 'bg-waste-organic/10 text-waste-organic' : 'bg-surface-container-high text-on-surface-variant'}`}>
-                            {s.status === 'COMPLETED' ? '✓' : i + 1}
-                          </span>
-                          <span className="text-[12px] text-on-surface truncate">{s.pickupPoint.name}</span>
-                        </div>
-                      ))}
+
+                {/* Progress bar */}
+                <div className="px-4 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${
+                        r.status === 'COMPLETED' ? 'bg-waste-organic' :
+                        r.status === 'IN_PROGRESS' ? 'bg-primary' : 'bg-outline-variant'
+                      }`} style={{ width: `${Math.max(progress(r), r.status === 'IN_PROGRESS' ? 4 : 0)}%` }} />
                     </div>
-                  )}
-                  {r.status === 'PENDING' && (
-                    <select value="" onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
-                      className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none" disabled={actionLoading === r.id}>
-                      <option value="">Acción...</option>
-                      <option value="IN_PROGRESS">Iniciar</option>
-                      <option value="CANCELLED">Cancelar</option>
-                    </select>
-                  )}
-                  {r.status === 'IN_PROGRESS' && (
-                    <select value="" onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
-                      className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none" disabled={actionLoading === r.id}>
-                      <option value="">Acción...</option>
-                      <option value="COMPLETED">Completar</option>
-                      <option value="CANCELLED">Cancelar</option>
-                    </select>
-                  )}
+                    <span className="text-[11px] font-bold text-on-surface-variant whitespace-nowrap">
+                      {r.completedStops}/{r.totalStops}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Footer actions */}
+                <div className="px-4 py-3 bg-surface-container/50 border-t border-outline-variant/10 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {r.stops.length > 0 && (
+                      <div className="relative">
+                        <button
+                          onClick={() => setDetalleRuta(detalleRuta?.id === r.id ? null : r)}
+                          className="text-[11px] font-bold text-primary flex items-center gap-1 hover:underline"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">route</span>
+                          {r.stops.length} paradas
+                        </button>
+                        {detalleRuta?.id === r.id && (
+                          <div className="absolute left-0 top-6 w-64 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-52 overflow-y-auto">
+                            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Paradas</p>
+                            {r.stops.sort((a, b) => a.orderIndex - b.orderIndex).map((s, i) => (
+                              <div key={s.id} className="flex items-center gap-2 py-1">
+                                <span className={`w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center flex-shrink-0 ${
+                                  s.status === 'COMPLETED' ? 'bg-waste-organic/10 text-waste-organic' : 'bg-surface-container-high text-on-surface-variant'
+                                }`}>
+                                  {s.status === 'COMPLETED' ? '✓' : i + 1}
+                                </span>
+                                <span className="text-[11px] text-on-surface truncate">{s.pickupPoint.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {r.startedAt && (
+                      <span className="text-[10px] text-on-surface-variant">
+                        {new Date(r.startedAt).toLocaleDateString('es-PE')}
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setRouteMapModal(r)}
+                    className="text-[11px] font-bold text-primary flex items-center gap-1 hover:underline px-2 py-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">map</span>
+                    Mapa
+                  </button>
+
+                  <select
+                    value=""
+                    onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
+                    className="bg-surface border border-outline-variant rounded-lg px-2.5 py-1.5 text-[10px] font-bold outline-none cursor-pointer hover:border-primary/40 transition-colors"
+                    disabled={actionLoading === r.id}
+                  >
+                    <option value="">Acción</option>
+                    {r.status === 'PENDING' && (
+                      <>
+                        <option value="IN_PROGRESS">Iniciar</option>
+                        <option value="CANCELLED">Cancelar</option>
+                      </>
+                    )}
+                    {r.status === 'IN_PROGRESS' && (
+                      <>
+                        <option value="COMPLETED">Completar</option>
+                        <option value="CANCELLED">Cancelar</option>
+                      </>
+                    )}
+                    {r.status === 'COMPLETED' && (
+                      <option value="PENDING">Reabrir</option>
+                    )}
+                  </select>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${r.status === 'COMPLETED' ? 'bg-waste-organic' : r.status === 'IN_PROGRESS' ? 'bg-primary' : 'bg-outline-variant'}`}
-                    style={{ width: `${Math.max(progress(r), r.status === 'IN_PROGRESS' ? 4 : 0)}%` }} />
+      {/* Modal mapa de ruta */}
+      {routeMapModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setRouteMapModal(null)}>
+          <div className="bg-surface-card rounded-2xl w-full max-w-4xl max-h-[90vh] shadow-2xl border border-outline-variant/20 overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-outline-variant/20">
+              <div>
+                <h3 className="text-[18px] font-bold text-on-surface">
+                  {routeMapModal.zone?.name ?? 'Ruta'}
+                </h3>
+                <p className="text-[13px] text-on-surface-variant">
+                  {routeMapModal.driver?.fullName ?? 'Sin conductor'} · {routeMapModal.totalStops} paradas
+                  {routeMapInfo && (
+                    <span> · {formatDistance(routeMapInfo.distance)} · {formatDuration(routeMapInfo.duration)}</span>
+                  )}
+                </p>
+              </div>
+              <button onClick={() => setRouteMapModal(null)} className="p-2 hover:bg-surface-variant rounded-full text-on-surface-variant">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Mapa */}
+            <div className="relative h-[450px]">
+              {routeMapLoading && (
+                <div className="absolute top-4 right-4 z-10 bg-surface/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                  <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[11px] font-bold text-on-surface">Calculando ruta...</span>
                 </div>
-                <span className="text-[12px] font-bold text-on-surface-variant flex-shrink-0">{r.completedStops}/{r.totalStops}</span>
+              )}
+              <MapView
+                center={routeMapMarkers.length > 0
+                  ? [routeMapMarkers[0].lng, routeMapMarkers[0].lat]
+                  : [-71.9675, -13.5320]}
+                zoom={14}
+                markers={routeMapMarkers}
+                routes={routeMapRoute}
+              />
+            </div>
+
+            {/* Lista de paradas */}
+            <div className="p-4 border-t border-outline-variant/20 max-h-40 overflow-y-auto">
+              <div className="flex gap-2 flex-wrap">
+                {routeMapModal.stops.sort((a, b) => a.orderIndex - b.orderIndex).map((s, i) => (
+                  <div key={s.id} className="flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2 text-[12px]">
+                    <span className={`w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center flex-shrink-0 ${
+                      s.status === 'COMPLETED' ? 'bg-waste-organic/10 text-waste-organic' : 'bg-primary/10 text-primary'
+                    }`}>
+                      {i + 1}
+                    </span>
+                    <span className="font-bold text-on-surface">{s.pickupPoint.name}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>
