@@ -47,15 +47,26 @@ export class RoutesService {
   }
 
   async create(dto: CreateRouteDto) {
-    return this.prisma.route.create({
+    const route = await this.prisma.route.create({
       data: {
         zoneId: dto.zoneId,
         driverId: dto.driverId,
         status: dto.status ?? 'PENDING',
         createdAt: new Date().toISOString(),
       },
-      include: routeInclude,
     });
+
+    if (dto.pickupPointIds && dto.pickupPointIds.length > 0) {
+      await this.prisma.routeStop.createMany({
+        data: dto.pickupPointIds.map((id, i) => ({
+          routeId: route.id,
+          pickupPointId: id,
+          orderIndex: i,
+        })),
+      });
+    }
+
+    return this.findOne(route.id);
   }
 
   async update(id: string, dto: UpdateRouteDto) {
