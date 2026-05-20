@@ -98,9 +98,9 @@ cd backend && npm run prisma:seed
 | `/mapa` | Mapa de recolección | Requiere login |
 | `/perfil` | Perfil del usuario | Requiere login |
 | `/dashboard` | Panel de administración | Requiere login |
-| `/flota` | Monitoreo de flota en tiempo real | Requiere login |
+| `/flota` | Monitoreo de flota con mapa MapLibre | Requiere login |
 | `/usuarios` | Gestión de usuarios | Requiere login |
-| `/incidencias` | Gestión de incidencias | Requiere login |
+| `/admin-incidencias` | Gestión de incidencias (admin) | Requiere login |
 | `/analisis` | Analíticas y reportes | Requiere login |
 | `/configuracion` | Configuración del sistema | Requiere login |
 
@@ -146,7 +146,7 @@ app/
     ├── dashboard/          ← Con datos reales
     ├── flota/              ← Con datos reales + mapa MapLibre
     ├── usuarios/           ← Con datos reales
-    ├── incidencias/        ← Gestión con cambio de estado
+    ├── admin-incidencias/  ← Gestión con cambio de estado
     ├── analisis/           ← Con datos reales
     └── configuracion/      ← Solo estado local
 lib/
@@ -154,6 +154,7 @@ lib/
 ├── auth-context.tsx        ← AuthProvider + useAuth hook
 └── types.ts                ← Interfaces compartidas
 components/
+├── map-view.tsx             ← Mapa interactivo (MapLibre GL)
 ├── logout-button.tsx
 ├── theme-toggle.tsx
 ├── schedule-card.tsx

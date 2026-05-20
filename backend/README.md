@@ -2,7 +2,7 @@
 
 API REST para el sistema inteligente de recolección de residuos de Cusco.
 
-**Stack:** NestJS · TypeScript · Prisma ORM · Turso DB (libSQL)
+**Stack:** NestJS 11 · TypeScript · Prisma ORM · SQLite (dev) / Turso (prod)
 
 ---
 
@@ -13,7 +13,7 @@ cd backend
 cp .env.example .env   # completar credenciales
 npm install
 npx prisma generate
-npm run prisma:seed    # crear usuarios por defecto
+npm run prisma:seed    # crear datos de prueba
 npm run start:dev      # http://localhost:3001
 ```
 
@@ -26,61 +26,84 @@ npm run start:dev      # http://localhost:3001
 | `npm run start:prod` | Producción |
 | `npm run prisma:generate` | Regenerar Prisma Client |
 | `npm run prisma:push` | Sincronizar schema a DB local |
-| `npm run prisma:seed` | Poblar DB con usuarios por defecto |
+| `npm run prisma:seed` | Poblar DB con datos de prueba |
 | `npm run prisma:studio` | Abrir Prisma Studio |
 
-## Seed — Usuarios por defecto
+## Seed — Datos de prueba (70+ registros)
 
 ```bash
 npm run prisma:seed
 ```
 
-| Email | Contraseña | Rol |
-|-------|-----------|-----|
-| admin@terracivic.pe | 123456 | Administrador |
-| conductor@terracivic.pe | 123456 | Conductor |
-| ciudadano@terracivic.pe | 123456 | Ciudadano |
+### Usuarios
 
-## API — Endpoints
+| Email | Contraseña | Rol | Zonas asignadas |
+|-------|-----------|-----|----------------|
+| admin@terracivic.pe | 123456 | Administrador | Todas |
+| carlos.conductor@terracivic.pe | 123456 | Conductor | Centro Histórico, San Blas |
+| maria.conductor@terracivic.pe | 123456 | Conductor | San Sebastián, Santiago, Wanchaq |
+| juan@terracivic.pe | 123456 | Ciudadano | Centro Histórico, San Blas |
+| rosa@terracivic.pe | 123456 | Ciudadano | San Blas, Wanchaq |
+| pedro@terracivic.pe | 123456 | Ciudadano | San Sebastián |
+| lucia@terracivic.pe | 123456 | Ciudadano | Santiago, Centro Histórico |
+| miguel@terracivic.pe | 123456 | Ciudadano | Wanchaq, San Sebastián |
+| inactivo@terracivic.pe | 123456 | Inactivo | — |
+
+### Datos cargados
+
+| Tipo | Cantidad |
+|------|----------|
+| Zonas (distritos Cusco) | 5 |
+| Puntos de recolección | 13 |
+| Horarios de recolección | 17 |
+| Incidencias | 16 (6 open, 3 in_progress, 3 resolved, 4 closed) |
+| Tipos de residuo | 4 (Orgánico, Reciclable, No Reciclable, Peligroso) |
+| Rutas de recolección | 6 (2 en tránsito, 2 pendientes, 2 completadas) |
+| Paradas de ruta | 16 |
+| Recolecciones registradas | 8 |
+
+---
+
+## API — Endpoints (+30)
 
 ### Auth (`/auth`)
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| POST | `/auth/register` | `@Public()` | Registrar ciudadano |
-| POST | `/auth/login` | `@Public()` | Iniciar sesión → JWT |
+| POST | `/auth/register` | `@Public()` | Registrar ciudadano o conductor |
+| POST | `/auth/login` | `@Public()` | Iniciar sesión → JWT (7d) |
 | GET | `/auth/me` | JWT | Perfil del usuario autenticado |
 
 ### Users (`/users`)
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| GET | `/users` | ADMIN | Lista paginada con `?search=&role=&status=&page=&limit=` |
-| GET | `/users/me` | JWT | Perfil propio con zonas asignadas |
-| GET | `/users/stats` | ADMIN | Estadísticas (total, activos, drivers, admins) |
-| GET | `/users/:id` | ADMIN | Detalle de usuario con zonas |
+| GET | `/users` | ADMIN | Lista paginada (`?search=&role=&status=&page=&limit=`) |
+| GET | `/users/me` | JWT | Perfil propio con zonas |
+| GET | `/users/stats` | ADMIN | Estadísticas del sistema |
+| GET | `/users/:id` | ADMIN | Detalle con zonas |
 | POST | `/users` | ADMIN | Crear usuario |
 | PATCH | `/users/:id` | ADMIN | Actualizar (nombre, rol, status, password) |
-| PATCH | `/users/:id/zones` | ADMIN | Asignar zonas al usuario |
-| DELETE | `/users/:id` | ADMIN | Desactivar usuario |
+| PATCH | `/users/:id/zones` | ADMIN | Asignar zonas |
+| DELETE | `/users/:id` | ADMIN | Desactivar (soft-delete) |
 
 ### Zones (`/zones`)
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| GET | `/zones` | `@Public()` | Lista zonas activas |
-| GET | `/zones/:id` | `@Public()` | Detalle de zona |
-| POST | `/zones` | ADMIN | Crear zona |
-| PATCH | `/zones/:id` | ADMIN | Actualizar zona |
-| DELETE | `/zones/:id` | ADMIN | Desactivar zona |
+| GET | `/zones` | `@Public()` | Zonas activas |
+| GET | `/zones/:id` | `@Public()` | Detalle |
+| POST | `/zones` | ADMIN | Crear |
+| PATCH | `/zones/:id` | ADMIN | Actualizar |
+| DELETE | `/zones/:id` | ADMIN | Desactivar |
 
 ### Pickup Points (`/pickup-points`)
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| GET | `/pickup-points` | `@Public()` | Lista activos, opcional `?zoneId=` |
+| GET | `/pickup-points` | `@Public()` | Activos, opcional `?zoneId=` |
 | GET | `/pickup-points/:id` | `@Public()` | Detalle |
-| POST | `/pickup-points` | ADMIN | Crear punto |
+| POST | `/pickup-points` | ADMIN | Crear |
 | PATCH | `/pickup-points/:id` | ADMIN | Actualizar |
 | DELETE | `/pickup-points/:id` | ADMIN | Desactivar |
 
@@ -90,7 +113,7 @@ npm run prisma:seed
 |--------|------|------|-------------|
 | GET | `/schedules` | `@Public()` | Lista, opcional `?zoneId=&wasteTypeId=` |
 | GET | `/schedules/:id` | `@Public()` | Detalle |
-| POST | `/schedules` | ADMIN | Crear horario |
+| POST | `/schedules` | ADMIN | Crear |
 | PATCH | `/schedules/:id` | ADMIN | Actualizar |
 | DELETE | `/schedules/:id` | ADMIN | Eliminar |
 
@@ -98,108 +121,64 @@ npm run prisma:seed
 
 | Método | Ruta | Auth | Descripción |
 |--------|------|------|-------------|
-| POST | `/incidents` | JWT | Crear incidencia (ciudadano) |
-| GET | `/incidents/my` | JWT | Incidencias del usuario |
-| GET | `/incidents` | ADMIN | Todas las incidencias |
+| POST | `/incidents` | JWT | Reportar incidencia |
+| GET | `/incidents/my` | JWT | Mis incidencias |
+| GET | `/incidents` | ADMIN | Todas, opcional `?status=` |
 | GET | `/incidents/:id` | JWT | Detalle |
 | PATCH | `/incidents/:id` | ADMIN | Cambiar estado |
 
-> **Nota:** El `JwtAuthGuard` es **global** (`APP_GUARD`). Para rutas públicas se usa `@Public()`.
+### Routes (`/routes`)
 
-## Base de datos
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/routes` | ADMIN | Todas las rutas con progreso |
+| GET | `/routes/fleet` | ADMIN | Vista flota (stats + rutas activas) |
+| GET | `/routes/:id` | ADMIN | Detalle de ruta con paradas |
+| POST | `/routes` | ADMIN | Crear ruta |
+| PATCH | `/routes/:id` | ADMIN | Cambiar estado |
 
-Turso (libSQL) vía `@prisma/adapter-libsql`. Schema en `prisma/schema.prisma` (10 modelos). Para desarrollo local se usa SQLite (`prisma/dev.db`), la app en runtime apunta a Turso vía variables de entorno.
+### Admin (`/admin`)
 
-## Progreso del Backlog
-
-### Configuración inicial
-- [x] BE-00 — Scaffolding NestJS + Prisma + libSQL adapter
-- [x] BE-01 — Variables de entorno (`.env`) y conexión Turso
-- [x] BE-02 — Guard JWT global + estrategia Passport
-- [x] BE-03 — Pipe global de validación y filtro de excepciones
-
-### HU-01 · Registro e inicio de sesión (Ciudadano)
-- [x] BE-10 — `AuthModule` + `POST /auth/register`
-- [x] BE-11 — `POST /auth/login` → JWT
-- [x] BE-12 — Modelo `User` en Prisma
-- [x] BE-13 — Hash bcrypt
-- [x] BE-14 — DTOs `RegisterDto` + `LoginDto`
-- [x] BE-15 — `GET /auth/me`
-
-### HU-02 · Horarios y puntos de recolección
-- [x] BE-20 — `ZonesModule` + modelo `Zone`
-- [x] BE-21 — `GET /zones`
-- [x] BE-22 — `SchedulesModule` + modelo `CollectionSchedule`
-- [x] BE-23 — `GET /schedules?zoneId=&wasteTypeId=`
-- [x] BE-24 — `PickupPointsModule` + modelo `PickupPoint`
-- [x] BE-25 — `GET /pickup-points?zoneId=`
-
-### HU-06 · Reportar incidencia
-- [x] BE-30 — `IncidentsModule` + modelo `Incident`
-- [x] BE-31 — `POST /incidents`
-- [x] BE-32 — `GET /incidents/my`
-- [x] BE-33 — `CreateIncidentDto`
-- [x] `GET /incidents` (admin) — Listar todas
-- [x] `PATCH /incidents/:id` (admin) — Cambiar estado
-
-### HU-Conductor · Ruta y recolección
-- [x] BE-40 — Rol `DRIVER` en modelo `User` + guard de rol
-- [ ] BE-41 — `RoutesModule` + modelos `Route` + `RouteStop`
-- [ ] BE-42 — `GET /routes/my`
-- [ ] BE-43 — `PATCH /routes/:id/start`
-- [ ] BE-44 — `CollectionsModule` + modelo `Collection`
-- [ ] BE-45 — `POST /collections`
-- [ ] BE-46 — `POST /incidents` (conductor)
-
-### HU-Admin · Gestión
-- [x] BE-50 — Rol `ADMIN` + guard de rol
-- [x] BE-51 — `GET /users` (con paginación, búsqueda, filtros)
-- [x] BE-52 — `PATCH /users/:id` (soporta cambio de password)
-- [x] BE-53 — `DELETE /users/:id` (desactivar)
-- [x] BE-54 — CRUD `POST/PATCH/DELETE /zones`
-- [ ] BE-55 — `WasteTypesModule` + modelo `WasteType`
-- [ ] BE-56 — `GET/POST /waste-types`
-- [ ] BE-57 — `GET/POST /waste-types/:id/classify`
-- [ ] BE-58 — `POST/GET /routes` (admin)
-- [ ] BE-59 — `GET /routes` (estado todas las rutas)
-
-### Extra — Implementado fuera del backlog original
-- [x] `GET /users/me` — Perfil propio con zonas
-- [x] `GET /users/stats` — Estadísticas de usuarios
-- [x] `POST /users` — Crear usuario desde admin
-- [x] `PATCH /users/:id/zones` — Asignar zonas a usuario
-- [x] `@Public()` decorator — Marcar rutas públicas
-- [x] Guard global `APP_GUARD` — Protección por defecto
-- [x] Seed de usuarios — `prisma/seed.ts`
-- [x] Modo noche — Variables CSS dark en frontend
-- [x] `GET /pickup-points/:id` — Detalle de punto
-- [x] `GET /incidents/:id` — Detalle de incidencia
-- [x] `PATCH /incidents/:id` — Cambiar estado (admin)
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/admin/dashboard` | ADMIN | Datos agregados del sistema |
+| GET | `/admin/analytics` | ADMIN | Analíticas, composición, ranking zonas |
 
 ---
 
-## Estructura
+## Arquitectura
+
+### Seguridad
+
+- **JwtAuthGuard global** (`APP_GUARD`) — protege todas las rutas por defecto
+- `@Public()` — excluye rutas públicas (auth, consultas)
+- **RolesGuard** — verifica roles (`@Roles('ADMIN')`) en rutas administrativas
+- JWT con 7 días de expiración, claims: `{ sub, email, role }`
+
+### Base de datos
+
+- **Dev**: SQLite local (`prisma/dev.db`) vía `PrismaClient` estándar
+- **Prod**: Turso (libSQL distribuido) vía `@prisma/adapter-libsql`
+- El `PrismaService` detecta automáticamente el modo según las variables de entorno
+
+### Estructura
 
 ```
 backend/
 ├── prisma/
-│   ├── schema.prisma        # Schema completo (10 tablas)
-│   └── seed.ts              # Seed de usuarios por defecto
+│   ├── schema.prisma        # Schema completo (10 modelos)
+│   └── seed.ts              # Seed con 70+ registros
 ├── src/
-│   ├── auth/                # AuthModule (register, login, me, JWT)
-│   ├── users/               # UsersModule (CRUD admin + zonas)
-│   ├── zones/               # ZonesModule (CRUD admin + GET público)
-│   ├── pickup-points/       # PickupPointsModule (consulta + CRUD admin)
-│   ├── collection-schedules/# CollectionSchedulesModule (horarios)
-│   ├── incidents/           # IncidentsModule (reporte ciudadano + gestión admin)
-│   ├── prisma/              # PrismaService (adapter Turso)
-│   ├── common/              # Guards, decorators, filters, pipes
-│   │   ├── decorators/      # @CurrentUser, @Roles, @Public()
-│   │   ├── guards/          # JwtAuthGuard (global), RolesGuard
-│   │   ├── filters/         # AllExceptionsFilter
-│   │   └── pipes/           # AppValidationPipe
-│   ├── app.module.ts        # Módulo raíz + APP_GUARD
-│   └── main.ts              # Bootstrap
+│   ├── auth/                # AuthModule — register, login, JWT
+│   ├── users/               # UsersModule — CRUD + stats + zones
+│   ├── zones/               # ZonesModule — CRUD + GET público
+│   ├── pickup-points/       # PickupPointsModule — puntos de recojo
+│   ├── collection-schedules/# SchedulesModule — horarios por zona
+│   ├── incidents/           # IncidentsModule — reportes + gestión
+│   ├── routes/              # RoutesModule — rutas + fleet overview
+│   ├── admin/               # AdminModule — dashboard + analytics
+│   ├── prisma/              # PrismaService — dual SQLite/Turso
+│   └── common/              # Guards, decorators, filters, pipes
 ├── .env.example
 └── package.json
 ```
