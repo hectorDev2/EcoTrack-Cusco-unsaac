@@ -1,7 +1,26 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { config } from 'dotenv';
+import { resolve } from 'path';
 
-const prisma = new PrismaClient();
+config({ path: resolve(__dirname, '../.env') });
+
+function createPrismaClient() {
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  if (tursoUrl) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaLibSQL } = require('@prisma/adapter-libsql');
+    return new PrismaClient({
+      adapter: new PrismaLibSQL({
+        url: tursoUrl,
+        authToken: process.env.TURSO_AUTH_TOKEN!,
+      }),
+    });
+  }
+  return new PrismaClient();
+}
+
+const prisma = createPrismaClient();
 
 async function main() {
   console.log('🧹 Limpiando base de datos...');
