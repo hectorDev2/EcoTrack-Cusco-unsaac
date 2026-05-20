@@ -60,6 +60,12 @@ export default function AdminRutasPage() {
   const [detalleRuta, setDetalleRuta] = useState<AdminRoute | null>(null);
   const calcTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // New pickup point modal
+  const [newPointModal, setNewPointModal] = useState<{ lng: number; lat: number } | null>(null);
+  const [newPointName, setNewPointName] = useState('');
+  const [newPointAddress, setNewPointAddress] = useState('');
+  const [creatingPoint, setCreatingPoint] = useState(false);
+
   const fetchData = () => {
     setLoading(true);
     Promise.all([
@@ -85,16 +91,13 @@ export default function AdminRutasPage() {
       .catch(() => {});
   }, [formZone]);
 
-  // Calculate route when waypoints change
   useEffect(() => {
     if (calcTimeout.current) clearTimeout(calcTimeout.current);
-
     if (waypoints.length < 2) {
       setCalculatedRoute([]);
       setRouteInfo(null);
       return;
     }
-
     setCalculating(true);
     calcTimeout.current = setTimeout(async () => {
       const result = await calculateRoute(waypoints);
@@ -108,7 +111,6 @@ export default function AdminRutasPage() {
       }
       setCalculating(false);
     }, 400);
-
     return () => { if (calcTimeout.current) clearTimeout(calcTimeout.current); };
   }, [waypoints]);
 
@@ -130,7 +132,8 @@ export default function AdminRutasPage() {
     });
   }, []);
 
-  const addPickupPoint = useCallback((pp: PickupPoint) => {
+  // Click en pickup point existente — agrega/quita del trazado
+  const togglePickupPoint = useCallback((pp: PickupPoint) => {
     const exists = waypoints.some((w) => w.pickupPointId === pp.id);
     if (exists) {
       setWaypoints((prev) => prev.filter((w) => w.pickupPointId !== pp.id));
@@ -138,6 +141,37 @@ export default function AdminRutasPage() {
     }
     addWaypoint(pp.longitude, pp.latitude, pp.name, pp.id);
   }, [waypoints, addWaypoint]);
+
+  // Click en el mapa — abre modal para crear nuevo punto
+  const handleMapClick = useCallback((lng: number, lat: number) => {
+    setNewPointModal({ lng, lat });
+    setNewPointName('');
+    setNewPointAddress('');
+  }, []);
+
+  // Crear el nuevo pickup point y agregarlo a la ruta
+  const handleCreatePoint = async () => {
+    if (!newPointModal || !newPointName.trim() || !formZone) return;
+    setCreatingPoint(true);
+    try {
+      const pp = await api.post<PickupPoint>('/pickup-points', {
+        zoneId: formZone,
+        name: newPointName.trim(),
+        address: newPointAddress.trim() || newPointName.trim(),
+        latitude: newPointModal.lat,
+        longitude: newPointModal.lng,
+      });
+      setPickupPoints((prev) => [...prev, pp]);
+      addWaypoint(pp.longitude, pp.latitude, pp.name, pp.id);
+      setNewPointModal(null);
+      setNewPointName('');
+      setNewPointAddress('');
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Error al crear punto');
+    } finally {
+      setCreatingPoint(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!formZone || !formDriver || waypoints.length === 0) return;
@@ -152,21 +186,17 @@ export default function AdminRutasPage() {
         pickupPointIds: pickupIds,
       });
       setShowForm(false);
-      resetForm();
+      setFormZone('');
+      setFormDriver('');
+      setWaypoints([]);
+      setCalculatedRoute([]);
+      setRouteInfo(null);
       fetchData();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : 'Error al crear ruta');
     } finally {
       setFormLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setFormZone('');
-    setFormDriver('');
-    setWaypoints([]);
-    setCalculatedRoute([]);
-    setRouteInfo(null);
   };
 
   const handleStatusChange = async (id: string, status: string) => {
@@ -184,37 +214,17 @@ export default function AdminRutasPage() {
   const progress = (r: AdminRoute) =>
     r.totalStops > 0 ? Math.round((r.completedStops / r.totalStops) * 100) : 0;
 
-  // Map markers for pickup points and waypoints
-  const markers: MapMarker[] = [
-    ...pickupPoints.map((pp) => ({
-      id: pp.id,
-      lng: pp.longitude,
-      lat: pp.latitude,
-      color: waypoints.some((w) => w.pickupPointId === pp.id) ? '#2E7D32' : '#154212',
-      icon: (waypoints.some((w) => w.pickupPointId === pp.id) ? 'check_circle' : 'delete') as 'check_circle' | 'delete',
-      label: pp.name,
-    })),
-    ...waypoints
-      .filter((w) => !w.pickupPointId)
-      .map((w, i) => ({
-        id: `waypoint-${i}`,
-        lng: w.lng,
-        lat: w.lat,
-        color: '#C62828',
-        icon: 'flag' as const,
-        label: `Punto ${waypoints.findIndex((wp) => wp === w) + 1}`,
-      })),
-  ];
+  const markerIcon = (id: string) => waypoints.some((w) => w.pickupPointId === id) ? 'check_circle' : 'delete';
 
   return (
     <div className="p-6 max-w-[1440px] mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[24px] leading-[32px] font-bold text-primary">Gestión de Rutas</h2>
-          <p className="text-[14px] text-on-surface-variant">Traza la ruta sobre el mapa</p>
+          <p className="text-[14px] text-on-surface-variant">Traza la ruta sobre el mapa — click en puntos existentes o en cualquier lugar para crear uno nuevo</p>
         </div>
         <button
-          onClick={() => { setShowForm(!showForm); if (!showForm) resetForm(); }}
+          onClick={() => { setShowForm(!showForm); setWaypoints([]); setCalculatedRoute([]); setRouteInfo(null); }}
           className="bg-primary text-on-primary px-5 py-3 rounded-xl text-[12px] font-bold flex items-center gap-2 active:opacity-80 transition-opacity"
         >
           <span className="material-symbols-outlined text-[18px]">{showForm ? 'close' : 'add'}</span>
@@ -243,12 +253,20 @@ export default function AdminRutasPage() {
                     ? [pickupPoints[0].longitude, pickupPoints[0].latitude]
                     : [-71.9675, -13.5320]}
                   zoom={15}
-                  markers={markers}
+                  markers={pickupPoints.map((pp) => ({
+                    id: pp.id,
+                    lng: pp.longitude,
+                    lat: pp.latitude,
+                    color: waypoints.some((w) => w.pickupPointId === pp.id) ? '#2E7D32' : '#154212',
+                    icon: markerIcon(pp.id) as string,
+                    label: pp.name,
+                  }))}
                   routes={calculatedRoute}
                   onMarkerClick={(m) => {
                     const pp = pickupPoints.find((p) => p.id === m.id);
-                    if (pp) addPickupPoint(pp);
+                    if (pp) togglePickupPoint(pp);
                   }}
+                  onMapClick={handleMapClick}
                 />
               ) : (
                 <div className="w-full h-full bg-surface-container-highest flex items-center justify-center">
@@ -259,9 +277,9 @@ export default function AdminRutasPage() {
                 </div>
               )}
 
-              {formZone && waypoints.length < 2 && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-full shadow-lg text-[12px] font-bold text-on-surface">
-                  Haz click en los puntos de recojo para trazar la ruta
+              {formZone && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-full shadow-lg text-[12px] font-bold text-on-surface whitespace-nowrap">
+                  Click en puntos existentes o en cualquier lugar del mapa para crear uno nuevo
                 </div>
               )}
 
@@ -287,66 +305,46 @@ export default function AdminRutasPage() {
 
               <div>
                 <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">Zona</label>
-                <select
-                  value={formZone}
-                  onChange={(e) => { setFormZone(e.target.value); setWaypoints([]); }}
-                  className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none"
-                >
+                <select value={formZone} onChange={(e) => { setFormZone(e.target.value); setWaypoints([]); }}
+                  className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none">
                   <option value="">Seleccionar zona...</option>
-                  {zones.map((z) => (
-                    <option key={z.id} value={z.id}>{z.name}</option>
-                  ))}
+                  {zones.map((z) => (<option key={z.id} value={z.id}>{z.name}</option>))}
                 </select>
               </div>
 
               <div>
                 <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">Conductor</label>
-                <select
-                  value={formDriver}
-                  onChange={(e) => setFormDriver(e.target.value)}
-                  className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none"
-                >
+                <select value={formDriver} onChange={(e) => setFormDriver(e.target.value)}
+                  className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none">
                   <option value="">Seleccionar conductor...</option>
-                  {drivers.map((d) => (
-                    <option key={d.id} value={d.id}>{d.fullName}</option>
-                  ))}
+                  {drivers.map((d) => (<option key={d.id} value={d.id}>{d.fullName}</option>))}
                 </select>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase">
-                    Paradas ({waypoints.length})
-                  </label>
+                  <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase">Paradas ({waypoints.length})</label>
                   {routeInfo && (
-                    <span className="text-[11px] text-on-surface-variant">
-                      {formatDistance(routeInfo.distance)} · {formatDuration(routeInfo.duration)}
-                    </span>
+                    <span className="text-[11px] text-on-surface-variant">{formatDistance(routeInfo.distance)} · {formatDuration(routeInfo.duration)}</span>
                   )}
                 </div>
 
                 {waypoints.length === 0 ? (
                   <div className="bg-surface-container-low rounded-xl p-4 text-center">
                     <p className="text-[13px] text-on-surface-variant">
-                      {formZone ? 'Haz click en los puntos del mapa para trazar la ruta' : 'Selecciona una zona primero'}
+                      {formZone ? 'Click en el mapa para agregar paradas' : 'Selecciona una zona primero'}
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                  <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
                     {waypoints.map((wp, i) => {
                       const pp = pickupPoints.find((p) => p.id === wp.pickupPointId);
                       return (
                         <div key={`${wp.pickupPointId ?? 'wp'}-${i}`} className="flex items-center gap-2 bg-surface-container-low rounded-lg p-2">
-                          <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0">
-                            {i + 1}
-                          </span>
+                          <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-bold text-on-surface truncate">
-                              {pp?.name ?? wp.label ?? `Punto ${i + 1}`}
-                            </p>
-                            {pp?.address && (
-                              <p className="text-[11px] text-on-surface-variant truncate">{pp.address}</p>
-                            )}
+                            <p className="text-[12px] font-bold text-on-surface truncate">{pp?.name ?? wp.label ?? `Punto ${i + 1}`}</p>
+                            {pp?.address && <p className="text-[11px] text-on-surface-variant truncate">{pp.address}</p>}
                           </div>
                           <div className="flex gap-0.5">
                             <button onClick={() => moveWaypoint(i, -1)} disabled={i === 0}
@@ -369,11 +367,9 @@ export default function AdminRutasPage() {
                 )}
               </div>
 
-              <button
-                onClick={handleCreate}
+              <button onClick={handleCreate}
                 disabled={!formZone || !formDriver || waypoints.length === 0 || formLoading}
-                className="w-full bg-primary text-on-primary py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 mt-auto"
-              >
+                className="w-full bg-primary text-on-primary py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
                 {formLoading ? (
                   <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
                 ) : (
@@ -386,6 +382,56 @@ export default function AdminRutasPage() {
         </div>
       )}
 
+      {/* Modal para crear nuevo punto de recojo */}
+      {newPointModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setNewPointModal(null)}>
+          <div className="bg-surface-card rounded-2xl p-6 w-full max-w-md shadow-2xl border border-outline-variant/20" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-[18px] font-bold text-on-surface mb-1">Nuevo Punto de Recojo</h3>
+            <p className="text-[13px] text-on-surface-variant mb-5">Agrega un punto en la ubicación seleccionada</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">Nombre</label>
+                <input
+                  value={newPointName}
+                  onChange={(e) => setNewPointName(e.target.value)}
+                  placeholder="Ej: Esquina Av. El Sol"
+                  className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">Dirección (opcional)</label>
+                <input
+                  value={newPointAddress}
+                  onChange={(e) => setNewPointAddress(e.target.value)}
+                  placeholder="Ej: Av. El Sol 350"
+                  className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setNewPointModal(null)}
+                className="flex-1 py-3 rounded-xl border border-outline-variant text-[13px] font-bold text-on-surface-variant">
+                Cancelar
+              </button>
+              <button onClick={handleCreatePoint}
+                disabled={!newPointName.trim() || creatingPoint}
+                className="flex-1 bg-primary text-on-primary py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+                {creatingPoint ? (
+                  <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span className="material-symbols-outlined text-[18px]">add_location</span>
+                )}
+                Agregar y trazar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Listado de rutas */}
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="flex flex-col items-center gap-4">
@@ -415,35 +461,28 @@ export default function AdminRutasPage() {
                     {r.driver?.fullName ?? 'Sin conductor'} · {r.totalStops} paradas
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 relative">
                   {r.stops.length > 0 && (
-                    <>
-                      <button
-                        onClick={() => setDetalleRuta(detalleRuta?.id === r.id ? null : r)}
-                        className="text-[11px] font-bold text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5"
-                      >
-                        Ver ruta
-                      </button>
-                      {detalleRuta?.id === r.id && (
-                        <div className="absolute right-0 top-8 w-72 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-60 overflow-y-auto">
-                          {r.stops.sort((a, b) => a.orderIndex - b.orderIndex).map((s, i) => (
-                            <div key={s.id} className="flex items-center gap-2 py-1.5">
-                              <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${
-                                s.status === 'COMPLETED' ? 'bg-waste-organic/10 text-waste-organic' : 'bg-surface-container-high text-on-surface-variant'
-                              }`}>
-                                {s.status === 'COMPLETED' ? '✓' : i + 1}
-                              </span>
-                              <span className="text-[12px] text-on-surface truncate">{s.pickupPoint.name}</span>
-                            </div>
-                          ))}
+                    <button onClick={() => setDetalleRuta(detalleRuta?.id === r.id ? null : r)}
+                      className="text-[11px] font-bold text-primary px-3 py-1.5 rounded-lg hover:bg-primary/5">
+                      Ver ruta
+                    </button>
+                  )}
+                  {detalleRuta?.id === r.id && (
+                    <div className="absolute right-0 top-8 w-72 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-60 overflow-y-auto">
+                      {r.stops.sort((a, b) => a.orderIndex - b.orderIndex).map((s, i) => (
+                        <div key={s.id} className="flex items-center gap-2 py-1.5">
+                          <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${s.status === 'COMPLETED' ? 'bg-waste-organic/10 text-waste-organic' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                            {s.status === 'COMPLETED' ? '✓' : i + 1}
+                          </span>
+                          <span className="text-[12px] text-on-surface truncate">{s.pickupPoint.name}</span>
                         </div>
-                      )}
-                    </>
+                      ))}
+                    </div>
                   )}
                   {r.status === 'PENDING' && (
                     <select value="" onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
-                      className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none"
-                      disabled={actionLoading === r.id}>
+                      className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none" disabled={actionLoading === r.id}>
                       <option value="">Acción...</option>
                       <option value="IN_PROGRESS">Iniciar</option>
                       <option value="CANCELLED">Cancelar</option>
@@ -451,8 +490,7 @@ export default function AdminRutasPage() {
                   )}
                   {r.status === 'IN_PROGRESS' && (
                     <select value="" onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
-                      className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none"
-                      disabled={actionLoading === r.id}>
+                      className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-[11px] font-bold outline-none" disabled={actionLoading === r.id}>
                       <option value="">Acción...</option>
                       <option value="COMPLETED">Completar</option>
                       <option value="CANCELLED">Cancelar</option>
@@ -463,14 +501,10 @@ export default function AdminRutasPage() {
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${
-                    r.status === 'COMPLETED' ? 'bg-waste-organic' :
-                    r.status === 'IN_PROGRESS' ? 'bg-primary' : 'bg-outline-variant'
-                  }`} style={{ width: `${Math.max(progress(r), r.status === 'IN_PROGRESS' ? 4 : 0)}%` }} />
+                  <div className={`h-full rounded-full transition-all ${r.status === 'COMPLETED' ? 'bg-waste-organic' : r.status === 'IN_PROGRESS' ? 'bg-primary' : 'bg-outline-variant'}`}
+                    style={{ width: `${Math.max(progress(r), r.status === 'IN_PROGRESS' ? 4 : 0)}%` }} />
                 </div>
-                <span className="text-[12px] font-bold text-on-surface-variant flex-shrink-0">
-                  {r.completedStops}/{r.totalStops}
-                </span>
+                <span className="text-[12px] font-bold text-on-surface-variant flex-shrink-0">{r.completedStops}/{r.totalStops}</span>
               </div>
             </div>
           ))}

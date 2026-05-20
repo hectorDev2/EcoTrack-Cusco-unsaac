@@ -29,6 +29,7 @@ interface MapViewProps {
   height?: string;
   interactive?: boolean;
   onMarkerClick?: (marker: MapMarker) => void;
+  onMapClick?: (lng: number, lat: number) => void;
 }
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
@@ -104,12 +105,15 @@ export default function MapView({
   height = '100%',
   interactive = true,
   onMarkerClick,
+  onMapClick,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const loadedRef = useRef(false);
   const pendingRoutes = useRef<MapRoute[]>([]);
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   const updateAll = useCallback(() => {
     const map = mapRef.current;
@@ -135,6 +139,10 @@ export default function MapView({
     });
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    map.on('click', (e) => {
+      onMapClickRef.current?.(e.lngLat.lng, e.lngLat.lat);
+    });
 
     map.on('load', () => {
       loadedRef.current = true;
