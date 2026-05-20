@@ -13,6 +13,7 @@ cd backend
 cp .env.example .env   # completar credenciales
 npm install
 npx prisma generate
+npm run prisma:seed    # crear usuarios por defecto
 npm run start:dev      # http://localhost:3001
 ```
 
@@ -25,11 +26,49 @@ npm run start:dev      # http://localhost:3001
 | `npm run start:prod` | Producción |
 | `npm run prisma:generate` | Regenerar Prisma Client |
 | `npm run prisma:push` | Sincronizar schema a DB local |
+| `npm run prisma:seed` | Poblar DB con usuarios por defecto |
 | `npm run prisma:studio` | Abrir Prisma Studio |
+
+## Seed — Usuarios por defecto
+
+```bash
+npm run prisma:seed
+```
+
+| Email | Contraseña | Rol |
+|-------|-----------|-----|
+| admin@terracivic.pe | 123456 | Administrador |
+| conductor@terracivic.pe | 123456 | Conductor |
+| ciudadano@terracivic.pe | 123456 | Ciudadano |
+
+## API — Endpoints
+
+### Auth (`/auth`)
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | `/auth/register` | `@Public()` | Registrar ciudadano |
+| POST | `/auth/login` | `@Public()` | Iniciar sesión → JWT |
+| GET | `/auth/me` | JWT | Perfil del usuario autenticado |
+
+### Users (`/users`)
+
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | `/users` | ADMIN | Lista paginada con `?search=&role=&status=&page=&limit=` |
+| GET | `/users/me` | JWT | Perfil propio con zonas asignadas |
+| GET | `/users/stats` | ADMIN | Estadísticas (total, activos, drivers, admins) |
+| GET | `/users/:id` | ADMIN | Detalle de usuario con zonas |
+| POST | `/users` | ADMIN | Crear usuario |
+| PATCH | `/users/:id` | ADMIN | Actualizar (nombre, rol, status, password) |
+| PATCH | `/users/:id/zones` | ADMIN | Asignar zonas al usuario |
+| DELETE | `/users/:id` | ADMIN | Desactivar usuario |
+
+> **Nota:** El `JwtAuthGuard` es **global** (`APP_GUARD`). Para rutas públicas se usa `@Public()`.
 
 ## Base de datos
 
-Turso (libSQL) vía `@prisma/adapter-libsql`. Schema en `prisma/schema.prisma`. Para desarrollo local se usa SQLite (`prisma/dev.db`), la app en runtime apunta a Turso vía variables de entorno.
+Turso (libSQL) vía `@prisma/adapter-libsql`. Schema en `prisma/schema.prisma` (10 modelos). Para desarrollo local se usa SQLite (`prisma/dev.db`), la app en runtime apunta a Turso vía variables de entorno.
 
 ## Progreso del Backlog
 
@@ -62,7 +101,7 @@ Turso (libSQL) vía `@prisma/adapter-libsql`. Schema en `prisma/schema.prisma`. 
 - [ ] BE-33 — `CreateIncidentDto`
 
 ### HU-Conductor · Ruta y recolección
-- [ ] BE-40 — Rol `DRIVER` + guard de rol
+- [x] BE-40 — Rol `DRIVER` en modelo `User` + guard de rol
 - [ ] BE-41 — `RoutesModule` + modelos `Route` + `RouteStop`
 - [ ] BE-42 — `GET /routes/my`
 - [ ] BE-43 — `PATCH /routes/:id/start`
@@ -71,9 +110,9 @@ Turso (libSQL) vía `@prisma/adapter-libsql`. Schema en `prisma/schema.prisma`. 
 - [ ] BE-46 — `POST /incidents` (conductor)
 
 ### HU-Admin · Gestión
-- [ ] BE-50 — Rol `ADMIN` + guard de rol
-- [x] BE-51 — `GET /users`
-- [x] BE-52 — `PATCH /users/:id`
+- [x] BE-50 — Rol `ADMIN` + guard de rol
+- [x] BE-51 — `GET /users` (con paginación, búsqueda, filtros)
+- [x] BE-52 — `PATCH /users/:id` (soporta cambio de password)
 - [x] BE-53 — `DELETE /users/:id` (desactivar)
 - [ ] BE-54 — CRUD `POST/PATCH/DELETE /zones`
 - [ ] BE-55 — `WasteTypesModule` + modelo `WasteType`
@@ -82,19 +121,34 @@ Turso (libSQL) vía `@prisma/adapter-libsql`. Schema en `prisma/schema.prisma`. 
 - [ ] BE-58 — `POST/GET /routes` (admin)
 - [ ] BE-59 — `GET /routes` (estado todas las rutas)
 
+### Extra — Implementado fuera del backlog original
+- [x] `GET /users/me` — Perfil propio con zonas
+- [x] `GET /users/stats` — Estadísticas de usuarios
+- [x] `POST /users` — Crear usuario desde admin
+- [x] `PATCH /users/:id/zones` — Asignar zonas a usuario
+- [x] `@Public()` decorator — Marcar rutas públicas
+- [x] Guard global `APP_GUARD` — Protección por defecto
+- [x] Seed de usuarios — `prisma/seed.ts`
+
 ---
 
 ## Estructura
 
 ```
 backend/
-├── prisma/schema.prisma     # Schema completo (10 tablas)
+├── prisma/
+│   ├── schema.prisma        # Schema completo (10 tablas)
+│   └── seed.ts              # Seed de usuarios por defecto
 ├── src/
-│   ├── auth/                # AuthModule (register, login, me)
-│   ├── users/               # UsersModule (CRUD admin)
+│   ├── auth/                # AuthModule (register, login, me, JWT)
+│   ├── users/               # UsersModule (CRUD admin + zonas)
 │   ├── prisma/              # PrismaService (adapter Turso)
 │   ├── common/              # Guards, decorators, filters, pipes
-│   ├── app.module.ts        # Módulo raíz
+│   │   ├── decorators/      # @CurrentUser, @Roles, @Public()
+│   │   ├── guards/          # JwtAuthGuard (global), RolesGuard
+│   │   ├── filters/         # AllExceptionsFilter
+│   │   └── pipes/           # AppValidationPipe
+│   ├── app.module.ts        # Módulo raíz + APP_GUARD
 │   └── main.ts              # Bootstrap
 ├── .env.example
 └── package.json
