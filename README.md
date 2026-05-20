@@ -3,7 +3,7 @@
 Sistema inteligente de recolección de residuos para Cusco, con monitoreo en tiempo real y participación ciudadana.
 
 **Frontend:** Next.js 16 · App Router · React 19 · Tailwind CSS v4 \
-**Backend:** NestJS · TypeScript · Prisma · Turso (libSQL) — ver [`backend/README.md`](backend/README.md)
+**Backend:** NestJS 11 · TypeScript · Prisma · SQLite / Turso (libSQL) — ver [`backend/README.md`](backend/README.md)
 
 ---
 
@@ -17,63 +17,70 @@ npm run dev
 # Backend (directorio backend/)
 cd backend && npm run start:dev
 # http://localhost:3001
+
+# Seed (recrea datos de prueba)
+cd backend && npm run prisma:seed
 ```
 
 ---
 
-## Progreso del Frontend
+## Estado del proyecto
 
-### Configuración e integración
-- [x] FE-00 — Cliente HTTP centralizado (`lib/api.ts`) con interceptor JWT
-- [x] FE-01 — Context / store de autenticación (`useAuth`)
-- [x] FE-02 — Middleware Next.js para protección de rutas
-- [ ] FE-03 — Componentes base: `Button`, `Input`, `Card`, `Badge`, `Spinner`
+### Backend — API REST (+30 endpoints)
 
-### HU-01 · Registro e inicio de sesión (Ciudadano)
-- [x] FE-10 — `/` — formulario de registro conectado a `POST /auth/register`
-- [x] FE-11 — `/auth/login` — formulario de inicio de sesión funcional
-- [x] FE-12 — JWT en cookie + localStorage vía `setToken()`
-- [x] FE-13 — Redirección post-login por rol (`/inicio` o `/dashboard`)
-- [x] FE-14 — Cerrar sesión con limpieza de token
-- [x] FE-15 — `/perfil` — vista del perfil (`GET /auth/me`)
+| Módulo | Endpoints | Status |
+|--------|-----------|--------|
+| `Auth` | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` | ✅ Completo |
+| `Users` | CRUD + `GET /users/me`, `GET /users/stats`, `PATCH /users/:id/zones` | ✅ Completo |
+| `Zones` | CRUD (GET público, resto ADMIN) | ✅ Completo |
+| `PickupPoints` | CRUD con filtro `?zoneId=` (GET público, resto ADMIN) | ✅ Completo |
+| `Schedules` | CRUD con filtros `?zoneId=&wasteTypeId=` (GET público, resto ADMIN) | ✅ Completo |
+| `Incidents` | `POST /incidents`, `GET /incidents/my`, CRUD admin con filtro `?status=` | ✅ Completo |
+| `Routes` | CRUD + `GET /routes/fleet` — rutas con progreso desde RouteStops | ✅ Completo |
+| `Admin` | `GET /admin/dashboard`, `GET /admin/analytics` — datos agregados | ✅ Completo |
+| `WasteType` | Modelo en Prisma, **sin módulo NestJS** | 🔜 Pendiente |
+| `Collections` | Modelo en Prisma, **sin endpoints** | 🔜 Pendiente |
 
-### HU-02 · Horarios y puntos de recolección (Ciudadano)
-- [x] FE-20 — `/recoleccion` — selector de zona + horarios
-- [x] FE-21 — `ScheduleCard` — día, hora, tipo de residuo
-- [x] FE-22 — `/puntos-recojo` — puntos con dirección
-- [x] FE-23 — `PickupPointCard` — nombre, dirección, zona
-- [x] FE-24 — Integración `GET /schedules` y `GET /pickup-points`
+### Frontend — Páginas conectadas a API real
 
-### HU-03 · Consultar tipos de residuos (Ciudadano)
-- [ ] FE-25 — `/residuos` — catálogo con clasificación
-- [ ] FE-26 — `WasteTypeCard` — ícono, categoría, descripción
-- [ ] FE-27 — Integración `GET /waste-types`
+| Página | Ruta | Status |
+|--------|------|--------|
+| Registro | `/` | ✅ `POST /auth/register` |
+| Login | `/auth/login` | ✅ `POST /auth/login` |
+| Perfil | `/perfil` | ✅ `useAuth()` context |
+| Inicio ciudadano | `/inicio` | 🔜 Datos hardcodeados |
+| Mapa | `/mapa` | ✅ Mapa interactivo con MapLibre GL |
+| Horarios | `/recoleccion` | ✅ `GET /schedules`, `GET /zones` |
+| Puntos de recojo | `/puntos-recojo` | ✅ `GET /pickup-points`, `GET /zones` |
+| Reportar incidencia | `/reportar` | ✅ `POST /incidents` |
+| Mis incidencias | `/incidencias` | ✅ `GET /incidents/my` |
+| Dashboard admin | `/dashboard` | ✅ `GET /admin/dashboard` |
+| Flota | `/flota` | ✅ `GET /routes/fleet` + mapa MapLibre |
+| Usuarios | `/usuarios` | ✅ `GET /users` + paginación |
+| Incidencias admin | `/admin-incidencias` | ✅ `GET /incidents` + `PATCH /incidents/:id` |
+| Analíticas | `/analisis` | ✅ `GET /admin/analytics` |
+| Configuración | `/configuracion` | 🔜 Solo estado local |
+| Panel conductor | `/conductor/*` | ❌ No implementado |
+| Catálogo residuos | `/residuos` | ❌ No implementado |
 
-### HU-06 · Reportar incidencia (Ciudadano)
-- [x] FE-30 — `/reportar` — formulario de reporte funcional
-- [x] FE-31 — `/incidencias` — listado de incidencias propias
-- [x] FE-32 — `IncidentCard` — estado, tipo, fecha
-- [x] FE-33 — Integración `POST /incidents` y `GET /incidents/my`
+### Seguridad
 
-### Panel Conductor
-- [ ] FE-40 — `/conductor/dashboard` — resumen de ruta del día
-- [ ] FE-41 — `/conductor/ruta` — paradas con estado
-- [ ] FE-42 — `RouteStopItem` — nombre, acción "Confirmar"
-- [ ] FE-43 — Botón "Iniciar ruta" → `PATCH /routes/:id/start`
-- [ ] FE-44 — Modal "Registrar recolección" → `POST /collections`
-- [ ] FE-45 — Reportar problema → `POST /incidents`
-- [ ] FE-46 — Integración `GET /routes/my`
+| Capa | Status |
+|------|--------|
+| JWT con Passport (backend) | ✅ Global JwtAuthGuard + RolesGuard |
+| Middleware edge Next.js (frontend) | ✅ Lee cookie `auth_token`, redirige a `/auth/login` |
+| Client-side guards | ✅ AdminShell y CitizenGuard verifican `useAuth()` |
+| **RBAC en frontend** | ❌ Middleware y guards solo verifican autenticación, **no el rol** |
 
-### Panel Administrador
-- [x] FE-50 — `/usuarios` — tabla conectada a API con búsqueda y paginación
-- [x] FE-51 — `/zonas` — CRUD de zonas (backend listo, falta UI admin)
-- [ ] FE-52 — `/residuos` — lista + formulario crear
-- [ ] FE-53 — `/rutas` — asignar ruta + estado
-- [ ] FE-54 — `StatusBadge` — componente de estado
-- [x] FE-55 — Integración endpoints `/users`, `/zones`, `/schedules`, `/pickup-points`, `/incidents`
+---
 
-### Extra
-- [x] Modo noche (dark mode) con toggle y persistencia
+## Próximos pasos prioritarios
+
+1. **Inicio ciudadano** — Conectar `/inicio` a datos dinámicos del ciudadano
+2. **RBAC frontend** — Agregar verificación de roles en middleware y guards
+3. **Módulo WasteType** — Crear CRUD en backend + página de administración
+4. **Panel Conductor** — Implementar rutas `/conductor/*` con registro de recolecciones
+5. **Configuración persistente** — Guardar configuración del sistema en backend
 
 ---
 
@@ -90,8 +97,8 @@ cd backend && npm run start:dev
 | `/incidencias` | Mis incidencias reportadas | Requiere login |
 | `/mapa` | Mapa de recolección | Requiere login |
 | `/perfil` | Perfil del usuario | Requiere login |
-| `/dashboard` | Panel de administración | Requiere login + ADMIN |
-| `/flota` | Monitoreo de flota | Requiere login |
+| `/dashboard` | Panel de administración | Requiere login |
+| `/flota` | Monitoreo de flota en tiempo real | Requiere login |
 | `/usuarios` | Gestión de usuarios | Requiere login |
 | `/incidencias` | Gestión de incidencias | Requiere login |
 | `/analisis` | Analíticas y reportes | Requiere login |
@@ -120,12 +127,13 @@ app/
 ├── page.tsx                ← Registro ciudadano
 ├── providers.tsx           ← AuthProvider global
 ├── middleware.ts           ← Edge auth middleware
+├── dev-nav.tsx             ← Navegación dev oculta
 ├── auth/
 │   ├── layout.tsx
 │   └── login/page.tsx
 ├── (citizen)/
-│   ├── layout.tsx          ← AuthGuard ciudadano
-│   ├── inicio/             ← Dashboard con accesos directos
+│   ├── layout.tsx          ← AuthGuard ciudadano (bottom tabs)
+│   ├── inicio/             ← Dashboard ciudadano
 │   ├── recoleccion/        ← Horarios por zona
 │   ├── puntos-recojo/      ← Puntos de recojo
 │   ├── reportar/           ← Formulario de incidencias
@@ -133,14 +141,14 @@ app/
 │   ├── mapa/
 │   └── perfil/
 └── (admin)/
-    ├── layout.tsx          ← AuthGuard admin
-    ├── admin-shell.tsx
-    ├── dashboard/
-    ├── flota/
-    ├── usuarios/
+    ├── layout.tsx          ← Sidebar admin
+    ├── admin-shell.tsx     ← AuthGuard admin
+    ├── dashboard/          ← Con datos reales
+    ├── flota/              ← Con datos reales + mapa MapLibre
+    ├── usuarios/           ← Con datos reales
     ├── incidencias/        ← Gestión con cambio de estado
-    ├── analisis/
-    └── configuracion/
+    ├── analisis/           ← Con datos reales
+    └── configuracion/      ← Solo estado local
 lib/
 ├── api.ts                  ← HTTP client con JWT interceptor
 ├── auth-context.tsx        ← AuthProvider + useAuth hook
@@ -153,8 +161,20 @@ components/
 └── incident-card.tsx
 
 backend/
-├── src/...
-├── prisma/schema.prisma
+├── src/
+│   ├── auth/               ← Register, login, JWT profile
+│   ├── users/              ← CRUD + stats + zone assignment
+│   ├── zones/              ← CRUD zonas
+│   ├── pickup-points/      ← CRUD puntos de recojo
+│   ├── collection-schedules/ ← CRUD horarios
+│   ├── incidents/          ← Reportes ciudadanos + gestión admin
+│   ├── routes/             ← CRUD rutas + fleet overview
+│   ├── admin/              ← Dashboard aggregator
+│   ├── prisma/             ← PrismaService (dual SQLite/Turso)
+│   └── common/             ← Guards, decorators, filters, pipes
+├── prisma/
+│   ├── schema.prisma       ← 10 modelos
+│   └── seed.ts             ← Datos de prueba
 └── README.md
 ```
 
@@ -169,5 +189,10 @@ cd backend && npm run prisma:seed
 | Email | Contraseña | Rol |
 |-------|-----------|-----|
 | admin@terracivic.pe | 123456 | Administrador |
-| conductor@terracivic.pe | 123456 | Conductor |
-| ciudadano@terracivic.pe | 123456 | Ciudadano |
+| carlos.conductor@terracivic.pe | 123456 | Conductor |
+| maria.conductor@terracivic.pe | 123456 | Conductor |
+| juan@terracivic.pe | 123456 | Ciudadano (Centro Histórico) |
+| rosa@terracivic.pe | 123456 | Ciudadano (San Blas, Wanchaq) |
+| pedro@terracivic.pe | 123456 | Ciudadano (San Sebastián) |
+| lucia@terracivic.pe | 123456 | Ciudadano (Santiago) |
+| miguel@terracivic.pe | 123456 | Ciudadano (Wanchaq) |
