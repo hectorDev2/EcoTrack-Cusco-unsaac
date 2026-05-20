@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -33,7 +33,7 @@ interface MapViewProps {
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
 
-function createMarkerEl(marker: MapMarker): HTMLDivElement {
+function createMarkerEl(marker: MapMarker, onClick?: () => void): HTMLDivElement {
   const el = document.createElement('div');
   el.className = 'flex flex-col items-center cursor-pointer';
   el.innerHTML = `
@@ -42,7 +42,58 @@ function createMarkerEl(marker: MapMarker): HTMLDivElement {
     </div>
     ${marker.label ? `<span style="background:white; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.15); white-space:nowrap;">${marker.label}</span>` : ''}
   `;
+  if (onClick) el.addEventListener('click', onClick);
   return el;
+}
+
+function syncMarkers(map: maplibregl.Map, markers: MapMarker[], markersRef: React.MutableRefObject<maplibregl.Marker[]>, onMarkerClick?: (marker: MapMarker) => void) {
+  markersRef.current.forEach((m) => m.remove());
+  markersRef.current = [];
+
+  markers.forEach((marker) => {
+    const m = new maplibregl.Marker({ element: createMarkerEl(marker, onMarkerClick ? () => onMarkerClick(marker) : undefined) })
+      .setLngLat([marker.lng, marker.lat])
+      .addTo(map);
+    markersRef.current.push(m);
+  });
+}
+
+function syncRoutes(map: maplibregl.Map, routes: MapRoute[]) {
+  // Remove existing route layers/sources
+  const existingSources = map.getStyle()?.sources ?? {};
+  Object.keys(existingSources).forEach((id) => {
+    if (id.startsWith('route-')) {
+      if (map.getLayer(id)) map.removeLayer(id);
+      if (map.getSource(id)) map.removeSource(id);
+    }
+  });
+
+  routes.forEach((route) => {
+    const id = `route-${route.id}`;
+    const coords = route.points.map((p) => [p[0], p[1]] as [number, number]);
+
+    map.addSource(id, {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: coords },
+      },
+    });
+
+    map.addLayer({
+      id,
+      type: 'line',
+      source: id,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': route.color ?? '#154212',
+        'line-width': 4,
+        'line-opacity': 0.7,
+        'line-dasharray': [1, 8],
+      },
+    });
+  });
 }
 
 export default function MapView({
@@ -57,7 +108,20 @@ export default function MapView({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
+  const loadedRef = useRef(false);
+  const pendingRoutes = useRef<MapRoute[]>([]);
 
+  const updateAll = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    syncMarkers(map, markers, markersRef, onMarkerClick);
+    if (pendingRoutes.current.length > 0) {
+      syncRoutes(map, pendingRoutes.current);
+      pendingRoutes.current = [];
+    }
+  }, [markers, onMarkerClick]);
+
+  // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -71,89 +135,50 @@ export default function MapView({
     });
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+    map.on('load', () => {
+      loadedRef.current = true;
+      updateAll();
+    });
+
     mapRef.current = map;
 
     return () => {
       map.remove();
       mapRef.current = null;
+      loadedRef.current = false;
     };
   }, []);
 
-  // Update center/zoom when props change
+  // Fly to new center/zoom
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !loadedRef.current) return;
     mapRef.current.flyTo({ center, zoom, duration: 800 });
   }, [center[0], center[1], zoom]);
 
-  // Update markers
+  // Markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-
-    // Remove old markers
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    // Add new markers
-    markers.forEach((marker) => {
-      const el = createMarkerEl(marker);
-      if (onMarkerClick) {
-        el.addEventListener('click', () => onMarkerClick(marker));
-      }
-      const m = new maplibregl.Marker({ element: el })
-        .setLngLat([marker.lng, marker.lat])
-        .addTo(map);
-      markersRef.current.push(m);
-    });
+    if (!map || !loadedRef.current) {
+      // Remove old markers even if not loaded (they're HTML elements)
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      return;
+    }
+    syncMarkers(map, markers, markersRef, onMarkerClick);
   }, [markers, onMarkerClick]);
 
-  // Update routes
+  // Routes
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-
-    const existingLayers = map.getStyle()?.layers ?? [];
-    const routeLayerIds = existingLayers
-      .filter((l) => l.id.startsWith('route-'))
-      .map((l) => l.id);
-
-    routeLayerIds.forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-      if (map.getSource(id)) map.removeSource(id);
-    });
-
-    routes.forEach((route) => {
-      const id = `route-${route.id}`;
-      const coords = route.points.map((p) => [p[0], p[1]] as [number, number]);
-
-      map.addSource(id, {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: { type: 'LineString', coordinates: coords },
-        },
-      });
-
-      map.addLayer({
-        id,
-        type: 'line',
-        source: id,
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': route.color ?? '#154212',
-          'line-width': 4,
-          'line-opacity': 0.7,
-          'line-dasharray': [1, 8],
-        },
-      });
-    });
+    if (!map || !loadedRef.current) {
+      pendingRoutes.current = routes;
+      return;
+    }
+    syncRoutes(map, routes);
   }, [routes]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ width: '100%', height, minHeight: '200px' }}
-    />
+    <div ref={containerRef} style={{ width: '100%', height, minHeight: '200px' }} />
   );
 }
