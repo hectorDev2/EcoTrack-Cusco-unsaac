@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -52,7 +53,7 @@ export class UsersService {
   async findAll(query: QueryUserDto) {
     const { search, role, status, page = 1, limit = 10 } = query;
 
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
 
     if (role) where.role = role;
     if (status) where.status = status;
@@ -149,7 +150,7 @@ export class UsersService {
 
     if (!existing) throw new NotFoundException('Usuario no encontrado');
 
-    const data: any = {};
+    const data: Prisma.UserUpdateInput = {};
 
     if (dto.fullName !== undefined) data.fullName = dto.fullName;
     if (dto.role !== undefined) data.role = dto.role;
