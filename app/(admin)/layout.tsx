@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AdminShell } from "./admin-shell";
+import { LogoutButton } from "@/components/logout-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { href: "/dashboard", icon: "dashboard", label: "Panel" },
@@ -48,11 +50,14 @@ export default function AdminLayout({
               </Link>
             ))}
           </nav>
-          <div className="mt-auto">
-            <button className="w-full bg-primary text-white py-3 px-4 rounded-lg font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-md shadow-primary/20">
-              <span className="material-symbols-outlined">add_chart</span>
-              <span>Generar Reporte</span>
-            </button>
+          <div className="mt-auto space-y-2 border-t border-outline-variant pt-4">
+            <div className="flex items-center justify-between px-4 py-2">
+              <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
+                Apariencia
+              </span>
+              <ThemeToggle />
+            </div>
+            <LogoutButton />
           </div>
         </aside>
 

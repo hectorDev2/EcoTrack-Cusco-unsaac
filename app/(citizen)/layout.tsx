@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from '@/lib/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 function CitizenGuard({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -40,6 +41,14 @@ export default function CitizenLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/');
+  };
+
   return (
     <CitizenGuard>
       <div className="min-h-screen bg-background text-on-background pb-32 font-sans">
@@ -76,13 +85,25 @@ export default function CitizenLayout({
           </Link>
           <Link
             className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150"
-            href="#"
+            href="/perfil"
           >
             <span className="material-symbols-outlined">person</span>
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
               Perfil
             </span>
           </Link>
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-error/10 hover:text-error transition-colors active:scale-90 transition-all duration-150"
+          >
+            <span className="material-symbols-outlined">logout</span>
+            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
+              Salir
+            </span>
+          </button>
+          <div className="flex flex-col items-center justify-center px-2 py-1">
+            <ThemeToggle />
+          </div>
         </nav>
       </div>
     </CitizenGuard>
