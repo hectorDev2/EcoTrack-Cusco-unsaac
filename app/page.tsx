@@ -1,4 +1,53 @@
+'use client';
+
+import { useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { api, ApiClientError, setToken } from '@/lib/api';
+import type { User } from '@/lib/types';
+
+interface RegisterResponse {
+  user: User;
+  accessToken: string;
+}
+
 export default function OnboardingPage() {
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await api.post<RegisterResponse>('/auth/register', {
+        fullName,
+        email,
+        password,
+      });
+
+      setToken(res.accessToken);
+
+      if (res.user.role === 'CITIZEN') {
+        router.push('/inicio');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        setError(err.message);
+      } else {
+        setError('Error al registrarse. Intentalo de nuevo.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <div className="fixed inset-0 andean-pattern pointer-events-none" />
@@ -18,38 +67,12 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        <div className="w-full max-w-lg grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="p-4 rounded-xl border border-outline-variant/30 flex items-start gap-4 shadow-sm" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)" }}>
-            <div className="bg-waste-organic/10 p-2 rounded-lg shrink-0">
-              <span className="material-symbols-outlined text-waste-organic">
-                eco
-              </span>
-            </div>
-            <div>
-              <h3 className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary">
-                Segregación Orgánica
-              </h3>
-              <p className="text-[14px] leading-[20px] text-on-surface-variant">
-                Aprende a separar restos de comida para compostaje municipal.
-              </p>
-            </div>
+        {error && (
+          <div className="w-full max-w-lg mb-4 bg-status-alert/10 border border-status-alert/30 rounded-xl p-4 flex items-center gap-3">
+            <span className="material-symbols-outlined text-status-alert text-sm">error</span>
+            <p className="text-status-alert text-sm font-bold">{error}</p>
           </div>
-          <div className="p-4 rounded-xl border border-outline-variant/30 flex items-start gap-4 shadow-sm" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(12px)" }}>
-            <div className="bg-waste-recyclable/10 p-2 rounded-lg shrink-0">
-              <span className="material-symbols-outlined text-waste-recyclable">
-                inventory_2
-              </span>
-            </div>
-            <div>
-              <h3 className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary">
-                Reciclaje Activo
-              </h3>
-              <p className="text-[14px] leading-[20px] text-on-surface-variant">
-                Plásticos, vidrios y cartones tienen un nuevo destino aquí.
-              </p>
-            </div>
-          </div>
-        </div>
+        )}
 
         <div className="w-full max-w-lg bg-surface-container-lowest p-6 rounded-xl shadow-xl shadow-primary/5 border border-outline-variant/20">
           <div className="mb-6">
@@ -60,69 +83,79 @@ export default function OnboardingPage() {
               Completa tus datos para empezar a colaborar.
             </p>
           </div>
-          <form>
+          <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant px-1">
                   Nombre Completo
                 </label>
                 <input
-                  className="w-full bg-surface p-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-[16px] leading-[24px]"
+                  className="w-full bg-surface p-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-[16px] leading-[24px] disabled:opacity-50"
                   placeholder="Ej. Juan Quispe"
                   type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant px-1">
-                  Teléfono
+                  Email
                 </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined">
-                    call
-                  </span>
-                  <input
-                    className="w-full bg-surface pl-8 p-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-[16px] leading-[24px]"
-                    placeholder="987 654 321"
-                    type="tel"
-                  />
-                </div>
+                <input
+                  className="w-full bg-surface p-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-[16px] leading-[24px] disabled:opacity-50"
+                  placeholder="ej. juan@email.com"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant px-1">
-                  Zona de Residencia
+                  Contraseña
                 </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant material-symbols-outlined">
-                    location_on
-                  </span>
-                  <select className="w-full bg-surface pl-8 p-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none transition-all text-[16px] leading-[24px]">
-                    <option value="">Selecciona tu zona</option>
-                    <option value="centro">Centro Histórico</option>
-                    <option value="san_blas">San Blas</option>
-                    <option value="wanchaq">Wanchaq</option>
-                    <option value="san_sebastian">San Sebastián</option>
-                    <option value="santiago">Santiago</option>
-                  </select>
-                </div>
+                <input
+                  className="w-full bg-surface p-4 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-[16px] leading-[24px] disabled:opacity-50"
+                  placeholder="Mínimo 6 caracteres"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="pt-2">
                 <button
-                  className="w-full bg-primary text-on-primary p-4 rounded-lg shadow-md hover:bg-primary-container hover:text-on-primary-container active:scale-95 transition-all flex items-center justify-center gap-2 text-[16px] leading-[24px] font-bold"
+                  className="w-full bg-primary text-on-primary p-4 rounded-lg shadow-md hover:bg-primary-container hover:text-on-primary-container active:scale-95 transition-all flex items-center justify-center gap-2 text-[16px] leading-[24px] font-bold disabled:opacity-50"
                   type="submit"
+                  disabled={isSubmitting}
                 >
-                  Empezar
-                  <span className="material-symbols-outlined">arrow_forward</span>
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
+                      Registrando...
+                    </>
+                  ) : (
+                    <>
+                      Empezar
+                      <span className="material-symbols-outlined">arrow_forward</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           </form>
           <p className="mt-6 text-center">
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
-              ¿Ya tienes una cuenta?{" "}
+              ¿Ya tienes una cuenta?{' '}
             </span>
             <a
-              className="text-primary hover:underline text-[12px] leading-[16px] tracking-[0.05em] font-bold"
-              href="#"
+              className="text-primary hover:underline text-[12px] leading-[16px] tracking-[0.05em] font-bold cursor-pointer"
+              onClick={() => router.push('/auth/login')}
             >
               Inicia sesión
             </a>
