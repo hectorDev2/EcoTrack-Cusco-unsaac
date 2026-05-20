@@ -34,8 +34,8 @@ cd backend && npm run start:dev
 - [x] FE-11 — `/auth/login` — formulario de inicio de sesión funcional
 - [x] FE-12 — JWT en cookie + localStorage vía `setToken()`
 - [x] FE-13 — Redirección post-login por rol (`/inicio` o `/dashboard`)
-- [ ] FE-14 — Cerrar sesión con limpieza de token (falta botón UI)
-- [ ] FE-15 — `/perfil` — vista del perfil (`GET /auth/me`)
+- [x] FE-14 — Cerrar sesión con limpieza de token
+- [x] FE-15 — `/perfil` — vista del perfil (`GET /auth/me`)
 
 ### HU-02 · Horarios y puntos de recolección (Ciudadano)
 - [ ] FE-20 — `/recoleccion` — selector de zona + horarios

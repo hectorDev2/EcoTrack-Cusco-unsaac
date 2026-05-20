@@ -1,4 +1,10 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+
 export default function InicioPage() {
+  const router = useRouter();
+
   return (
     <>
       <header className="bg-surface shadow-sm shadow-primary/10 flex justify-between items-center w-full px-5 py-2 sticky top-0 z-50">
@@ -94,88 +100,66 @@ export default function InicioPage() {
         </section>
 
         <section className="grid grid-cols-2 gap-4">
-          <button className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200">
+          <button
+            onClick={() => router.push('/recoleccion')}
+            className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200"
+          >
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined">distance</span>
+              <span className="material-symbols-outlined">schedule</span>
             </div>
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
-              Ver Mapa
+              Horarios
             </span>
           </button>
-          <button className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200">
+          <button
+            onClick={() => router.push('/puntos-recojo')}
+            className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200"
+          >
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined">category</span>
+              <span className="material-symbols-outlined">location_on</span>
             </div>
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
-              Categorías
+              Puntos de Recojo
             </span>
           </button>
-          <button className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200">
+          <button
+            onClick={() => router.push('/reportar')}
+            className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200"
+          >
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined">history</span>
+              <span className="material-symbols-outlined">report_problem</span>
             </div>
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
-              Mis Reportes
+              Reportar
             </span>
           </button>
-          <button className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200">
+          <button
+            onClick={() => router.push('/perfil')}
+            className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200"
+          >
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined">help</span>
+              <span className="material-symbols-outlined">person</span>
             </div>
             <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
-              Ayuda
+              Mi Perfil
             </span>
           </button>
         </section>
 
-        <section className="space-y-2">
-          <div className="flex justify-between items-center">
-            <h3 className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase tracking-wider">
-              Últimos Avisos
-            </h3>
-            <span className="text-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold cursor-pointer">
-              Ver todos
-            </span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-4 p-4 bg-surface-container rounded-lg border-l-4 border-status-alert">
-              <span className="material-symbols-outlined text-status-alert">
-                warning
-              </span>
-              <div className="flex-1">
-                <p className="text-[14px] leading-[20px] font-bold">
-                  Retraso en Sector San Blas
-                </p>
-                <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant opacity-70">
-                  Hace 15 min
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 p-4 bg-surface-container rounded-lg border-l-4 border-primary">
-              <span className="material-symbols-outlined text-primary">
-                check_circle
-              </span>
-              <div className="flex-1">
-                <p className="text-[14px] leading-[20px] font-bold">
-                  Reporte Solucionado
-                </p>
-                <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant opacity-70">
-                  Ayer, 4:20 PM
-                </p>
-              </div>
+        <section className="bg-surface-card rounded-xl p-4 border border-outline-variant shadow-sm">
+          <h3 className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary mb-3 uppercase">
+            Avisos importantes
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 p-3 bg-status-alert/5 rounded-lg border border-status-alert/10">
+              <span className="material-symbols-outlined text-status-alert text-sm mt-0.5">info</span>
+              <p className="text-[13px] leading-[18px] text-on-surface-variant">
+                Cambio en el horario de recolección para la zona Centro debido a feriado municipal.
+              </p>
             </div>
           </div>
         </section>
       </main>
-
-      <button className="fixed right-5 bottom-32 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all duration-150 z-40">
-        <span
-          className="material-symbols-outlined text-[32px]"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-        >
-          add_a_photo
-        </span>
-      </button>
     </>
   );
 }
