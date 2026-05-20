@@ -47,20 +47,37 @@ function createMarkerEl(marker: MapMarker, onClick?: () => void): HTMLDivElement
   return el;
 }
 
-function syncMarkers(map: maplibregl.Map, markers: MapMarker[], markersRef: React.MutableRefObject<maplibregl.Marker[]>, onMarkerClick?: (marker: MapMarker) => void) {
+function syncMarkers(
+  map: maplibregl.Map,
+  markers: MapMarker[],
+  markersRef: React.MutableRefObject<maplibregl.Marker[]>,
+  onMarkerClick?: (marker: MapMarker) => void,
+) {
   markersRef.current.forEach((m) => m.remove());
   markersRef.current = [];
 
   markers.forEach((marker) => {
-    const m = new maplibregl.Marker({ element: createMarkerEl(marker, onMarkerClick ? () => onMarkerClick(marker) : undefined) })
+    const m = new maplibregl.Marker({
+      element: createMarkerEl(marker, onMarkerClick ? () => onMarkerClick(marker) : undefined),
+    })
       .setLngLat([marker.lng, marker.lat])
       .addTo(map);
     markersRef.current.push(m);
   });
+
+  // Fit bounds
+  if (markers.length >= 2) {
+    const bounds = markers.reduce(
+      (b, m) => b.extend([m.lng, m.lat]),
+      new maplibregl.LngLatBounds([markers[0].lng, markers[0].lat], [markers[0].lng, markers[0].lat]),
+    );
+    map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
+  } else if (markers.length === 1) {
+    map.flyTo({ center: [markers[0].lng, markers[0].lat], zoom: 15 });
+  }
 }
 
 function syncRoutes(map: maplibregl.Map, routes: MapRoute[]) {
-  // Remove existing route layers/sources
   const existingSources = map.getStyle()?.sources ?? {};
   Object.keys(existingSources).forEach((id) => {
     if (id.startsWith('route-')) {
@@ -84,30 +101,20 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[]) {
       },
     });
 
-    // Outline/bloom layer
     map.addLayer({
       id: `${id}-outline`,
       type: 'line',
       source: id,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: {
-        'line-color': '#ffffff',
-        'line-width': 10,
-        'line-opacity': 0.5,
-      },
+      paint: { 'line-color': '#ffffff', 'line-width': 10, 'line-opacity': 0.5 },
     });
 
-    // Main route line
     map.addLayer({
       id,
       type: 'line',
       source: id,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: {
-        'line-color': color,
-        'line-width': 6,
-        'line-opacity': 1,
-      },
+      paint: { 'line-color': color, 'line-width': 6, 'line-opacity': 1 },
     });
   });
 }
@@ -126,9 +133,14 @@ export default function MapView({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const loadedRef = useRef(false);
+  const pendingMarkers = useRef<MapMarker[]>([]);
   const pendingRoutes = useRef<MapRoute[]>([]);
   const onMapClickRef = useRef(onMapClick);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const markersRefForEffect = useRef(markers);
+  markersRefForEffect.current = markers;
   onMapClickRef.current = onMapClick;
+  onMarkerClickRef.current = onMarkerClick;
 
   const updateAll = useCallback(() => {
     const map = mapRef.current;
@@ -161,7 +173,16 @@ export default function MapView({
 
     map.on('load', () => {
       loadedRef.current = true;
-      updateAll();
+      // Apply pending markers
+      if (pendingMarkers.current.length > 0) {
+        syncMarkers(map, pendingMarkers.current, markersRef, onMarkerClickRef.current);
+        pendingMarkers.current = [];
+      }
+      // Apply pending routes
+      if (pendingRoutes.current.length > 0) {
+        syncRoutes(map, pendingRoutes.current);
+        pendingRoutes.current = [];
+      }
     });
 
     mapRef.current = map;
@@ -173,32 +194,25 @@ export default function MapView({
     };
   }, []);
 
-  // Fly to new center/zoom
+  // Fly to new center/zoom (only when markers don't trigger fitBounds)
   useEffect(() => {
     if (!mapRef.current || !loadedRef.current) return;
-    mapRef.current.flyTo({ center, zoom, duration: 800 });
+    if (markers.length === 0) {
+      mapRef.current.flyTo({ center, zoom, duration: 800 });
+    }
   }, [center[0], center[1], zoom]);
 
   // Markers + fit bounds
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) {
+      // Store markers for when map loads
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
+      pendingMarkers.current = markers;
       return;
     }
     syncMarkers(map, markers, markersRef, onMarkerClick);
-
-    // Fit map to show all markers
-    if (markers.length >= 2) {
-      const bounds = markers.reduce(
-        (b, m) => b.extend([m.lng, m.lat]),
-        new maplibregl.LngLatBounds([markers[0].lng, markers[0].lat], [markers[0].lng, markers[0].lat]),
-      );
-      map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
-    } else if (markers.length === 1) {
-      map.flyTo({ center: [markers[0].lng, markers[0].lat], zoom: 15 });
-    }
   }, [markers, onMarkerClick]);
 
   // Routes
