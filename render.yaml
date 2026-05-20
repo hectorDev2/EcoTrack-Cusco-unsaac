@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: eco-track-cusco-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        value: file:./dev.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 7d
+      - key: CORS_ORIGINS
+        value: https://eco-track-cusco-unsaac.vercel.app

@@ -7,12 +7,16 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const origins = process.env.CORS_ORIGINS?.split(',') ?? [
+    'http://localhost:3000',
+    'https://eco-track-cusco-unsaac.vercel.app',
+  ];
 
   app.enableCors({
-    origin: [frontendUrl],
+    origin: origins,
     credentials: true,
   });
+
   app.useGlobalPipes(new AppValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
 
