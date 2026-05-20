@@ -52,6 +52,14 @@ npm run start:dev      # http://localhost:3001
 | `npm run prisma:seed` | Poblar DB con datos de prueba |
 | `npm run prisma:studio` | Abrir Prisma Studio |
 
+## Health check
+
+| Método | Ruta | Auth | Respuesta |
+|--------|------|------|-----------|
+| GET | `/` | `@Public()` | `{ status, service, version, timestamp }` |
+
+Usalo para verificar que el backend está vivo después del deploy en Render:
+
 ## Seed — Datos de prueba (70+ registros)
 
 ```bash
