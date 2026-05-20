@@ -5,6 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiClientError } from '@/lib/api';
 
+const roleHome: Record<string, string> = {
+  ADMIN: '/dashboard',
+  CITIZEN: '/inicio',
+  DRIVER: '/conductor/dashboard',
+};
+
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,7 +19,7 @@ function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') ?? '/dashboard';
+  const redirectParam = searchParams.get('redirect');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -21,7 +27,10 @@ function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
+      const user = await login(email, password);
+      const defaultHome = roleHome[user.role] ?? '/dashboard';
+      const redirect = redirectParam && Object.values(roleHome).includes(redirectParam)
+        ? redirectParam : defaultHome;
       router.replace(redirect);
     } catch (err) {
       if (err instanceof ApiClientError) {

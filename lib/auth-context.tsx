@@ -18,7 +18,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setToken(res.accessToken);
       setState({ user: res.user, isLoading: false, error: null });
+      return res.user;
     } catch (err) {
       const message =
         err instanceof ApiClientError

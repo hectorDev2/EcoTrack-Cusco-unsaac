@@ -5,10 +5,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
-const navItems = [
-  { href: '/conductor/dashboard', icon: 'dashboard', label: 'Mi Ruta' },
-  { href: '/conductor/ruta', icon: 'route', label: 'Paradas' },
-];
+const roleHome: Record<string, string> = {
+  ADMIN: '/dashboard',
+  CITIZEN: '/inicio',
+  DRIVER: '/conductor/dashboard',
+};
 
 function DriverGuard({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -19,6 +20,8 @@ function DriverGuard({ children }: { children: ReactNode }) {
     if (isLoading) return;
     if (!user) {
       router.replace(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
+    } else if (user.role !== 'DRIVER') {
+      router.replace(roleHome[user.role] ?? '/');
     }
   }, [user, isLoading, pathname, router]);
 
@@ -33,9 +36,14 @@ function DriverGuard({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user) return null;
+  if (!user || user.role !== 'DRIVER') return null;
   return <>{children}</>;
 }
+
+const navItems = [
+  { href: '/conductor/dashboard', icon: 'dashboard', label: 'Mi Ruta' },
+  { href: '/conductor/ruta', icon: 'route', label: 'Paradas' },
+];
 
 export default function ConductorLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
