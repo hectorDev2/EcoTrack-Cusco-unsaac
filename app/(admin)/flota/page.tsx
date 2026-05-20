@@ -1,8 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
+import { calculateRoute, formatDistance, formatDuration, type RouteWaypoint } from '@/lib/routing';
+
+interface RouteStop {
+  id: string;
+  orderIndex: number;
+  status: string;
+  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
+}
 
 interface FleetRoute {
   id: string;
@@ -26,24 +34,103 @@ interface FleetData {
   routes: FleetRoute[];
 }
 
-const statusConfig: Record<string, { label: string; color: string; barColor: string; icon: string }> = {
-  IN_PROGRESS: { label: 'En ruta', color: 'text-primary', barColor: 'bg-primary', icon: 'local_shipping' },
-  PENDING: { label: 'Pendiente', color: 'text-on-surface-variant', barColor: 'bg-outline-variant', icon: 'schedule' },
-  COMPLETED: { label: 'Completado', color: 'text-waste-organic', barColor: 'bg-waste-organic', icon: 'check_circle' },
-  CANCELLED: { label: 'Detenido', color: 'text-error', barColor: 'bg-error', icon: 'warning' },
+interface FullRoute {
+  id: string;
+  zone: { id: string; name: string };
+  driver: { id: string; fullName: string; email: string };
+  status: string;
+  totalStops: number;
+  completedStops: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+  stops: RouteStop[];
+}
+
+const statusConfig: Record<string, { label: string; color: string; barColor: string }> = {
+  IN_PROGRESS: { label: 'En ruta', color: 'text-primary', barColor: 'bg-primary' },
+  PENDING: { label: 'Pendiente', color: 'text-on-surface-variant', barColor: 'bg-outline-variant' },
+  COMPLETED: { label: 'Completado', color: 'text-waste-organic', barColor: 'bg-waste-organic' },
+  CANCELLED: { label: 'Detenido', color: 'text-error', barColor: 'bg-error' },
 };
 
 export default function FlotaPage() {
   const [data, setData] = useState<FleetData | null>(null);
+  const [allRoutes, setAllRoutes] = useState<FullRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedMarkers, setSelectedMarkers] = useState<MapMarker[]>([]);
+  const [selectedRouteLine, setSelectedRouteLine] = useState<MapRoute[]>([]);
+  const [selectedInfo, setSelectedInfo] = useState<{ distance: number; duration: number } | null>(null);
 
   useEffect(() => {
-    api.get<FleetData>('/routes/fleet')
-      .then(setData)
+    setLoading(true);
+    Promise.all([
+      api.get<FleetData>('/routes/fleet'),
+      api.get<FullRoute[]>('/routes'),
+    ])
+      .then(([fleet, routes]) => {
+        setData(fleet);
+        setAllRoutes(routes);
+      })
       .catch((err) => setError(err.message ?? 'Error al cargar flota'))
       .finally(() => setLoading(false));
   }, []);
+
+  const focusRoute = useCallback(async (routeId: string) => {
+    setSelectedRouteId(routeId);
+    const route = allRoutes.find((r) => r.id === routeId);
+    if (!route) return;
+
+    const stops = [...route.stops].sort((a, b) => a.orderIndex - b.orderIndex);
+
+    setSelectedMarkers(stops.map((s) => ({
+      id: s.id,
+      lng: s.pickupPoint.longitude,
+      lat: s.pickupPoint.latitude,
+      color: s.status === 'COMPLETED' ? '#2E7D32' : '#154212',
+      icon: (s.status === 'COMPLETED' ? 'check_circle' : 'location_on') as string,
+      label: s.pickupPoint.name,
+    })));
+
+    if (stops.length >= 2) {
+      const wps: RouteWaypoint[] = stops.map((s) => ({
+        lng: s.pickupPoint.longitude,
+        lat: s.pickupPoint.latitude,
+        label: s.pickupPoint.name,
+      }));
+      const result = await calculateRoute(wps);
+      if (result) {
+        setSelectedRouteLine([{ id: 'ruta', points: result.coordinates, color: '#154212' }]);
+        setSelectedInfo({ distance: result.distance, duration: result.duration });
+        return;
+      }
+    }
+    setSelectedRouteLine([]);
+    setSelectedInfo(null);
+  }, [allRoutes]);
+
+  // Map markers: selected route's stops + other routes as single markers
+  const mapMarkers: MapMarker[] = selectedRouteId
+    ? selectedMarkers
+    : (data?.routes ?? []).map((r, i) => ({
+        id: r.id,
+        lng: [-71.9781, -71.9756, -71.9600, -71.9567, -71.9890][i % 5],
+        lat: [-13.5167, -13.5156, -13.5222, -13.5278, -13.5345][i % 5],
+        color: '#154212',
+        icon: 'local_shipping' as const,
+        label: r.name,
+      }));
+
+  const mapRoutes: MapRoute[] = selectedRouteId ? selectedRouteLine : [];
+
+  const clearSelection = () => {
+    setSelectedRouteId(null);
+    setSelectedMarkers([]);
+    setSelectedRouteLine([]);
+    setSelectedInfo(null);
+  };
 
   const inTransitCount = data?.routes.filter((r) => r.status === 'IN_PROGRESS').length ?? 0;
   const alertCount = data?.routes.filter((r) => r.status === 'CANCELLED').length ?? 0;
@@ -54,11 +141,7 @@ export default function FlotaPage() {
         <div className="flex items-center gap-4 flex-1">
           <div className="relative w-full max-w-md">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-            <input
-              className="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-[16px] leading-[24px] focus:ring-2 focus:ring-primary focus:bg-white transition-all"
-              placeholder="Buscar camiones o rutas..."
-              type="text"
-            />
+            <input className="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-[16px] leading-[24px] focus:ring-2 focus:ring-primary focus:bg-white transition-all" placeholder="Buscar camiones o rutas..." type="text" />
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -67,9 +150,7 @@ export default function FlotaPage() {
               <span className="material-symbols-outlined">notifications</span>
               {alertCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-status-alert rounded-full" />}
             </button>
-            <button className="p-2 hover:bg-surface-variant rounded-full text-on-surface-variant transition-colors">
-              <span className="material-symbols-outlined">help</span>
-            </button>
+            <button className="p-2 hover:bg-surface-variant rounded-full text-on-surface-variant transition-colors"><span className="material-symbols-outlined">help</span></button>
           </div>
           <div className="h-8 w-[1px] bg-outline-variant/50 mx-2" />
           <div className="flex items-center gap-3 cursor-pointer hover:bg-surface-variant/30 p-1 pr-3 rounded-full transition-all">
@@ -77,57 +158,39 @@ export default function FlotaPage() {
               <span className="material-symbols-outlined">person</span>
             </div>
             <div className="hidden lg:block">
-              <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface leading-tight">
-                Panel de Administración
-              </p>
-              <p className="text-[10px] text-on-surface-variant uppercase font-extrabold tracking-wider">
-                Superusuario Municipal
-              </p>
+              <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface leading-tight">Panel de Administración</p>
+              <p className="text-[10px] text-on-surface-variant uppercase font-extrabold tracking-wider">Superusuario Municipal</p>
             </div>
           </div>
         </div>
       </header>
 
       <main className="h-[calc(100vh-64px)] relative">
-        {data ? (
-          <MapView
-            markers={data.routes.filter((r) => r.status === 'IN_PROGRESS').map((r, i) => ({
-              id: r.id,
-              lng: [-71.9781, -71.9756, -71.9600, -71.9567, -71.9890][i % 5],
-              lat: [-13.5167, -13.5156, -13.5222, -13.5278, -13.5345][i % 5],
-              color: '#154212',
-              icon: 'local_shipping' as const,
-              label: r.name,
-            }))}
-            routes={data.routes.filter((r) => r.status === 'IN_PROGRESS').map((r, i) => ({
-              id: r.id,
-              color: ['#154212', '#2d5a27', '#1a6b3c', '#805533', '#493700'][i % 5],
-              points: ([[-71.9781, -13.5167], [-71.9756, -13.5156], [-71.9600, -13.5222], [-71.9567, -13.5278], [-71.9890, -13.5345]] as [number, number][]).slice(0, (i % 3) + 2),
-            }))}
-            height="100%"
-          />
-        ) : (
-          <div className="absolute inset-0 z-0 bg-surface-dim">
-            <div className="w-full h-full bg-surface-container-highest flex items-center justify-center">
-              <div className="text-center text-on-surface-variant">
-                <span className="material-symbols-outlined text-6xl">map</span>
-                <p className="text-[14px] leading-[20px] mt-2">Cargando mapa de flota...</p>
-              </div>
-            </div>
+        <MapView
+          markers={mapMarkers}
+          routes={mapRoutes}
+          height="100%"
+          onMarkerClick={(m) => {
+            if (!selectedRouteId) focusRoute(m.id);
+          }}
+        />
+
+        {selectedRouteId && selectedInfo && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-full shadow-lg flex items-center gap-4 text-[12px]">
+            <span className="font-bold text-primary">{formatDistance(selectedInfo.distance)}</span>
+            <span className="text-on-surface-variant">·</span>
+            <span className="font-bold text-primary">{formatDuration(selectedInfo.duration)}</span>
           </div>
         )}
 
-        <div className="absolute bottom-10 right-10 flex flex-col gap-3 z-30">
-          <button className="w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
-            <span className="material-symbols-outlined">add</span>
-          </button>
-          <button className="w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center text-on-surface hover:bg-surface-container transition-colors">
-            <span className="material-symbols-outlined">remove</span>
-          </button>
-          <button className="w-12 h-12 bg-primary text-white rounded-xl shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>my_location</span>
-          </button>
-        </div>
+        {selectedRouteId && (
+          <div className="absolute top-4 right-4 z-10">
+            <button onClick={clearSelection} className="bg-surface/90 backdrop-blur px-3 py-2 rounded-xl shadow-lg text-[12px] font-bold text-on-surface flex items-center gap-1 hover:bg-surface transition-colors">
+              <span className="material-symbols-outlined text-[16px]">close</span>
+              Vista general
+            </button>
+          </div>
+        )}
 
         <aside className="absolute left-6 top-6 bottom-6 w-80 glass-panel rounded-2xl shadow-2xl border border-white/40 flex flex-col z-30 overflow-hidden">
           {loading && (
@@ -168,13 +231,18 @@ export default function FlotaPage() {
                 )}
                 {data.routes.map((route) => {
                   const cfg = statusConfig[route.status] ?? statusConfig.PENDING;
+                  const isSelected = selectedRouteId === route.id;
+                  const fullRoute = allRoutes.find((r) => r.id === route.id);
                   return (
                     <div
                       key={route.id}
+                      onClick={() => focusRoute(route.id)}
                       className={`p-4 rounded-xl border transition-all cursor-pointer shadow-sm group ${
-                        route.status === 'CANCELLED'
-                          ? 'bg-error-container/20 border-error/20 hover:border-error/40'
-                          : 'bg-white border-outline-variant/40 hover:border-primary/40'
+                        isSelected
+                          ? 'bg-primary/5 border-primary/40 ring-1 ring-primary/30'
+                          : route.status === 'CANCELLED'
+                            ? 'bg-error-container/20 border-error/20 hover:border-error/40'
+                            : 'bg-white border-outline-variant/40 hover:border-primary/40'
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -187,9 +255,7 @@ export default function FlotaPage() {
                             </span>
                           </div>
                           <div>
-                            <h3 className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface">
-                              {route.name}
-                            </h3>
+                            <h3 className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface">{route.name}</h3>
                             <p className="text-[11px] text-on-surface-variant">{route.driver}</p>
                           </div>
                         </div>
@@ -201,9 +267,7 @@ export default function FlotaPage() {
                         <div className={`h-full rounded-full ${cfg.barColor}`} style={{ width: `${Math.max(route.progress, 2)}%` }} />
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className={`flex items-center gap-1 ${
-                          route.status === 'CANCELLED' ? 'text-error font-bold' : 'text-on-surface-variant'
-                        }`}>
+                        <span className={`flex items-center gap-1 ${route.status === 'CANCELLED' ? 'text-error font-bold' : 'text-on-surface-variant'}`}>
                           {route.status === 'CANCELLED' ? (
                             <span className="material-symbols-outlined text-[14px]">bolt</span>
                           ) : (
@@ -214,12 +278,11 @@ export default function FlotaPage() {
                            route.status === 'IN_PROGRESS' ? `${route.completedStops}/${route.totalStops} paradas` :
                            'Detenido'}
                         </span>
-                        <span className={`${cfg.color} font-bold group-hover:underline`}>
-                          {route.status === 'PENDING' ? 'Iniciar →' :
-                           route.status === 'IN_PROGRESS' ? 'Rastrear →' :
-                           route.status === 'COMPLETED' ? 'Ver →' :
-                           'Resolver →'}
-                        </span>
+                        {fullRoute && fullRoute.stops.length > 0 && (
+                          <span className="text-on-surface-variant text-[10px]">
+                            {fullRoute.stops.length} paradas
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -242,7 +305,7 @@ export default function FlotaPage() {
           )}
         </aside>
 
-        <div className="absolute top-6 right-6 glass-panel rounded-xl shadow-lg border border-white/40 p-3 z-30 flex gap-4">
+        <div className="absolute top-6 right-6 glass-panel rounded-xl shadow-lg border border-white/40 p-3 z-30 flex gap-4" style={{ right: selectedRouteId ? '160px' : '24px' }}>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-primary" />
             <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">En ruta</span>
