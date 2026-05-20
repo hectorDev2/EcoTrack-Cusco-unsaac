@@ -38,11 +38,11 @@ cd backend && npm run start:dev
 - [x] FE-15 — `/perfil` — vista del perfil (`GET /auth/me`)
 
 ### HU-02 · Horarios y puntos de recolección (Ciudadano)
-- [ ] FE-20 — `/recoleccion` — selector de zona + horarios
-- [ ] FE-21 — `ScheduleCard` — día, hora, tipo de residuo
-- [ ] FE-22 — `/puntos-recojo` — puntos con dirección
-- [ ] FE-23 — `PickupPointCard` — nombre, dirección, zona
-- [ ] FE-24 — Integración `GET /schedules` y `GET /pickup-points`
+- [x] FE-20 — `/recoleccion` — selector de zona + horarios
+- [x] FE-21 — `ScheduleCard` — día, hora, tipo de residuo
+- [x] FE-22 — `/puntos-recojo` — puntos con dirección
+- [x] FE-23 — `PickupPointCard` — nombre, dirección, zona
+- [x] FE-24 — Integración `GET /schedules` y `GET /pickup-points`
 
 ### HU-03 · Consultar tipos de residuos (Ciudadano)
 - [ ] FE-25 — `/residuos` — catálogo con clasificación
@@ -50,10 +50,10 @@ cd backend && npm run start:dev
 - [ ] FE-27 — Integración `GET /waste-types`
 
 ### HU-06 · Reportar incidencia (Ciudadano)
-- [ ] FE-30 — `/incidencias/nueva` — formulario de reporte
-- [ ] FE-31 — `/incidencias` — listado de incidencias propias
-- [ ] FE-32 — `IncidentCard` — estado, tipo, fecha
-- [ ] FE-33 — Integración `POST /incidents` y `GET /incidents/my`
+- [x] FE-30 — `/reportar` — formulario de reporte funcional
+- [x] FE-31 — `/incidencias` — listado de incidencias propias
+- [x] FE-32 — `IncidentCard` — estado, tipo, fecha
+- [x] FE-33 — Integración `POST /incidents` y `GET /incidents/my`
 
 ### Panel Conductor
 - [ ] FE-40 — `/conductor/dashboard` — resumen de ruta del día
@@ -66,11 +66,14 @@ cd backend && npm run start:dev
 
 ### Panel Administrador
 - [x] FE-50 — `/usuarios` — tabla conectada a API con búsqueda y paginación
-- [ ] FE-51 — `/zonas` — CRUD de zonas
+- [x] FE-51 — `/zonas` — CRUD de zonas (backend listo, falta UI admin)
 - [ ] FE-52 — `/residuos` — lista + formulario crear
 - [ ] FE-53 — `/rutas` — asignar ruta + estado
 - [ ] FE-54 — `StatusBadge` — componente de estado
-- [x] FE-55 — Integración endpoints `/users` y `/users/stats`
+- [x] FE-55 — Integración endpoints `/users`, `/zones`, `/schedules`, `/pickup-points`, `/incidents`
+
+### Extra
+- [x] Modo noche (dark mode) con toggle y persistencia
 
 ---
 
@@ -81,8 +84,12 @@ cd backend && npm run start:dev
 | `/` | Onboarding / Registro ciudadano | Público |
 | `/auth/login` | Inicio de sesión | Público |
 | `/inicio` | Inicio ciudadano | Requiere login |
+| `/recoleccion` | Horarios de recolección por zona | Requiere login |
+| `/puntos-recojo` | Puntos de recojo cercanos | Requiere login |
 | `/reportar` | Reportar incidencia | Requiere login |
+| `/incidencias` | Mis incidencias reportadas | Requiere login |
 | `/mapa` | Mapa de recolección | Requiere login |
+| `/perfil` | Perfil del usuario | Requiere login |
 | `/dashboard` | Panel de administración | Requiere login + ADMIN |
 | `/flota` | Monitoreo de flota | Requiere login |
 | `/usuarios` | Gestión de usuarios | Requiere login |
@@ -118,22 +125,32 @@ app/
 │   └── login/page.tsx
 ├── (citizen)/
 │   ├── layout.tsx          ← AuthGuard ciudadano
-│   ├── inicio/
-│   ├── reportar/
-│   └── mapa/
+│   ├── inicio/             ← Dashboard con accesos directos
+│   ├── recoleccion/        ← Horarios por zona
+│   ├── puntos-recojo/      ← Puntos de recojo
+│   ├── reportar/           ← Formulario de incidencias
+│   ├── incidencias/        ← Mis reportes
+│   ├── mapa/
+│   └── perfil/
 └── (admin)/
     ├── layout.tsx          ← AuthGuard admin
     ├── admin-shell.tsx
     ├── dashboard/
     ├── flota/
     ├── usuarios/
-    ├── incidencias/
+    ├── incidencias/        ← Gestión con cambio de estado
     ├── analisis/
     └── configuracion/
 lib/
 ├── api.ts                  ← HTTP client con JWT interceptor
 ├── auth-context.tsx        ← AuthProvider + useAuth hook
 └── types.ts                ← Interfaces compartidas
+components/
+├── logout-button.tsx
+├── theme-toggle.tsx
+├── schedule-card.tsx
+├── pickup-point-card.tsx
+└── incident-card.tsx
 
 backend/
 ├── src/...

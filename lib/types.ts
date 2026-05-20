@@ -2,6 +2,37 @@ export interface Zone {
   id: string;
   name: string;
   description?: string;
+  status?: string;
+  createdAt?: string;
+}
+
+export interface WasteType {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+}
+
+export interface PickupPoint {
+  id: string;
+  zoneId: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  status: string;
+  zone?: { id: string; name: string };
+}
+
+export interface CollectionSchedule {
+  id: string;
+  zoneId: string;
+  wasteTypeId: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  zone?: { id: string; name: string };
+  wasteType?: { id: string; name: string; category: string };
 }
 
 export interface User {
@@ -30,6 +61,19 @@ export interface PaginatedResponse<T> {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface Incident {
+  id: string;
+  reportedBy: string;
+  zoneId?: string | null;
+  routeId?: string | null;
+  type: string;
+  description: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  createdAt: string;
+  reporter?: { id: string; fullName: string; email: string };
+  zone?: { id: string; name: string } | null;
 }
 
 export interface ApiError {
