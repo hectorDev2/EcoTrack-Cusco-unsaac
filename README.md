@@ -87,18 +87,19 @@ Web Service desde dashboard de Render:
 | Login | `/auth/login` | ✅ `POST /auth/login` |
 | Perfil | `/perfil` | ✅ `useAuth()` context |
 | Inicio ciudadano | `/inicio` | 🔜 Datos hardcodeados |
-| Mapa | `/mapa` | ✅ Mapa interactivo con MapLibre GL |
+| Mapa | `/mapa` | ✅ MapLibre GL con pickup points |
 | Horarios | `/recoleccion` | ✅ `GET /schedules`, `GET /zones` |
 | Puntos de recojo | `/puntos-recojo` | ✅ `GET /pickup-points`, `GET /zones` |
 | Reportar incidencia | `/reportar` | ✅ `POST /incidents` |
 | Mis incidencias | `/incidencias` | ✅ `GET /incidents/my` |
 | Dashboard admin | `/dashboard` | ✅ `GET /admin/dashboard` |
-| Flota | `/flota` | ✅ `GET /routes/fleet` + mapa MapLibre |
+| Flota | `/flota` | ✅ Mapa + click en card centra ruta |
 | Usuarios | `/usuarios` | ✅ `GET /users` + paginación |
 | Incidencias admin | `/admin-incidencias` | ✅ `GET /incidents` + `PATCH /incidents/:id` |
 | Analíticas | `/analisis` | ✅ `GET /admin/analytics` |
+| Gestión rutas | `/admin-rutas` | ✅ Trazado en mapa con OSRM |
+| Panel conductor | `/conductor/*` | ✅ Dashboard + paradas + recolección |
 | Configuración | `/configuracion` | 🔜 Solo estado local |
-| Panel conductor | `/conductor/*` | ❌ No implementado |
 | Catálogo residuos | `/residuos` | ❌ No implementado |
 
 ### Seguridad
@@ -106,19 +107,18 @@ Web Service desde dashboard de Render:
 | Capa | Status |
 |------|--------|
 | JWT con Passport (backend) | ✅ Global JwtAuthGuard + RolesGuard |
-| Middleware edge Next.js (frontend) | ✅ Lee cookie `auth_token`, redirige a `/auth/login` |
-| Client-side guards | ✅ AdminShell y CitizenGuard verifican `useAuth()` |
-| **RBAC en frontend** | ❌ Middleware y guards solo verifican autenticación, **no el rol** |
+| Middleware edge Next.js (frontend) | ✅ Decodifica JWT + redirige por rol |
+| Client-side guards | ✅ AdminShell, CitizenGuard, DriverGuard verifican rol |
+| **RBAC** | ✅ Triple capa: middleware → guards → redirect post-login |
 
 ---
 
 ## Próximos pasos prioritarios
 
-1. **Inicio ciudadano** — Conectar `/inicio` a datos dinámicos del ciudadano
-2. **RBAC frontend** — Agregar verificación de roles en middleware y guards
-3. **Módulo WasteType** — Crear CRUD en backend + página de administración
-4. **Panel Conductor** — Implementar rutas `/conductor/*` con registro de recolecciones
-5. **Configuración persistente** — Guardar configuración del sistema en backend
+1. **Inicio ciudadano** — Conectar `/inicio` a datos dinámicos (próxima recolección, incidencias activas)
+2. **Módulo WasteType** — CRUD en backend + páginas de administración y catálogo ciudadano
+3. **Configuración persistente** — Guardar configuración del sistema en backend
+4. **Paginación** — Agregar paginación a listas del backend (solo `/users` tiene)
 
 ---
 
@@ -135,12 +135,15 @@ Web Service desde dashboard de Render:
 | `/incidencias` | Mis incidencias reportadas | Requiere login |
 | `/mapa` | Mapa de recolección | Requiere login |
 | `/perfil` | Perfil del usuario | Requiere login |
-| `/dashboard` | Panel de administración | Requiere login |
-| `/flota` | Monitoreo de flota con mapa MapLibre | Requiere login |
-| `/usuarios` | Gestión de usuarios | Requiere login |
-| `/admin-incidencias` | Gestión de incidencias (admin) | Requiere login |
-| `/analisis` | Analíticas y reportes | Requiere login |
-| `/configuracion` | Configuración del sistema | Requiere login |
+| `/dashboard` | Panel de administración | Requiere ADMIN |
+| `/flota` | Monitoreo de flota con mapa interactivo | Requiere ADMIN |
+| `/usuarios` | Gestión de usuarios | Requiere ADMIN |
+| `/admin-incidencias` | Gestión de incidencias | Requiere ADMIN |
+| `/admin-rutas` | Gestión de rutas con trazado en mapa | Requiere ADMIN |
+| `/analisis` | Analíticas y reportes | Requiere ADMIN |
+| `/configuracion` | Configuración del sistema | Requiere ADMIN |
+| `/conductor/dashboard` | Panel del conductor — ruta del día | Requiere DRIVER |
+| `/conductor/ruta` | Paradas y registro de recolección | Requiere DRIVER |
 
 ## Design System
 
