@@ -86,7 +86,7 @@ Web Service desde dashboard de Render:
 | Registro | `/` | ✅ `POST /auth/register` |
 | Login | `/auth/login` | ✅ `POST /auth/login` |
 | Perfil | `/perfil` | ✅ `useAuth()` context |
-| Inicio ciudadano | `/inicio` | 🔜 Datos hardcodeados |
+| Inicio ciudadano | `/inicio` | ✅ Próxima recolección, incidencias activas |
 | Mapa | `/mapa` | ✅ MapLibre GL con pickup points |
 | Horarios | `/recoleccion` | ✅ `GET /schedules`, `GET /zones` |
 | Puntos de recojo | `/puntos-recojo` | ✅ `GET /pickup-points`, `GET /zones` |
@@ -115,10 +115,8 @@ Web Service desde dashboard de Render:
 
 ## Próximos pasos prioritarios
 
-1. **Inicio ciudadano** — Conectar `/inicio` a datos dinámicos (próxima recolección, incidencias activas)
-2. **Configuración persistente** — Guardar configuración del sistema en backend
-3. **Paginación** — Agregar skip/take a listas del backend que faltan
-4. **Paginación** — Agregar paginación a listas del backend (solo `/users` tiene)
+1. **Configuración persistente** — Guardar configuración del sistema en backend
+2. **Paginación** — Agregar skip/take a listas del backend (solo `/users` tiene)
 
 ---
 
