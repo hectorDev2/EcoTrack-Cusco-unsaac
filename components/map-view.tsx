@@ -64,6 +64,7 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[]) {
   const existingSources = map.getStyle()?.sources ?? {};
   Object.keys(existingSources).forEach((id) => {
     if (id.startsWith('route-')) {
+      if (map.getLayer(`${id}-outline`)) map.removeLayer(`${id}-outline`);
       if (map.getLayer(id)) map.removeLayer(id);
       if (map.getSource(id)) map.removeSource(id);
     }
@@ -71,6 +72,7 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[]) {
 
   routes.forEach((route) => {
     const id = `route-${route.id}`;
+    const color = route.color ?? '#154212';
     const coords = route.points.map((p) => [p[0], p[1]] as [number, number]);
 
     map.addSource(id, {
@@ -82,16 +84,29 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[]) {
       },
     });
 
+    // Outline/bloom layer
+    map.addLayer({
+      id: `${id}-outline`,
+      type: 'line',
+      source: id,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 10,
+        'line-opacity': 0.5,
+      },
+    });
+
+    // Main route line
     map.addLayer({
       id,
       type: 'line',
       source: id,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': route.color ?? '#154212',
-        'line-width': 4,
-        'line-opacity': 0.7,
-        'line-dasharray': [1, 8],
+        'line-color': color,
+        'line-width': 6,
+        'line-opacity': 1,
       },
     });
   });
