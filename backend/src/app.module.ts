@@ -9,6 +9,7 @@ import { PickupPointsModule } from './pickup-points/pickup-points.module';
 import { CollectionSchedulesModule } from './collection-schedules/collection-schedules.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { RoutesModule } from './routes/routes.module';
+import { CollectionsModule } from './collections/collections.module';
 import { AdminModule } from './admin/admin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -23,6 +24,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     CollectionSchedulesModule,
     IncidentsModule,
     RoutesModule,
+    CollectionsModule,
     AdminModule,
   ],
   providers: [

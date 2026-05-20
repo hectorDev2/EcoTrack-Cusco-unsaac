@@ -10,6 +10,8 @@ const links = [
   { href: "/analisis", label: "📈 Análisis" },
   { href: "/usuarios", label: "👥 Usuarios" },
   { href: "/configuracion", label: "⚙️ Config" },
+  { href: "/conductor/dashboard", label: "🚛 Conductor" },
+  { href: "/conductor/ruta", label: "📍 Paradas" },
 ];
 
 export function DevNav() {

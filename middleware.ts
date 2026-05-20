@@ -12,6 +12,7 @@ const protectedRoutes = [
   '/inicio',
   '/mapa',
   '/reportar',
+  '/conductor',
 ];
 
 const publicRoutes = ['/auth/login', '/auth/register', '/'];

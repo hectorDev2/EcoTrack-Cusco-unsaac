@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
@@ -70,6 +70,68 @@ export class RoutesService {
       where: { id },
       data,
       include: routeInclude,
+    });
+  }
+
+  async findByDriver(driverId: string) {
+    return this.prisma.route.findMany({
+      where: { driverId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+      include: routeInclude,
+      orderBy: { createdAt: 'desc' },
+    }).then((routes) =>
+      routes.map((r) => ({
+        ...r,
+        totalStops: r.stops.length,
+        completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
+      })),
+    );
+  }
+
+  async startRoute(id: string, driverId: string) {
+    const route = await this.findOne(id);
+    if (route.driverId !== driverId) {
+      throw new ForbiddenException('Esta ruta no te pertenece');
+    }
+    if (route.status !== 'PENDING') {
+      throw new BadRequestException('Solo se pueden iniciar rutas pendientes');
+    }
+    return this.prisma.route.update({
+      where: { id },
+      data: { status: 'IN_PROGRESS', startedAt: new Date().toISOString() },
+      include: routeInclude,
+    });
+  }
+
+  async completeRoute(id: string, driverId: string) {
+    const route = await this.findOne(id);
+    if (route.driverId !== driverId) {
+      throw new ForbiddenException('Esta ruta no te pertenece');
+    }
+    if (route.status !== 'IN_PROGRESS') {
+      throw new BadRequestException('Solo se pueden completar rutas en progreso');
+    }
+    return this.prisma.route.update({
+      where: { id },
+      data: { status: 'COMPLETED', finishedAt: new Date().toISOString() },
+      include: routeInclude,
+    });
+  }
+
+  async completeStop(stopId: string, driverId: string) {
+    const stop = await this.prisma.routeStop.findUnique({
+      where: { id: stopId },
+      include: { route: { select: { driverId: true, status: true } } },
+    });
+    if (!stop) throw new NotFoundException('Parada no encontrada');
+    if (stop.route.driverId !== driverId) {
+      throw new ForbiddenException('Esta parada no pertenece a tu ruta');
+    }
+    if (stop.status === 'COMPLETED') {
+      throw new BadRequestException('La parada ya fue completada');
+    }
+    return this.prisma.routeStop.update({
+      where: { id: stopId },
+      data: { status: 'COMPLETED' },
     });
   }
 
