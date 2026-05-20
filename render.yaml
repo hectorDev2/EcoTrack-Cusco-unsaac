@@ -6,8 +6,10 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm run start:prod
     envVars:
-      - key: DATABASE_URL
-        value: file:./dev.db
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRATION

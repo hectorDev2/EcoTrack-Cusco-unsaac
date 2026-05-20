@@ -29,9 +29,9 @@ npm run start:dev      # http://localhost:3001
 
 | Variable | Requerido | Descripción |
 |----------|-----------|-------------|
-| `DATABASE_URL` | Para SQLite | `file:./dev.db` |
-| `TURSO_DATABASE_URL` | Para Turso | `libsql://...` |
-| `TURSO_AUTH_TOKEN` | Para Turso | Token de autenticación |
+| `TURSO_DATABASE_URL` | Sí | `libsql://...` (Turso) |
+| `TURSO_AUTH_TOKEN` | Sí | Token de autenticación Turso |
+| `DATABASE_URL` | Para SQLite local | `file:./dev.db` (solo dev) |
 | `JWT_SECRET` | Sí | Clave para firmar JWT |
 | `JWT_EXPIRATION` | No | Default: `7d` |
 | `FRONTEND_URL` | Sí | `https://tu-frontend.vercel.app` |

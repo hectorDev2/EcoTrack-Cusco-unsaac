@@ -51,15 +51,14 @@ Web Service desde dashboard de Render:
 
 | Variable | Descripción |
 |----------|-------------|
-| `DATABASE_URL` | `file:./dev.db` (SQLite local) |
-| `TURSO_DATABASE_URL` | `libsql://...` (Turso, opcional) |
+| `TURSO_DATABASE_URL` | `libsql://...` (obligatorio en Render) |
 | `TURSO_AUTH_TOKEN` | Token de Turso |
 | `JWT_SECRET` | Secreto para firmar JWT |
 | `JWT_EXPIRATION` | `7d` |
-| `FRONTEND_URL` | `https://tu-frontend.vercel.app` |
+| `CORS_ORIGINS` | `https://tu-frontend.vercel.app` |
 
-> **Importante:** Con SQLite local los datos se pierden al redeploy.
-> Usá [Turso](https://turso.tech) para persistencia en producción.
+> ⚠️ **Importante:** Con Turso, el schema y los datos persisten independientemente del deploy.
+> Para seed inicial de Turso: `cd backend && npm run start:prod:seed` una sola vez.
 
 ---
 
