@@ -1,18 +1,117 @@
-const users = [
-  { initials: "AM", name: "Alejandro Mamani", email: "a.mamani@cusco.gob.pe", role: "Admin", roleStyle: "bg-primary-container/20 text-primary", zone: "Cusco Centro", active: true },
-  { initials: "LC", name: "Luciana Condori", email: "luciana.c@gmail.com", role: "Citizen", roleStyle: "bg-surface-container-highest text-on-surface-variant", zone: "San Blas", active: true },
-  { initials: "RP", name: "Roberto Paucar", email: "r.paucar@transportes.com", role: "Driver", roleStyle: "bg-secondary-container/30 text-secondary", zone: "Santa Ana", active: false },
-  { initials: "SQ", name: "Sofia Quispe", email: "s.quispe@llaqtalimpia.pe", role: "Collector", roleStyle: "bg-primary-container/10 text-primary", zone: "Lucre", active: true },
-];
+'use client';
 
-const stats = [
-  { label: "Total Usuarios", value: "1,284", icon: "group", color: "bg-primary-container/20 text-primary" },
-  { label: "Activos", value: "1,150", icon: "check_circle", color: "bg-waste-organic/20 text-waste-organic" },
-  { label: "Conductores", value: "42", icon: "local_shipping", color: "bg-secondary-container/20 text-secondary" },
-  { label: "Incidencias", value: "12", icon: "report", color: "bg-status-alert/20 text-status-alert" },
-];
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { api, ApiClientError } from '@/lib/api';
+import type { User, UserStats, PaginatedResponse } from '@/lib/types';
+
+const ROLE_STYLES: Record<string, string> = {
+  ADMIN: 'bg-primary-container/20 text-primary',
+  DRIVER: 'bg-secondary-container/30 text-secondary',
+  CITIZEN: 'bg-surface-container-highest text-on-surface-variant',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Admin',
+  DRIVER: 'Conductor',
+  CITIZEN: 'Ciudadano',
+};
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function formatNumber(n: number): string {
+  return n >= 1000 ? `${Math.floor(n / 1000)},${String(n % 1000).padStart(3, '0')}` : String(n);
+}
 
 export default function UsuariosPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 0 });
+  const [search, setSearch] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const fetchData = useCallback(async (page: number, searchTerm: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('limit', '10');
+      if (searchTerm) params.set('search', searchTerm);
+
+      const [usersRes, statsRes] = await Promise.all([
+        api.get<PaginatedResponse<User>>(`/users?${params}`),
+        api.get<UserStats>('/users/stats'),
+      ]);
+
+      setUsers(usersRes.data);
+      setMeta(usersRes.meta);
+      setStats(statsRes);
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        setError(err.message);
+      } else {
+        setError('Error al cargar usuarios');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData(1, '');
+  }, [fetchData]);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      fetchData(1, value);
+    }, 400);
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > meta.totalPages) return;
+    fetchData(page, search);
+  };
+
+  const handleDeactivate = async (id: string, name: string) => {
+    if (!confirm(`¿Desactivar al usuario "${name}"?`)) return;
+
+    try {
+      await api.delete(`/users/${id}`);
+      fetchData(meta.page, search);
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        alert(err.message);
+      } else {
+        alert('Error al desactivar usuario');
+      }
+    }
+  };
+
+  const statCards = stats
+    ? [
+        { label: 'Total Usuarios', value: formatNumber(stats.total), icon: 'group', color: 'bg-primary-container/20 text-primary' },
+        { label: 'Activos', value: formatNumber(stats.active), icon: 'check_circle', color: 'bg-waste-organic/20 text-waste-organic' },
+        { label: 'Conductores', value: formatNumber(stats.drivers), icon: 'local_shipping', color: 'bg-secondary-container/20 text-secondary' },
+        { label: 'Administradores', value: formatNumber(stats.admins), icon: 'admin_panel_settings', color: 'bg-status-alert/20 text-status-alert' },
+      ]
+    : [];
+
+  const from = meta.total > 0 ? (meta.page - 1) * meta.limit + 1 : 0;
+  const to = Math.min(meta.page * meta.limit, meta.total);
+
   return (
     <div className="flex flex-col min-h-screen bg-surface">
       <header className="bg-surface border-b border-outline-variant shadow-sm flex justify-between items-center w-full px-6 py-4 sticky top-0 z-10">
@@ -26,8 +125,10 @@ export default function UsuariosPage() {
             </span>
             <input
               className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-md text-[14px] leading-[20px] focus:ring-2 focus:ring-primary"
-              placeholder="Buscar usuarios, roles o zonas..."
+              placeholder="Buscar por nombre o email..."
               type="text"
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
         </div>
@@ -65,8 +166,21 @@ export default function UsuariosPage() {
             </button>
           </div>
 
+          {error && (
+            <div className="bg-status-alert/10 border border-status-alert/30 rounded-xl p-4 flex items-center gap-3">
+              <span className="material-symbols-outlined text-status-alert">error</span>
+              <p className="text-status-alert text-[14px] leading-[20px] font-bold">{error}</p>
+              <button
+                onClick={() => fetchData(meta.page, search)}
+                className="ml-auto text-status-alert underline text-[12px] leading-[16px] font-bold"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {stats.map((stat) => (
+            {statCards.map((stat) => (
               <div
                 key={stat.label}
                 className="bg-surface-card p-4 rounded-xl shadow-sm border border-outline-variant flex items-center gap-4"
@@ -86,78 +200,130 @@ export default function UsuariosPage() {
 
           <div className="flex gap-6">
             <div className="flex-1 bg-surface-card rounded-xl shadow-sm border border-outline-variant overflow-hidden flex flex-col">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-surface-container-low border-b border-outline-variant">
-                      <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Nombre</th>
-                      <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Email</th>
-                      <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Rol</th>
-                      <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Zona</th>
-                      <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Estado</th>
-                      <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase text-right">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant">
-                    {users.map((user) => (
-                      <tr
-                        key={user.email}
-                        className="hover:bg-surface-container transition-colors cursor-pointer group"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                              {user.initials}
-                            </div>
-                            <span className="text-[16px] leading-[24px] font-bold">{user.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-on-surface-variant text-[14px] leading-[20px]">
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-sm py-xs rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold ${user.roleStyle}`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-[14px] leading-[20px] text-on-surface-variant">
-                          {user.zone}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className={`flex items-center gap-1 ${user.active ? "text-waste-organic" : "text-waste-non-recyclable"}`}>
-                            <span className={`w-2 h-2 rounded-full ${user.active ? "bg-waste-organic" : "bg-waste-non-recyclable"}`} />
-                            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">{user.active ? "Activo" : "Inactivo"}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          <button className="p-1 text-outline hover:text-primary transition-colors">
-                            <span className="material-symbols-outlined">edit</span>
-                          </button>
-                          <button className="p-1 text-outline hover:text-error transition-colors">
-                            <span className="material-symbols-outlined">delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="bg-surface-container-low px-6 py-4 flex items-center justify-between border-t border-outline-variant">
-                <span className="text-[14px] leading-[20px] text-on-surface-variant">Mostrando 1-4 de 1,284 usuarios</span>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 rounded-lg hover:bg-surface-container-high text-outline transition-colors disabled:opacity-30">
-                    <span className="material-symbols-outlined">chevron_left</span>
-                  </button>
-                  <button className="w-8 h-8 rounded-lg bg-primary text-on-primary text-[12px] leading-[16px] tracking-[0.05em] font-bold">1</button>
-                  <button className="w-8 h-8 rounded-lg hover:bg-surface-container-high text-[12px] leading-[16px] tracking-[0.05em] font-bold">2</button>
-                  <button className="w-8 h-8 rounded-lg hover:bg-surface-container-high text-[12px] leading-[16px] tracking-[0.05em] font-bold">3</button>
-                  <span className="text-outline">...</span>
-                  <button className="w-8 h-8 rounded-lg hover:bg-surface-container-high text-[12px] leading-[16px] tracking-[0.05em] font-bold">128</button>
-                  <button className="p-2 rounded-lg hover:bg-surface-container-high text-outline transition-colors">
-                    <span className="material-symbols-outlined">chevron_right</span>
-                  </button>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-on-surface-variant text-[14px] leading-[20px] font-bold">
+                      Cargando usuarios...
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : users.length === 0 ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="material-symbols-outlined text-4xl text-outline">people_outline</span>
+                    <p className="text-on-surface-variant text-[14px] leading-[20px] font-bold">
+                      {search ? 'No se encontraron usuarios con ese criterio' : 'No hay usuarios registrados'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-surface-container-low border-b border-outline-variant">
+                          <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Nombre</th>
+                          <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Email</th>
+                          <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Rol</th>
+                          <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Zona</th>
+                          <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase">Estado</th>
+                          <th className="px-6 py-4 text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant uppercase text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant">
+                        {users.map((user) => (
+                          <tr
+                            key={user.id}
+                            className="hover:bg-surface-container transition-colors cursor-pointer group"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                                  {getInitials(user.fullName)}
+                                </div>
+                                <span className="text-[16px] leading-[24px] font-bold">{user.fullName}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-on-surface-variant text-[14px] leading-[20px]">
+                              {user.email}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-sm py-xs rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold ${ROLE_STYLES[user.role] ?? ''}`}>
+                                {ROLE_LABELS[user.role] ?? user.role}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-[14px] leading-[20px] text-on-surface-variant">
+                              {user.zones.map((z) => z.name).join(', ') || '—'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className={`flex items-center gap-1 ${user.status === 'ACTIVE' ? 'text-waste-organic' : 'text-waste-non-recyclable'}`}>
+                                <span className={`w-2 h-2 rounded-full ${user.status === 'ACTIVE' ? 'bg-waste-organic' : 'bg-waste-non-recyclable'}`} />
+                                <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
+                                  {user.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right space-x-2">
+                              <button className="p-1 text-outline hover:text-primary transition-colors">
+                                <span className="material-symbols-outlined">edit</span>
+                              </button>
+                              {user.status === 'ACTIVE' && (
+                                <button
+                                  onClick={() => handleDeactivate(user.id, user.fullName)}
+                                  className="p-1 text-outline hover:text-error transition-colors"
+                                >
+                                  <span className="material-symbols-outlined">delete</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="bg-surface-container-low px-6 py-4 flex items-center justify-between border-t border-outline-variant">
+                    <span className="text-[14px] leading-[20px] text-on-surface-variant">
+                      Mostrando {from}-{to} de {formatNumber(meta.total)} usuarios
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(meta.page - 1)}
+                        disabled={meta.page <= 1}
+                        className="p-2 rounded-lg hover:bg-surface-container-high text-outline transition-colors disabled:opacity-30"
+                      >
+                        <span className="material-symbols-outlined">chevron_left</span>
+                      </button>
+                      {Array.from({ length: Math.min(meta.totalPages, 5) }, (_, i) => {
+                        const start = Math.max(1, meta.page - 2);
+                        const pageNum = start + i;
+                        if (pageNum > meta.totalPages) return null;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`w-8 h-8 rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold ${
+                              pageNum === meta.page
+                                ? 'bg-primary text-on-primary'
+                                : 'hover:bg-surface-container-high'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => handlePageChange(meta.page + 1)}
+                        disabled={meta.page >= meta.totalPages}
+                        className="p-2 rounded-lg hover:bg-surface-container-high text-outline transition-colors"
+                      >
+                        <span className="material-symbols-outlined">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
