@@ -4,6 +4,7 @@ const links = [
   { href: "/reportar", label: "📸 Reportar" },
   { href: "/mapa", label: "🗺️ Mapa" },
   { href: "/dashboard", label: "📊 Dashboard" },
+  { href: "/admin-incidencias", label: "⚠️ Incidencias Admin" },
   { href: "/incidencias", label: "⚠️ Incidencias" },
   { href: "/flota", label: "🚛 Flota" },
   { href: "/analisis", label: "📈 Análisis" },

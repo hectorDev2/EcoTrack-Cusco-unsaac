@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { Suspense, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiClientError } from '@/lib/api';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export default function LoginPage() {
       if (err instanceof ApiClientError) {
         setError(err.message);
       } else {
-        setError('Error al iniciar sesión. Intentalo de nuevo.');
+        setError('Error al iniciar sesión. Intenta de nuevo.');
       }
     } finally {
       setIsSubmitting(false);
@@ -104,5 +104,19 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-sm">
+        <div className="bg-surface-card rounded-2xl shadow-sm border border-outline-variant p-8 flex items-center justify-center min-h-[300px]">
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -41,7 +41,7 @@ export default function OnboardingPage() {
       if (err instanceof ApiClientError) {
         setError(err.message);
       } else {
-        setError('Error al registrarse. Intentalo de nuevo.');
+        setError('Error al registrarse. Intenta de nuevo.');
       }
     } finally {
       setIsSubmitting(false);
