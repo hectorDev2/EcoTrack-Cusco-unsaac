@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { api, ApiClientError } from '@/lib/api';
 
 interface RouteStop {
@@ -22,11 +23,37 @@ interface DriverRoute {
   stops: RouteStop[];
 }
 
+interface Schedule {
+  id: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  wasteType: { id: string; name: string; category: string };
+}
+
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: 'Lunes', TUESDAY: 'Martes', WEDNESDAY: 'Miércoles',
+  THURSDAY: 'Jueves', FRIDAY: 'Viernes', SATURDAY: 'Sábado', SUNDAY: 'Domingo',
+};
+
+const WASTE_LABELS: Record<string, string> = {
+  ORGANIC: 'Orgánico', RECYCLABLE: 'Reciclable', NON_RECYCLABLE: 'No Reciclable',
+};
+
+const WASTE_COLORS: Record<string, string> = {
+  ORGANIC: 'bg-waste-organic/10 text-waste-organic border-waste-organic/20',
+  RECYCLABLE: 'bg-waste-recyclable/10 text-waste-recyclable border-waste-recyclable/20',
+  NON_RECYCLABLE: 'bg-waste-non-recyclable/10 text-waste-non-recyclable border-waste-non-recyclable/20',
+};
+
 export default function DriverDashboard() {
+  const { user } = useAuth();
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
   const router = useRouter();
 
   const fetchRoutes = () => {
@@ -42,6 +69,18 @@ export default function DriverDashboard() {
   const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS');
   const pendingRoute = routes.find((r) => r.status === 'PENDING');
   const todayRoute = activeRoute ?? pendingRoute;
+  const routeZoneId = todayRoute?.zone?.id;
+  const userZoneId = user?.zones?.[0]?.id;
+  const schedulesZoneId = routeZoneId || userZoneId;
+
+  useEffect(() => {
+    if (!schedulesZoneId) { setSchedules([]); return; }
+    setSchedulesLoading(true);
+    api.get<Schedule[]>(`/schedules?zoneId=${schedulesZoneId}`)
+      .then(setSchedules)
+      .catch(() => {})
+      .finally(() => setSchedulesLoading(false));
+  }, [schedulesZoneId]);
   const progress = todayRoute && todayRoute.totalStops > 0
     ? Math.round((todayRoute.completedStops / todayRoute.totalStops) * 100) : 0;
 
@@ -200,6 +239,40 @@ export default function DriverDashboard() {
             </div>
           )}
         </>
+      )}
+
+      {schedules.length > 0 && (
+        <div className="bg-surface-card rounded-xl p-5 border border-outline-variant/20">
+          <h3 className="text-[14px] font-bold text-on-surface-variant uppercase tracking-[0.08em] mb-3">
+            Horarios de recolección
+          </h3>
+          {schedulesLoading ? (
+            <div className="flex items-center gap-2 text-[12px] text-on-surface-variant">
+              <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              Cargando horarios...
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {schedules
+                .slice()
+                .sort((a, b) => {
+                  const order = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+                  const ia = order.indexOf(a.dayOfWeek);
+                  const ib = order.indexOf(b.dayOfWeek);
+                  return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.startTime.localeCompare(b.startTime);
+                })
+                .map((s) => (
+                  <div key={s.id} className="flex items-center gap-3 text-[13px]">
+                    <span className="w-14 font-bold text-on-surface flex-shrink-0">{DAY_LABELS[s.dayOfWeek] ?? s.dayOfWeek}</span>
+                    <span className="text-on-surface-variant">{s.startTime} - {s.endTime}</span>
+                    <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold border ${WASTE_COLORS[s.wasteType.category] ?? ''}`}>
+                      {WASTE_LABELS[s.wasteType.category] ?? s.wasteType.name}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
       )}
 
       {routes.length > 1 && (
