@@ -1,9 +1,10 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -70,10 +71,52 @@ export class AuthService {
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, fullName: true, role: true, createdAt: true },
+      select: {
+        id: true, email: true, fullName: true, role: true, status: true, createdAt: true,
+        zones: { select: { zone: { select: { id: true, name: true, description: true } } } },
+      },
     });
 
-    return user;
+    if (!user) return null;
+
+    return {
+      ...user,
+      zones: user.zones.map((uz) => uz.zone),
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    if (dto.newPassword && !dto.currentPassword) {
+      throw new BadRequestException('Debes proporcionar tu contraseña actual');
+    }
+
+    const data: Record<string, string> = {};
+    if (dto.fullName) data.fullName = dto.fullName;
+
+    if (dto.newPassword) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { passwordHash: true },
+      });
+
+      if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+      const isValid = await bcrypt.compare(dto.currentPassword!, user.passwordHash);
+      if (!isValid) throw new BadRequestException('Contraseña actual incorrecta');
+
+      data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No hay campos para actualizar');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+
+    return this.getProfile(userId);
   }
 
   private generateToken(user: { id: string; email: string; role: string }) {

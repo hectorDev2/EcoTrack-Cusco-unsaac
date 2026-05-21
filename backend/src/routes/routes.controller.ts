@@ -24,6 +24,11 @@ export class RoutesController {
     return this.routesService.findByDriver(userId);
   }
 
+  @Get('zone/:zoneId')
+  findByZone(@Param('zoneId') zoneId: string) {
+    return this.routesService.findByZone(zoneId);
+  }
+
   @Get()
   @Roles('ADMIN')
   findAll() {

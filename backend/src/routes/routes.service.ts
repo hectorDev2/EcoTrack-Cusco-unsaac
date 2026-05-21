@@ -85,6 +85,29 @@ export class RoutesService {
     });
   }
 
+  async findByZone(zoneId: string) {
+    return this.prisma.route.findMany({
+      where: { zoneId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+      include: {
+        zone: { select: { id: true, name: true } },
+        driver: { select: { id: true, fullName: true } },
+        stops: {
+          include: {
+            pickupPoint: { select: { id: true, name: true, address: true, latitude: true, longitude: true } },
+          },
+          orderBy: { orderIndex: 'asc' as const },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    }).then((routes) =>
+      routes.map((r) => ({
+        ...r,
+        totalStops: r.stops.length,
+        completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
+      })),
+    );
+  }
+
   async findByDriver(driverId: string) {
     return this.prisma.route.findMany({
       where: { driverId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
