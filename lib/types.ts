@@ -71,6 +71,9 @@ export interface Incident {
   type: string;
   description: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
   createdAt: string;
   reporter?: { id: string; fullName: string; email: string };
   zone?: { id: string; name: string } | null;
