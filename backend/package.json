@@ -22,7 +22,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:push:turso": "TURSO_DATABASE_URL=$TURSO_DATABASE_URL TURSO_AUTH_TOKEN=$TURSO_AUTH_TOKEN ts-node prisma/migrate-turso.ts",
+    "prisma:push:turso": "ts-node prisma/migrate-turso.ts",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:seed:turso": "TURSO_DATABASE_URL=$TURSO_DATABASE_URL TURSO_AUTH_TOKEN=$TURSO_AUTH_TOKEN ts-node prisma/seed.ts",
