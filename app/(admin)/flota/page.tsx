@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '@/lib/api';
+import { api, ApiClientError } from '@/lib/api';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import { calculateRoute, formatDistance, formatDuration, type RouteWaypoint } from '@/lib/routing';
 
@@ -34,6 +34,18 @@ interface FleetData {
   routes: FleetRoute[];
 }
 
+interface Vehicle {
+  id: string;
+  plate: string;
+  brand: string | null;
+  model: string | null;
+  capacity: number | null;
+  driverId: string | null;
+  status: string;
+  createdAt: string;
+  driver: { id: string; fullName: string; email: string } | null;
+}
+
 interface FullRoute {
   id: string;
   zone: { id: string; name: string };
@@ -55,6 +67,7 @@ const statusConfig: Record<string, { label: string; color: string; barColor: str
 };
 
 export default function FlotaPage() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [data, setData] = useState<FleetData | null>(null);
   const [allRoutes, setAllRoutes] = useState<FullRoute[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,12 +76,21 @@ export default function FlotaPage() {
   const [selectedMarkers, setSelectedMarkers] = useState<MapMarker[]>([]);
   const [selectedRouteLine, setSelectedRouteLine] = useState<MapRoute[]>([]);
   const [selectedInfo, setSelectedInfo] = useState<{ distance: number; duration: number } | null>(null);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({ plate: '', brand: '', model: '', capacity: '', driverId: '' });
+  const [vehicleSaving, setVehicleSaving] = useState(false);
+  const [vehicleError, setVehicleError] = useState<string | null>(null);
+
+  const fetchVehicles = () => {
+    api.get<Vehicle[]>('/vehicles').then(setVehicles).catch(() => {});
+  };
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
       api.get<FleetData>('/routes/fleet'),
       api.get<FullRoute[]>('/routes'),
+      api.get<Vehicle[]>('/vehicles').then((v) => { setVehicles(v); return v; }).catch(() => []),
     ])
       .then(([fleet, routes]) => {
         setData(fleet);
@@ -77,6 +99,27 @@ export default function FlotaPage() {
       .catch((err) => setError(err.message ?? 'Error al cargar flota'))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleCreateVehicle = async () => {
+    setVehicleError(null);
+    if (!vehicleForm.plate.trim()) { setVehicleError('La placa es obligatoria'); return; }
+    setVehicleSaving(true);
+    try {
+      const body: Record<string, string> = { plate: vehicleForm.plate.trim() };
+      if (vehicleForm.brand) body.brand = vehicleForm.brand;
+      if (vehicleForm.model) body.model = vehicleForm.model;
+      if (vehicleForm.capacity) body.capacity = vehicleForm.capacity;
+      if (vehicleForm.driverId) body.driverId = vehicleForm.driverId;
+      await api.post('/vehicles', body);
+      fetchVehicles();
+      setShowVehicleModal(false);
+      setVehicleForm({ plate: '', brand: '', model: '', capacity: '', driverId: '' });
+    } catch (err) {
+      setVehicleError(err instanceof ApiClientError ? err.message : 'Error al crear vehículo');
+    } finally {
+      setVehicleSaving(false);
+    }
+  };
 
   const focusRoute = useCallback(async (routeId: string) => {
     setSelectedRouteId(routeId);
@@ -210,15 +253,40 @@ export default function FlotaPage() {
 
           {data && (
             <>
-              <div className="p-6 border-b border-outline-variant/30">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-[24px] leading-[32px] font-bold text-on-surface">Flota Activa</h2>
-                  <span className="bg-primary/10 text-primary text-[10px] px-2 py-1 rounded-full font-extrabold uppercase tracking-widest">Live</span>
+              <div className="p-4 border-b border-outline-variant/30">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-[18px] font-bold text-on-surface">Vehículos</h2>
+                  <button
+                    onClick={() => { setVehicleForm({ plate: '', brand: '', model: '', capacity: '', driverId: '' }); setVehicleError(null); setShowVehicleModal(true); }}
+                    className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {vehicles.length === 0 && (
+                    <p className="text-[11px] text-on-surface-variant text-center py-2">Sin vehículos registrados</p>
+                  )}
+                  {vehicles.map((v) => (
+                    <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low text-[12px]">
+                      <span className="material-symbols-outlined text-sm text-primary">local_shipping</span>
+                      <span className="font-bold text-on-surface flex-1">{v.plate}</span>
+                      {v.driver && <span className="text-on-surface-variant truncate max-w-[80px]">{v.driver.fullName}</span>}
+                      <span className={`w-2 h-2 rounded-full ${v.status === 'ACTIVE' ? 'bg-waste-organic' : v.status === 'MAINTENANCE' ? 'bg-status-alert' : 'bg-outline'}`} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 border-b border-outline-variant/30">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-[18px] font-bold text-on-surface">Rutas</h2>
+                  <span className="bg-primary/10 text-primary text-[9px] px-2 py-1 rounded-full font-extrabold uppercase tracking-widest">Live</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="px-3 py-1.5 bg-primary text-white rounded-full text-[12px] font-bold cursor-pointer">Todos los Camiones</span>
+                  <span className="px-3 py-1.5 bg-primary text-white rounded-full text-[11px] font-bold cursor-pointer">Todas</span>
                   {alertCount > 0 && (
-                    <span className="px-3 py-1.5 bg-white border border-outline-variant text-on-surface-variant rounded-full text-[12px] font-bold hover:bg-surface-variant cursor-pointer transition-colors">
+                    <span className="px-3 py-1.5 bg-white border border-outline-variant text-on-surface-variant rounded-full text-[11px] font-bold hover:bg-surface-variant cursor-pointer transition-colors">
                       Problemas ({alertCount})
                     </span>
                   )}
@@ -319,6 +387,95 @@ export default function FlotaPage() {
             <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Completado</span>
           </div>
         </div>
+
+        {showVehicleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowVehicleModal(false)}>
+            <div className="bg-surface-card rounded-2xl shadow-xl border border-outline-variant w-full max-w-sm mx-4 p-5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[18px] font-extrabold text-primary">Agregar vehículo</h3>
+                <button onClick={() => setShowVehicleModal(false)} className="p-1 text-outline hover:text-on-surface transition-colors">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              {vehicleError && (
+                <div className="mb-3 bg-status-alert/10 border border-status-alert/30 rounded-xl p-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-status-alert text-sm">error</span>
+                  <p className="text-status-alert text-sm font-bold flex-1">{vehicleError}</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Placa *</label>
+                  <input
+                    type="text"
+                    value={vehicleForm.plate}
+                    onChange={(e) => setVehicleForm((f) => ({ ...f, plate: e.target.value }))}
+                    placeholder="ABC-123"
+                    className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary placeholder:text-outline"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Marca</label>
+                    <input
+                      type="text"
+                      value={vehicleForm.brand}
+                      onChange={(e) => setVehicleForm((f) => ({ ...f, brand: e.target.value }))}
+                      placeholder="Toyota"
+                      className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary placeholder:text-outline"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Modelo</label>
+                    <input
+                      type="text"
+                      value={vehicleForm.model}
+                      onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))}
+                      placeholder="Hilux"
+                      className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary placeholder:text-outline"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Capacidad (kg)</label>
+                  <input
+                    type="number"
+                    value={vehicleForm.capacity}
+                    onChange={(e) => setVehicleForm((f) => ({ ...f, capacity: e.target.value }))}
+                    placeholder="1000"
+                    className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary placeholder:text-outline"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 flex gap-3">
+                <button
+                  onClick={() => setShowVehicleModal(false)}
+                  disabled={vehicleSaving}
+                  className="flex-1 bg-surface-container-high text-on-surface py-3 rounded-xl text-[14px] font-bold active:opacity-80 transition-opacity disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateVehicle}
+                  disabled={vehicleSaving}
+                  className="flex-1 bg-primary text-on-primary py-3 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
+                >
+                  {vehicleSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Agregar'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

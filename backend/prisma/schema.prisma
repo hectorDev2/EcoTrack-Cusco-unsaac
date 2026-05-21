@@ -20,6 +20,7 @@ model User {
   zones     UserZone[]
   routes    Route[]
   incidents Incident[]
+  vehicles  Vehicle[]
 
   @@map("users")
 }
@@ -137,6 +138,21 @@ model Collection {
   wasteType WasteType @relation(fields: [wasteTypeId], references: [id])
 
   @@map("collections")
+}
+
+model Vehicle {
+  id        String  @id @default(cuid())
+  plate     String  @unique
+  brand     String?
+  model     String?
+  capacity  Float?
+  driverId  String? @map("driver_id")
+  status    String  @default("ACTIVE")
+  createdAt String  @map("created_at")
+
+  driver User? @relation(fields: [driverId], references: [id])
+
+  @@map("vehicles")
 }
 
 model Incident {

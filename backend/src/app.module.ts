@@ -27,6 +27,7 @@ import { RoutesModule } from './routes/routes.module';
 import { CollectionsModule } from './collections/collections.module';
 import { WasteTypesModule } from './waste-types/waste-types.module';
 import { AdminModule } from './admin/admin.module';
+import { VehiclesModule } from './vehicles/vehicles.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -43,6 +44,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     CollectionsModule,
     WasteTypesModule,
     AdminModule,
+    VehiclesModule,
   ],
   controllers: [HealthController],
   providers: [
