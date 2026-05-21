@@ -1,4 +1,4 @@
-import { IsString, MinLength, IsOptional, IsIn } from 'class-validator';
+import { IsString, MinLength, IsOptional, IsIn, IsNumber } from 'class-validator';
 
 export class CreateIncidentDto {
   @IsString()
@@ -12,4 +12,16 @@ export class CreateIncidentDto {
   @IsOptional()
   @IsString()
   zoneId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
 }

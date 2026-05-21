@@ -140,14 +140,17 @@ model Collection {
 }
 
 model Incident {
-  id          String  @id @default(cuid())
-  reportedBy  String  @map("reported_by")
-  zoneId      String? @map("zone_id")
-  routeId     String? @map("route_id")
+  id          String   @id @default(cuid())
+  reportedBy  String   @map("reported_by")
+  zoneId      String?  @map("zone_id")
+  routeId     String?  @map("route_id")
   type        String
   description String
-  status      String  @default("OPEN")
-  createdAt   String  @map("created_at")
+  status      String   @default("OPEN")
+  latitude    Float?   @map("latitude")
+  longitude   Float?   @map("longitude")
+  address     String?  @map("address")
+  createdAt   String   @map("created_at")
 
   reporter User  @relation(fields: [reportedBy], references: [id])
   zone     Zone? @relation(fields: [zoneId], references: [id])

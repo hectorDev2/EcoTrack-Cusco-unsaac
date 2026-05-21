@@ -4,13 +4,71 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiClientError } from '@/lib/api';
 
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
+
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    const res = await fetch(
+      `${NOMINATIM_URL}?lat=${lat}&lon=${lng}&format=json&addressdetails=1&accept-language=es`,
+      { headers: { 'User-Agent': 'EcoTrackCusco/1.0' } },
+    );
+    const data = await res.json();
+    return data.display_name ?? '';
+  } catch {
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
+}
+
 export default function ReportarPage() {
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [address, setAddress] = useState('');
   const router = useRouter();
+
+  const handleLocate = () => {
+    if (!navigator.geolocation) {
+      setError('Tu navegador no soporta geolocalización');
+      return;
+    }
+
+    setLocating(true);
+    setError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setLatitude(lat);
+        setLongitude(lng);
+        const addr = await reverseGeocode(lat, lng);
+        setAddress(addr);
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            setError('Permiso denegado. Activá la ubicación desde tu navegador.');
+            break;
+          case err.POSITION_UNAVAILABLE:
+            setError('No se pudo obtener la ubicación.');
+            break;
+          case err.TIMEOUT:
+            setError('Tiempo de espera agotado.');
+            break;
+          default:
+            setError('Error al obtener la ubicación.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,10 +76,19 @@ export default function ReportarPage() {
     setIsSubmitting(true);
 
     try {
-      await api.post('/incidents', { type, description });
+      await api.post('/incidents', {
+        type,
+        description,
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
+        address: address || undefined,
+      });
       setSuccess(true);
       setType('');
       setDescription('');
+      setLatitude(null);
+      setLongitude(null);
+      setAddress('');
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);
@@ -147,6 +214,45 @@ export default function ReportarPage() {
               placeholder="Describa brevemente lo que observa..."
               rows={4}
             />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-primary px-1">
+              UBICACIÓN
+            </label>
+            <div className="bg-surface-container-low border-2 border-outline-variant/30 rounded-lg p-4">
+              {latitude !== null ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-[14px] text-on-surface">
+                    <span className="material-symbols-outlined text-sm text-primary">location_on</span>
+                    <span className="font-bold">{latitude.toFixed(6)}, {longitude?.toFixed(6)}</span>
+                  </div>
+                  {address && (
+                    <p className="text-[13px] text-on-surface-variant pl-6">{address}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[14px] text-on-surface-variant">Sin ubicación</p>
+              )}
+              <button
+                type="button"
+                onClick={handleLocate}
+                disabled={locating}
+                className="mt-3 flex items-center gap-2 text-[12px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {locating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    Obteniendo ubicación...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">my_location</span>
+                    {latitude !== null ? 'Actualizar ubicación' : 'Activar ubicación'}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           <button

@@ -37,6 +37,10 @@ export default function UsuariosPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [editModal, setEditModal] = useState<{ user: User } | null>(null);
+  const [editForm, setEditForm] = useState({ fullName: '', role: '', status: '', password: '' });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (page: number, searchTerm: string) => {
     setIsLoading(true);
@@ -97,6 +101,45 @@ export default function UsuariosPage() {
       } else {
         alert('Error al desactivar usuario');
       }
+    }
+  };
+
+  const openEditModal = (user: User) => {
+    setEditModal({ user });
+    setEditForm({ fullName: user.fullName, role: user.role, status: user.status, password: '' });
+    setEditError(null);
+  };
+
+  const closeEditModal = () => {
+    setEditModal(null);
+    setEditError(null);
+  };
+
+  const handleEditSave = async () => {
+    if (!editModal) return;
+    setEditError(null);
+
+    if (!editForm.fullName.trim()) {
+      setEditError('El nombre no puede estar vacío');
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      const body: Record<string, string> = {
+        fullName: editForm.fullName.trim(),
+        role: editForm.role,
+        status: editForm.status,
+      };
+      if (editForm.password) body.password = editForm.password;
+
+      await api.patch(`/users/${editModal.user.id}`, body);
+      closeEditModal();
+      fetchData(meta.page, search);
+    } catch (err) {
+      setEditError(err instanceof ApiClientError ? err.message : 'Error al guardar');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -266,7 +309,10 @@ export default function UsuariosPage() {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right space-x-2">
-                              <button className="p-1 text-outline hover:text-primary transition-colors">
+                              <button
+                                onClick={() => openEditModal(user)}
+                                className="p-1 text-outline hover:text-primary transition-colors"
+                              >
                                 <span className="material-symbols-outlined">edit</span>
                               </button>
                               {user.status === 'ACTIVE' && (
@@ -328,6 +374,99 @@ export default function UsuariosPage() {
           </div>
         </div>
       </div>
+
+      {editModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={closeEditModal}>
+          <div className="bg-surface-card rounded-2xl shadow-xl border border-outline-variant w-full max-w-lg mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[20px] font-extrabold text-primary">Editar usuario</h3>
+              <button onClick={closeEditModal} className="p-1 text-outline hover:text-on-surface transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {editError && (
+              <div className="mb-4 bg-status-alert/10 border border-status-alert/30 rounded-xl p-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-status-alert text-sm">error</span>
+                <p className="text-status-alert text-sm font-bold flex-1">{editError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Nombre</label>
+                <input
+                  type="text"
+                  value={editForm.fullName}
+                  onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Email</label>
+                <p className="text-[14px] text-on-surface-variant px-1">{editModal.user.email}</p>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Rol</label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary"
+                >
+                  <option value="CITIZEN">Ciudadano</option>
+                  <option value="DRIVER">Conductor</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Estado</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary"
+                >
+                  <option value="ACTIVE">Activo</option>
+                  <option value="INACTIVE">Inactivo</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Nueva contraseña <span className="text-on-surface-variant/50">(opcional)</span></label>
+                <input
+                  type="password"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Mín. 6 caracteres"
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary placeholder:text-outline"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={closeEditModal}
+                disabled={editSaving}
+                className="flex-1 bg-surface-container-high text-on-surface py-3 rounded-xl text-[14px] font-bold active:opacity-80 transition-opacity disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving}
+                className="flex-1 bg-primary text-on-primary py-3 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50"
+              >
+                {editSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  'Guardar cambios'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="w-full py-6 px-xl flex justify-between items-center max-w-[1440px] mx-auto bg-surface-container border-t border-outline-variant">
         <p className="text-[14px] leading-[20px] text-on-surface-variant">© 2024 Municipalidad del Cusco - Gestión de Residuos</p>
