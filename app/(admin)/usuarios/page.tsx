@@ -37,10 +37,17 @@ export default function UsuariosPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [zones, setZones] = useState<{ id: string; name: string }[]>([]);
   const [editModal, setEditModal] = useState<{ user: User } | null>(null);
   const [editForm, setEditForm] = useState({ fullName: '', role: '', status: '', password: '' });
+  const [editZoneIds, setEditZoneIds] = useState<string[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [createModal, setCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ email: '', password: '', fullName: '', role: 'CITIZEN' });
+  const [createZoneIds, setCreateZoneIds] = useState<string[]>([]);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (page: number, searchTerm: string) => {
     setIsLoading(true);
@@ -74,6 +81,7 @@ export default function UsuariosPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData(1, '');
+    api.get<{ id: string; name: string }[]>('/zones').then(setZones).catch(() => {});
   }, [fetchData]);
 
   const handleSearch = (value: string) => {
@@ -107,6 +115,7 @@ export default function UsuariosPage() {
   const openEditModal = (user: User) => {
     setEditModal({ user });
     setEditForm({ fullName: user.fullName, role: user.role, status: user.status, password: '' });
+    setEditZoneIds(user.zones.map((z) => z.id));
     setEditError(null);
   };
 
@@ -133,7 +142,12 @@ export default function UsuariosPage() {
       };
       if (editForm.password) body.password = editForm.password;
 
-      await api.patch(`/users/${editModal.user.id}`, body);
+      await Promise.all([
+        api.patch(`/users/${editModal.user.id}`, body),
+        editZoneIds.length > 0
+          ? api.patch(`/users/${editModal.user.id}/zones`, { zoneIds: editZoneIds })
+          : Promise.resolve(),
+      ]);
       closeEditModal();
       fetchData(meta.page, search);
     } catch (err) {
@@ -141,6 +155,33 @@ export default function UsuariosPage() {
     } finally {
       setEditSaving(false);
     }
+  };
+
+  const handleCreateSave = async () => {
+    setCreateError(null);
+    if (!createForm.email.trim() || !createForm.password || !createForm.fullName.trim()) {
+      setCreateError('Todos los campos son obligatorios');
+      return;
+    }
+    setCreateSaving(true);
+    try {
+      const res = await api.post<{ user: User }>('/users', createForm);
+      if (createZoneIds.length > 0) {
+        await api.patch(`/users/${res.user.id}/zones`, { zoneIds: createZoneIds });
+      }
+      setCreateModal(false);
+      setCreateForm({ email: '', password: '', fullName: '', role: 'CITIZEN' });
+      setCreateZoneIds([]);
+      fetchData(meta.page, search);
+    } catch (err) {
+      setCreateError(err instanceof ApiClientError ? err.message : 'Error al crear usuario');
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
+  const toggleZone = (zoneId: string, selected: string[], setter: (ids: string[]) => void) => {
+    setter(selected.includes(zoneId) ? selected.filter((id) => id !== zoneId) : [...selected, zoneId]);
   };
 
   const statCards = stats
@@ -203,7 +244,10 @@ export default function UsuariosPage() {
                 Administra los permisos y zonas de acceso para ciudadanos y personal municipal.
               </p>
             </div>
-            <button className="bg-primary text-on-primary px-6 py-4 rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-2 hover:shadow-md transition-shadow">
+            <button
+              onClick={() => { setCreateModal(true); setCreateForm({ email: '', password: '', fullName: '', role: 'CITIZEN' }); setCreateZoneIds([]); setCreateError(null); }}
+              className="bg-primary text-on-primary px-6 py-4 rounded-lg text-[12px] leading-[16px] tracking-[0.05em] font-bold flex items-center gap-2 hover:shadow-md transition-shadow"
+            >
               <span className="material-symbols-outlined">person_add</span>
               Agregar Usuario
             </button>
@@ -430,6 +474,28 @@ export default function UsuariosPage() {
                 </select>
               </div>
               <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Zonas</label>
+                <div className="flex flex-wrap gap-2">
+                  {zones.map((z) => {
+                    const selected = editZoneIds.includes(z.id);
+                    return (
+                      <button
+                        key={z.id}
+                        type="button"
+                        onClick={() => toggleZone(z.id, editZoneIds, setEditZoneIds)}
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
+                          selected
+                            ? 'bg-primary/10 text-primary border-primary/30'
+                            : 'bg-surface text-on-surface-variant border-outline-variant/30 hover:border-outline-variant'
+                        }`}
+                      >
+                        {z.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
                 <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Nueva contraseña <span className="text-on-surface-variant/50">(opcional)</span></label>
                 <input
                   type="password"
@@ -462,6 +528,85 @@ export default function UsuariosPage() {
                 ) : (
                   'Guardar cambios'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {createModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setCreateModal(false)}>
+          <div className="bg-surface-card rounded-2xl shadow-xl border border-outline-variant w-full max-w-lg mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-[20px] font-extrabold text-primary">Agregar usuario</h3>
+              <button onClick={() => setCreateModal(false)} className="p-1 text-outline hover:text-on-surface transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {createError && (
+              <div className="mb-4 bg-status-alert/10 border border-status-alert/30 rounded-xl p-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-status-alert text-sm">error</span>
+                <p className="text-status-alert text-sm font-bold flex-1">{createError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Nombre</label>
+                <input type="text" value={createForm.fullName} onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))}
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Email</label>
+                <input type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Contraseña</label>
+                <input type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Mín. 6 caracteres"
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary placeholder:text-outline" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Rol</label>
+                <select value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary">
+                  <option value="CITIZEN">Ciudadano</option>
+                  <option value="DRIVER">Conductor</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">Zonas</label>
+                <div className="flex flex-wrap gap-2">
+                  {zones.map((z) => {
+                    const selected = createZoneIds.includes(z.id);
+                    return (
+                      <button key={z.id} type="button"
+                        onClick={() => toggleZone(z.id, createZoneIds, setCreateZoneIds)}
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
+                          selected ? 'bg-primary/10 text-primary border-primary/30' : 'bg-surface text-on-surface-variant border-outline-variant/30 hover:border-outline-variant'
+                        }`}
+                      >
+                        {z.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button onClick={() => setCreateModal(false)} disabled={createSaving}
+                className="flex-1 bg-surface-container-high text-on-surface py-3 rounded-xl text-[14px] font-bold active:opacity-80 transition-opacity disabled:opacity-50">
+                Cancelar
+              </button>
+              <button onClick={handleCreateSave} disabled={createSaving}
+                className="flex-1 bg-primary text-on-primary py-3 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity disabled:opacity-50">
+                {createSaving ? (
+                  <><div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />Guardando...</>
+                ) : 'Crear usuario'}
               </button>
             </div>
           </div>
