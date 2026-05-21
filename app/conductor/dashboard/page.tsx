@@ -138,13 +138,22 @@ export default function DriverDashboard() {
             )}
 
             {todayRoute.status === 'IN_PROGRESS' && (
-              <button
-                onClick={() => router.push('/conductor/ruta')}
-                className="w-full bg-primary-container text-on-primary-container py-4 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
-              >
-                <span className="material-symbols-outlined">list_alt</span>
-                Ver paradas
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => router.push('/conductor/ruta')}
+                  className="flex-1 bg-primary-container text-on-primary-container py-4 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+                >
+                  <span className="material-symbols-outlined">list_alt</span>
+                  Ver paradas
+                </button>
+                <button
+                  onClick={() => router.push('/conductor/mapa')}
+                  className="flex-1 bg-primary text-on-primary py-4 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+                >
+                  <span className="material-symbols-outlined">map</span>
+                  Ver mapa
+                </button>
+              </div>
             )}
           </div>
 

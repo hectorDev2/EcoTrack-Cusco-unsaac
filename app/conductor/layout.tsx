@@ -42,11 +42,12 @@ function DriverGuard({ children }: { children: ReactNode }) {
 
 const navItems = [
   { href: '/conductor/dashboard', icon: 'dashboard', label: 'Mi Ruta' },
+  { href: '/conductor/mapa', icon: 'map', label: 'Mapa' },
   { href: '/conductor/ruta', icon: 'route', label: 'Paradas' },
 ];
 
 export default function ConductorLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -63,8 +64,15 @@ export default function ConductorLayout({ children }: { children: React.ReactNod
               <p className="text-[10px] tracking-[0.08em] font-bold text-on-surface-variant/70 uppercase">Conductor</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <ThemeToggle />
+            <button
+              onClick={() => { logout(); router.push('/auth/login'); }}
+              className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:bg-status-alert/10 hover:text-status-alert transition-colors"
+              title="Cerrar sesión"
+            >
+              <span className="material-symbols-outlined text-sm">logout</span>
+            </button>
             <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container text-[12px] font-bold">
               {user?.fullName?.charAt(0) ?? 'C'}
             </div>
