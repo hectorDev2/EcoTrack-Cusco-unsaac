@@ -629,7 +629,24 @@ export default function AdminRutasPage() {
 
                   <select
                     value=""
-                    onChange={(e) => { if (e.target.value) handleStatusChange(r.id, e.target.value); }}
+                    onChange={async (e) => {
+                      const val = e.target.value;
+                      if (!val) return;
+                      if (val.startsWith('driver:')) {
+                        const driverId = val.slice(7);
+                        setActionLoading(r.id);
+                        try {
+                          await api.patch(`/routes/${r.id}`, { driverId });
+                          fetchData();
+                        } catch (err) {
+                          setError(err instanceof ApiClientError ? err.message : 'Error al reasignar');
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      } else {
+                        handleStatusChange(r.id, val);
+                      }
+                    }}
                     className="bg-surface border border-outline-variant rounded-lg px-2.5 py-1.5 text-[10px] font-bold outline-none cursor-pointer hover:border-primary/40 transition-colors"
                     disabled={actionLoading === r.id}
                   >
@@ -649,6 +666,11 @@ export default function AdminRutasPage() {
                     {r.status === 'COMPLETED' && (
                       <option value="PENDING">Reabrir</option>
                     )}
+                    <option disabled>────</option>
+                    <option disabled className="text-[9px]">Reasignar a:</option>
+                    {drivers.filter((d) => d.id !== r.driver?.id).map((d) => (
+                      <option key={d.id} value={`driver:${d.id}`}>{d.fullName}</option>
+                    ))}
                   </select>
                 </div>
               </div>

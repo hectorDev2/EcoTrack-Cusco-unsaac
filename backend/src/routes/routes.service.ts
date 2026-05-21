@@ -76,6 +76,7 @@ export class RoutesService {
     if (dto.status) data.status = dto.status;
     if (dto.status === 'IN_PROGRESS') data.startedAt = new Date().toISOString();
     if (dto.status === 'COMPLETED') data.finishedAt = new Date().toISOString();
+    if (dto.driverId) data.driverId = dto.driverId;
 
     return this.prisma.route.update({
       where: { id },
