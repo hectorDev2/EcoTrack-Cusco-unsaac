@@ -68,13 +68,13 @@ Web Service desde dashboard de Render:
 
 | Módulo | Endpoints | Status |
 |--------|-----------|--------|
-| `Auth` | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` | ✅ Completo |
+| `Auth` | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PATCH /auth/me` | ✅ Completo |
 | `Users` | CRUD + `GET /users/me`, `GET /users/stats`, `PATCH /users/:id/zones` | ✅ Completo |
 | `Zones` | CRUD (GET público, resto ADMIN) | ✅ Completo |
 | `PickupPoints` | CRUD con filtro `?zoneId=` (GET público, resto ADMIN) | ✅ Completo |
 | `Schedules` | CRUD con filtros `?zoneId=&wasteTypeId=` (GET público, resto ADMIN) | ✅ Completo |
 | `Incidents` | `POST /incidents`, `GET /incidents/my`, CRUD admin con filtro `?status=` | ✅ Completo |
-| `Routes` | CRUD + `GET /routes/fleet` — rutas con progreso desde RouteStops | ✅ Completo |
+| `Routes` | CRUD + `GET /routes/fleet`, `GET /routes/my`, `GET /routes/zone/:zoneId` | ✅ Completo |
 | `Admin` | `GET /admin/dashboard`, `GET /admin/analytics` — datos agregados | ✅ Completo |
 | `WasteType` | CRUD (GET público, ADMIN create/update/delete) | ✅ Completo |
 | `Collections` | Modelo en Prisma, **sin endpoints públicos** | 🔜 Pendiente |
@@ -85,7 +85,7 @@ Web Service desde dashboard de Render:
 |--------|------|--------|
 | Registro | `/` | ✅ `POST /auth/register` |
 | Login | `/auth/login` | ✅ `POST /auth/login` |
-| Perfil | `/perfil` | ✅ `useAuth()` context |
+| Perfil | `/perfil` | ✅ Edición datos + horarios/rutas activas por zona |
 | Inicio ciudadano | `/inicio` | ✅ Próxima recolección, incidencias activas |
 | Mapa | `/mapa` | ✅ MapLibre GL con pickup points |
 | Horarios | `/recoleccion` | ✅ `GET /schedules`, `GET /zones` |
@@ -98,7 +98,7 @@ Web Service desde dashboard de Render:
 | Incidencias admin | `/admin-incidencias` | ✅ `GET /incidents` + `PATCH /incidents/:id` |
 | Analíticas | `/analisis` | ✅ `GET /admin/analytics` |
 | Gestión rutas | `/admin-rutas` | ✅ Trazado en mapa con OSRM |
-| Panel conductor | `/conductor/*` | ✅ Dashboard + paradas + recolección |
+| Panel conductor | `/conductor/*` | ✅ Dashboard + mapa + paradas + recolección |
 | Configuración | `/configuracion` | 🔜 Solo estado local |
 | Catálogo residuos | `/residuos` | ✅ Catálogo ciudadano por categoría |
 
@@ -140,7 +140,8 @@ Web Service desde dashboard de Render:
 | `/admin-rutas` | Gestión de rutas con trazado en mapa | Requiere ADMIN |
 | `/analisis` | Analíticas y reportes | Requiere ADMIN |
 | `/configuracion` | Configuración del sistema | Requiere ADMIN |
-| `/conductor/dashboard` | Panel del conductor — ruta del día | Requiere DRIVER |
+| `/conductor/dashboard` | Panel del conductor — ruta del día + mapa | Requiere DRIVER |
+| `/conductor/mapa` | Mapa de ruta con paradas y trazado OSRM | Requiere DRIVER |
 | `/conductor/ruta` | Paradas y registro de recolección | Requiere DRIVER |
 
 ## Design System
@@ -178,7 +179,7 @@ app/
 │   ├── reportar/           ← Formulario de incidencias
 │   ├── incidencias/        ← Mis reportes
 │   ├── mapa/
-│   └── perfil/
+│   └── perfil/             ← Edición perfil + horarios/rutas por zona
 └── (admin)/
     ├── layout.tsx          ← Sidebar admin
     ├── admin-shell.tsx     ← AuthGuard admin
@@ -188,6 +189,11 @@ app/
     ├── admin-incidencias/  ← Gestión con cambio de estado
     ├── analisis/           ← Con datos reales
     └── configuracion/      ← Solo estado local
+conductor/
+├── layout.tsx              ← Nav + DriverGuard + logout
+├── dashboard/              ← Ruta activa + botón mapa
+├── mapa/                   ← Mapa con MapLibre + OSRM
+└── ruta/                   ← Paradas + completar recolección
 lib/
 ├── api.ts                  ← HTTP client con JWT interceptor
 ├── auth-context.tsx        ← AuthProvider + useAuth hook
@@ -202,7 +208,7 @@ components/
 
 backend/
 ├── src/
-│   ├── auth/               ← Register, login, JWT profile
+│   ├── auth/               ← Register, login, JWT profile, update profile
 │   ├── users/              ← CRUD + stats + zone assignment
 │   ├── zones/              ← CRUD zonas
 │   ├── pickup-points/      ← CRUD puntos de recojo
