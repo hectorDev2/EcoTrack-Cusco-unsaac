@@ -52,7 +52,7 @@ export class RoutesService {
         zoneId: dto.zoneId,
         driverId: dto.driverId,
         status: dto.status ?? 'PENDING',
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       },
     });
 
@@ -72,10 +72,10 @@ export class RoutesService {
   async update(id: string, dto: UpdateRouteDto) {
     await this.findOne(id);
 
-    const data: Record<string, string> = {};
+    const data: Record<string, any> = {};
     if (dto.status) data.status = dto.status;
-    if (dto.status === 'IN_PROGRESS') data.startedAt = new Date().toISOString();
-    if (dto.status === 'COMPLETED') data.finishedAt = new Date().toISOString();
+    if (dto.status === 'IN_PROGRESS') data.startedAt = new Date();
+    if (dto.status === 'COMPLETED') data.finishedAt = new Date();
     if (dto.driverId) data.driverId = dto.driverId;
 
     return this.prisma.route.update({
@@ -132,7 +132,7 @@ export class RoutesService {
     }
     return this.prisma.route.update({
       where: { id },
-      data: { status: 'IN_PROGRESS', startedAt: new Date().toISOString() },
+      data: { status: 'IN_PROGRESS', startedAt: new Date() },
       include: routeInclude,
     });
   }
@@ -147,7 +147,7 @@ export class RoutesService {
     }
     return this.prisma.route.update({
       where: { id },
-      data: { status: 'COMPLETED', finishedAt: new Date().toISOString() },
+      data: { status: 'COMPLETED', finishedAt: new Date() },
       include: routeInclude,
     });
   }
@@ -167,6 +167,24 @@ export class RoutesService {
     return this.prisma.routeStop.update({
       where: { id: stopId },
       data: { status: 'COMPLETED' },
+    });
+  }
+
+  async sendLocation(routeId: string, driverId: string, latitude: number, longitude: number) {
+    const route = await this.prisma.route.findUnique({ where: { id: routeId } });
+    if (!route) throw new NotFoundException('Ruta no encontrada');
+    if (route.driverId !== driverId) {
+      throw new ForbiddenException('Esta ruta no te pertenece');
+    }
+    return this.prisma.routeLocation.create({
+      data: { routeId, latitude, longitude },
+    });
+  }
+
+  async getLocations(routeId: string) {
+    return this.prisma.routeLocation.findMany({
+      where: { routeId },
+      orderBy: { recordedAt: 'asc' },
     });
   }
 

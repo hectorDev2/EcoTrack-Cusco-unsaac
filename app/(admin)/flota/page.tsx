@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, ApiClientError } from '@/lib/api';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import { calculateRoute, formatDistance, formatDuration, type RouteWaypoint } from '@/lib/routing';
@@ -46,6 +46,14 @@ interface Vehicle {
   driver: { id: string; fullName: string; email: string } | null;
 }
 
+interface RouteLocation {
+  id: string;
+  routeId: string;
+  latitude: number;
+  longitude: number;
+  recordedAt: string;
+}
+
 interface FullRoute {
   id: string;
   zone: { id: string; name: string };
@@ -76,6 +84,32 @@ export default function FlotaPage() {
   const [selectedMarkers, setSelectedMarkers] = useState<MapMarker[]>([]);
   const [selectedRouteLine, setSelectedRouteLine] = useState<MapRoute[]>([]);
   const [selectedInfo, setSelectedInfo] = useState<{ distance: number; duration: number } | null>(null);
+  const [livePositions, setLivePositions] = useState<Record<string, { lat: number; lng: number; driver: string }>>({});
+  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  useEffect(() => {
+    const inTransitRoutes = allRoutes.filter((r) => r.status === 'IN_PROGRESS');
+    if (inTransitRoutes.length === 0) return;
+
+    pollRef.current = setInterval(async () => {
+      const positions: Record<string, { lat: number; lng: number; driver: string }> = {};
+      for (const r of inTransitRoutes) {
+        try {
+          const locs = await api.get<RouteLocation[]>(`/routes/${r.id}/locations`);
+          if (locs.length > 0) {
+            const last = locs[locs.length - 1];
+            positions[r.id] = { lat: last.latitude, lng: last.longitude, driver: r.driver.fullName };
+          }
+        } catch {}
+      }
+      if (Object.keys(positions).length > 0) {
+        setLivePositions((prev) => ({ ...prev, ...positions }));
+      }
+    }, 10000);
+
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [allRoutes]);
+
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [vehicleForm, setVehicleForm] = useState({ plate: '', brand: '', model: '', capacity: '', driverId: '' });
   const [vehicleSaving, setVehicleSaving] = useState(false);
@@ -154,17 +188,32 @@ export default function FlotaPage() {
     setSelectedInfo(null);
   }, [allRoutes]);
 
+  // Live position markers (drivers in transit)
+  const liveMarkers: MapMarker[] = Object.entries(livePositions).map(([routeId, pos]) => ({
+    id: `live-${routeId}`,
+    lng: pos.lng,
+    lat: pos.lat,
+    color: '#2196F3',
+    icon: 'directions_car' as const,
+    label: pos.driver,
+  }));
+
   // Map markers: selected route's stops + other routes as single markers
   const mapMarkers: MapMarker[] = selectedRouteId
-    ? selectedMarkers
-    : (data?.routes ?? []).map((r, i) => ({
-        id: r.id,
-        lng: [-71.9781, -71.9756, -71.9600, -71.9567, -71.9890][i % 5],
-        lat: [-13.5167, -13.5156, -13.5222, -13.5278, -13.5345][i % 5],
-        color: '#154212',
-        icon: 'local_shipping' as const,
-        label: r.name,
-      }));
+    ? [...selectedMarkers, ...liveMarkers]
+    : [
+        ...liveMarkers,
+        ...(data?.routes ?? [])
+          .filter((r) => !livePositions[r.id])
+          .map((r, i) => ({
+            id: r.id,
+            lng: [-71.9781, -71.9756, -71.9600, -71.9567, -71.9890][i % 5],
+            lat: [-13.5167, -13.5156, -13.5222, -13.5278, -13.5345][i % 5],
+            color: '#154212',
+            icon: 'local_shipping' as const,
+            label: r.name,
+          })),
+      ];
 
   const mapRoutes: MapRoute[] = selectedRouteId ? selectedRouteLine : [];
 

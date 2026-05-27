@@ -15,7 +15,7 @@ model User {
   fullName     String   @map("full_name")
   role         String   @default("CITIZEN")
   status       String   @default("ACTIVE")
-  createdAt    String   @map("created_at")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   zones     UserZone[]
   routes    Route[]
@@ -30,7 +30,7 @@ model Zone {
   name        String
   description String?
   status      String  @default("ACTIVE")
-  createdAt   String  @map("created_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   users              UserZone[]
   pickupPoints       PickupPoint[]
@@ -45,7 +45,7 @@ model UserZone {
   id         String @id @default(cuid())
   userId     String @map("user_id")
   zoneId     String @map("zone_id")
-  assignedAt String @map("assigned_at")
+  assignedAt DateTime @default(now()) @map("assigned_at")
 
   user User @relation(fields: [userId], references: [id])
   zone Zone @relation(fields: [zoneId], references: [id])
@@ -59,7 +59,7 @@ model WasteType {
   name        String
   category    String
   description String?
-  createdAt   String @map("created_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   collectionSchedules CollectionSchedule[]
   collections         Collection[]
@@ -89,6 +89,7 @@ model CollectionSchedule {
   dayOfWeek   String @map("day_of_week")
   startTime   String @map("start_time")
   endTime     String @map("end_time")
+  status      String @default("ACTIVE")
 
   zone      Zone      @relation(fields: [zoneId], references: [id])
   wasteType WasteType @relation(fields: [wasteTypeId], references: [id])
@@ -101,13 +102,14 @@ model Route {
   zoneId     String  @map("zone_id")
   driverId   String  @map("driver_id")
   status     String  @default("PENDING")
-  startedAt  String? @map("started_at")
-  finishedAt String? @map("finished_at")
-  createdAt  String  @map("created_at")
+  startedAt  DateTime? @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   zone      Zone       @relation(fields: [zoneId], references: [id])
   driver    User       @relation(fields: [driverId], references: [id])
   stops     RouteStop[]
+  locations RouteLocation[]
   incidents Incident[]
 
   @@map("routes")
@@ -131,7 +133,7 @@ model Collection {
   id          String @id @default(cuid())
   routeStopId String @unique @map("route_stop_id")
   wasteTypeId String @map("waste_type_id")
-  collectedAt String @map("collected_at")
+  collectedAt DateTime @default(now()) @map("collected_at")
   notes       String?
 
   routeStop RouteStop @relation(fields: [routeStopId], references: [id])
@@ -148,11 +150,23 @@ model Vehicle {
   capacity  Float?
   driverId  String? @map("driver_id")
   status    String  @default("ACTIVE")
-  createdAt String  @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   driver User? @relation(fields: [driverId], references: [id])
 
   @@map("vehicles")
+}
+
+model RouteLocation {
+  id        String   @id @default(cuid())
+  routeId   String   @map("route_id")
+  latitude  Float
+  longitude Float
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  route Route @relation(fields: [routeId], references: [id])
+
+  @@map("route_locations")
 }
 
 model Incident {
@@ -166,7 +180,7 @@ model Incident {
   latitude    Float?   @map("latitude")
   longitude   Float?   @map("longitude")
   address     String?  @map("address")
-  createdAt   String   @map("created_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   reporter User  @relation(fields: [reportedBy], references: [id])
   zone     Zone? @relation(fields: [zoneId], references: [id])

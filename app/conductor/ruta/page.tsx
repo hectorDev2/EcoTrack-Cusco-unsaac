@@ -52,6 +52,29 @@ export default function DriverRutaPage() {
   const pendingStops = activeRoute?.stops.filter((s) => s.status === 'PENDING') ?? [];
   const completedStops = activeRoute?.stops.filter((s) => s.status === 'COMPLETED') ?? [];
 
+  useEffect(() => {
+    if (!activeRoute || activeRoute.status !== 'IN_PROGRESS') return;
+
+    let lastLat = 0, lastLng = 0, lastTime = 0;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const now = Date.now();
+        const moved = Math.sqrt((lat - lastLat) ** 2 + (lng - lastLng) ** 2) * 111320 > 20;
+        if (!moved && now - lastTime < 15000) return;
+        lastLat = lat; lastLng = lng; lastTime = now;
+
+        api.post(`/routes/${activeRoute.id}/location`, { latitude: lat, longitude: lng })
+          .catch(() => {});
+      },
+      () => {},
+      { enableHighAccuracy: true },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [activeRoute?.id, activeRoute?.status]);
+
   const handleCompleteStop = async () => {
     if (!completeModal || !selectedWasteType) return;
     setModalLoading(true);
