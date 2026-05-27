@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { queries } from '@/lib/queries';
 import type { CollectionSchedule } from '@/lib/types';
 
 const dayMap: Record<string, string> = {
@@ -62,35 +63,34 @@ function formatTime(time: string): string {
 export default function InicioPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [schedules, setSchedules] = useState<CollectionSchedule[]>([]);
-  const [openCount, setOpenCount] = useState(0);
-  const [ppCount, setPpCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const zoneIds = user?.zones?.map((z) => z.id) ?? [];
 
-  useEffect(() => {
-    if (!user?.zones?.length) { setLoading(false); return; }
+  const scheduleQueries = zoneIds.map((zid) =>
+    queries.schedules.all(zid),
+  );
+  const ppQueries = zoneIds.map((zid) =>
+    queries.pickupPoints.all(zid),
+  );
 
-    const zoneIds = user.zones.map((z) => z.id);
-    const schedulePromises = zoneIds.map((zid) =>
-      api.get<CollectionSchedule[]>(`/schedules?zoneId=${zid}`).catch(() => [] as CollectionSchedule[]),
-    );
-    const ppPromises = zoneIds.map((zid) =>
-      api.get<unknown[]>(`/pickup-points?zoneId=${zid}`).catch(() => []),
-    );
+  const scheduleResults = useQueries({ queries: scheduleQueries });
+  const ppResults = useQueries({ queries: ppQueries });
+  const { data: myIncidents } = useQuery({
+    ...queries.incidents.my(),
+    enabled: !!user,
+  });
 
-    Promise.all([
-      Promise.all(schedulePromises).then((r) => r.flat()),
-      api.get<unknown[]>('/incidents/my').catch(() => []),
-      Promise.all(ppPromises).then((r) => r.flat()),
-    ])
-      .then(([scheds, myIncidents, pps]) => {
-        setSchedules(scheds);
-        setOpenCount((myIncidents as { status?: string }[]).filter((i) => i.status === 'OPEN').length);
-        setPpCount(pps.length);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [user]);
+  const schedules = scheduleResults.flatMap((q) => {
+    const data = q.data;
+    if (data && 'data' in data) return data.data as CollectionSchedule[];
+    return [];
+  });
+  const ppCount = ppResults.reduce((sum, q) => {
+    const data = q.data;
+    if (Array.isArray(data)) return sum + data.length;
+    return sum;
+  }, 0);
+  const openCount = (myIncidents ?? []).filter((i) => i.status === 'OPEN').length;
+  const loading = scheduleResults.some((q) => q.isLoading) || ppResults.some((q) => q.isLoading);
 
   // Next schedule
   const nextSchedule = schedules

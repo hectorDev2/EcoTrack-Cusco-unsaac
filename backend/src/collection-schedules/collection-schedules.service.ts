@@ -7,24 +7,34 @@ import { UpdateScheduleDto } from './dto/update-schedule.dto';
 export class CollectionSchedulesService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(zoneId?: string, wasteTypeId?: string) {
-    const where: any = {};
+  async findAll(zoneId?: string, wasteTypeId?: string, page = 1, limit = 10) {
+    const where: any = { status: 'ACTIVE' };
     if (zoneId) where.zoneId = zoneId;
     if (wasteTypeId) where.wasteTypeId = wasteTypeId;
 
-    return this.prisma.collectionSchedule.findMany({
-      where,
-      include: {
-        zone: { select: { id: true, name: true } },
-        wasteType: { select: { id: true, name: true, category: true } },
-      },
-      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
-    });
+    const [data, total] = await Promise.all([
+      this.prisma.collectionSchedule.findMany({
+        where,
+        include: {
+          zone: { select: { id: true, name: true } },
+          wasteType: { select: { id: true, name: true, category: true } },
+        },
+        orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.collectionSchedule.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOne(id: string) {
-    const schedule = await this.prisma.collectionSchedule.findUnique({
-      where: { id },
+    const schedule = await this.prisma.collectionSchedule.findFirst({
+      where: { id, status: 'ACTIVE' },
       include: {
         zone: { select: { id: true, name: true } },
         wasteType: { select: { id: true, name: true, category: true } },
@@ -58,6 +68,9 @@ export class CollectionSchedulesService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prisma.collectionSchedule.delete({ where: { id } });
+    return this.prisma.collectionSchedule.update({
+      where: { id },
+      data: { status: 'INACTIVE' },
+    });
   }
 }

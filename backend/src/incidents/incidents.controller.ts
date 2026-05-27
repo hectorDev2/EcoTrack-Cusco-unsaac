@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IncidentsService } from './incidents.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
@@ -7,22 +8,29 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
+@ApiTags('Incidents')
 @Controller('incidents')
 export class IncidentsController {
   constructor(private incidentsService: IncidentsService) {}
 
+  @ApiOperation({ summary: 'Get my incidents' })
+  @ApiBearerAuth()
   @Get('my')
   @UseGuards(JwtAuthGuard)
   findMy(@CurrentUser('id') userId: string) {
     return this.incidentsService.findByUser(userId);
   }
 
+  @ApiOperation({ summary: 'Create a new incident' })
+  @ApiBearerAuth()
   @Post()
   @UseGuards(JwtAuthGuard)
   create(@Body() dto: CreateIncidentDto, @CurrentUser('id') userId: string) {
     return this.incidentsService.create(dto, userId);
   }
 
+  @ApiOperation({ summary: 'Get all incidents (admin)' })
+  @ApiBearerAuth()
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
@@ -30,12 +38,16 @@ export class IncidentsController {
     return this.incidentsService.findAll(status);
   }
 
+  @ApiOperation({ summary: 'Get incident by ID' })
+  @ApiBearerAuth()
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string) {
     return this.incidentsService.findOne(id);
   }
 
+  @ApiOperation({ summary: 'Update incident (admin)' })
+  @ApiBearerAuth()
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

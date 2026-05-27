@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   title: "Eco Track Cusco - UNSAAC",
   description:
     "Sistema inteligente de recolección de residuos para Cusco, con monitoreo en tiempo real y participación ciudadana.",
+  manifest: "/manifest.json",
+  other: {
+    "theme-color": "#154212",
+  },
 };
 
 export default function RootLayout({
@@ -27,6 +31,11 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var e=localStorage.getItem('theme');if(e==='dark'||(e!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(function(){})`,
           }}
         />
         <link

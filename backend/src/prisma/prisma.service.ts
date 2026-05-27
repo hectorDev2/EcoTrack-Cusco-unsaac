@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { PrismaLibSQL } from '@prisma/adapter-libsql';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -10,8 +11,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     if (dbUrl.startsWith('file:') || !tursoUrl) {
       super();
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { PrismaLibSQL } = require('@prisma/adapter-libsql');
       super({
         adapter: new PrismaLibSQL({
           url: tursoUrl,

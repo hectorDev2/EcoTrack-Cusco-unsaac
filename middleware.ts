@@ -27,6 +27,7 @@ const roleRoutes: Record<string, Role> = {
   '/usuarios': 'ADMIN',
   '/configuracion': 'ADMIN',
   '/admin-rutas': 'ADMIN',
+  '/admin-zonas': 'ADMIN',
   '/admin-residuos': 'ADMIN',
   '/conductor': 'DRIVER',
   '/inicio': 'CITIZEN',
@@ -45,7 +46,7 @@ const roleHome: Record<Role, string> = {
   DRIVER: '/conductor/dashboard',
 };
 
-const publicRoutes = ['/auth/login', '/auth/register', '/'];
+const publicRoutes = ['/auth/login', '/auth/register', '/api/auth', '/'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

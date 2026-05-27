@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { queries, queryKeys } from '@/lib/queries';
 import type { Incident } from '@/lib/types';
 
 interface DashboardData {
@@ -44,16 +45,12 @@ function getTimeAgo(dateStr: string): string {
 }
 
 export default function AdminDashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading: loading, error: queryError } = useQuery({
+    queryKey: queryKeys.admin.dashboard(),
+    queryFn: () => api.get<DashboardData>('/admin/dashboard'),
+  });
 
-  useEffect(() => {
-    api.get<DashboardData>('/admin/dashboard')
-      .then(setData)
-      .catch((err) => setError(err.message ?? 'Error al cargar dashboard'))
-      .finally(() => setLoading(false));
-  }, []);
+  const error = queryError ? (queryError as { message?: string }).message ?? 'Error al cargar dashboard' : null;
 
   return (
     <>

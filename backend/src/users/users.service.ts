@@ -42,7 +42,7 @@ export class UsersService {
         passwordHash,
         fullName: dto.fullName,
         role: dto.role ?? 'CITIZEN',
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       },
       select: userSelect,
     });
@@ -206,7 +206,7 @@ export class UsersService {
         data: dto.zoneIds.map((zoneId) => ({
           userId: id,
           zoneId,
-          assignedAt: new Date().toISOString(),
+          assignedAt: new Date(),
         })),
       });
     }

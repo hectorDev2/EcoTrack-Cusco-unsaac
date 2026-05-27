@@ -15,7 +15,7 @@ export class VehiclesService {
         model: dto.model ?? null,
         capacity: dto.capacity ?? null,
         driverId: dto.driverId ?? null,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       },
       include: { driver: { select: { id: true, fullName: true, email: true } } },
     });

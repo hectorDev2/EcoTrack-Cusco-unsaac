@@ -30,7 +30,7 @@ export class ZonesService {
     return this.prisma.zone.create({
       data: {
         ...dto,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       },
     });
   }

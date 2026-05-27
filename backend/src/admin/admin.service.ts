@@ -111,7 +111,7 @@ export class AdminService {
       .filter((i) => new Date(i.createdAt) >= thirtyDaysAgo)
       .reduce(
         (acc, i) => {
-          const day = i.createdAt.slice(0, 10);
+          const day = new Date(i.createdAt).toISOString().slice(0, 10);
           acc[day] = (acc[day] ?? 0) + 1;
           return acc;
         },

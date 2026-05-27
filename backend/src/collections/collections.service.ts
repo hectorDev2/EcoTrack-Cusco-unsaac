@@ -28,7 +28,7 @@ export class CollectionsService {
       data: {
         routeStopId: dto.routeStopId,
         wasteTypeId: dto.wasteTypeId,
-        collectedAt: new Date().toISOString(),
+        collectedAt: new Date(),
         notes: dto.notes ?? null,
       },
       include: {

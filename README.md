@@ -2,8 +2,10 @@
 
 Sistema inteligente de recolección de residuos para Cusco, con monitoreo en tiempo real y participación ciudadana.
 
-**Frontend:** Next.js 16 · App Router · React 19 · Tailwind CSS v4 \
-**Backend:** NestJS 11 · TypeScript · Prisma · SQLite / Turso (libSQL) — ver [`backend/README.md`](backend/README.md)
+**Frontend:** Next.js 16 · App Router · React 19 · Tailwind CSS v4 · TanStack Query · PWA \
+**Backend:** NestJS 11 · TypeScript · Prisma · SQLite / Turso (libSQL) · Swagger \
+**Auth:** JWT con Passport (backend) + middleware edge + guards por rol + httpOnly cookies \
+**Tracking:** GPS en tiempo real con geolocation API + polling en mapa admin
 
 ---
 
@@ -20,6 +22,9 @@ cd backend && npm run start:dev
 
 # Seed (recrea datos de prueba)
 cd backend && npm run prisma:seed
+
+# Documentación Swagger
+# http://localhost:3001/docs
 ```
 
 ---
@@ -62,45 +67,67 @@ Web Service desde dashboard de Render:
 
 ---
 
-## Estado del proyecto
+## Estado del proyecto — MVP
 
 ### Backend — API REST (+30 endpoints)
 
 | Módulo | Endpoints | Status |
 |--------|-----------|--------|
-| `Auth` | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PATCH /auth/me` | ✅ Completo |
-| `Users` | CRUD + `GET /users/me`, `GET /users/stats`, `PATCH /users/:id/zones` | ✅ Completo |
-| `Zones` | CRUD (GET público, resto ADMIN) | ✅ Completo |
-| `PickupPoints` | CRUD con filtro `?zoneId=` (GET público, resto ADMIN) | ✅ Completo |
-| `Schedules` | CRUD con filtros `?zoneId=&wasteTypeId=` (GET público, resto ADMIN) | ✅ Completo |
-| `Incidents` | `POST /incidents`, `GET /incidents/my`, CRUD admin con filtro `?status=` | ✅ Completo |
-| `Routes` | CRUD + `GET /routes/fleet`, `GET /routes/my`, `GET /routes/zone/:zoneId` | ✅ Completo |
-| `Admin` | `GET /admin/dashboard`, `GET /admin/analytics` — datos agregados | ✅ Completo |
-| `WasteType` | CRUD (GET público, ADMIN create/update/delete) | ✅ Completo |
-| `Collections` | Modelo en Prisma, **sin endpoints públicos** | 🔜 Pendiente |
+| `Auth` | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PATCH /auth/me` | ✅ |
+| `Users` | CRUD + `GET /users/me`, `GET /users/stats`, `PATCH /users/:id/zones` | ✅ |
+| `Zones` | CRUD (GET público, resto ADMIN) | ✅ |
+| `PickupPoints` | CRUD con filtro `?zoneId=` (GET público, resto ADMIN) | ✅ |
+| `Schedules` | CRUD con filtros `?zoneId=&wasteTypeId=` (GET público, resto ADMIN) | ✅ |
+| `Incidents` | `POST /incidents`, `GET /incidents/my`, CRUD admin con filtro `?status=` | ✅ |
+| `Routes` | CRUD + `GET /routes/fleet`, `GET /routes/my`, `GET /routes/zone/:zoneId` | ✅ |
+| `Admin` | `GET /admin/dashboard`, `GET /admin/analytics` | ✅ |
+| `WasteType` | CRUD (GET público, ADMIN create/update/delete) | ✅ |
+| `Collections` | `POST /collections` (conductor) | ✅ |
 
 ### Frontend — Páginas conectadas a API real
 
 | Página | Ruta | Status |
 |--------|------|--------|
-| Registro | `/` | ✅ `POST /auth/register` |
-| Login | `/auth/login` | ✅ `POST /auth/login` |
-| Perfil | `/perfil` | ✅ Edición datos + horarios/rutas activas por zona |
-| Inicio ciudadano | `/inicio` | ✅ Próxima recolección, incidencias activas |
-| Mapa | `/mapa` | ✅ MapLibre GL con pickup points |
-| Horarios | `/recoleccion` | ✅ `GET /schedules`, `GET /zones` |
-| Puntos de recojo | `/puntos-recojo` | ✅ `GET /pickup-points`, `GET /zones` |
-| Reportar incidencia | `/reportar` | ✅ `POST /incidents` |
-| Mis incidencias | `/incidencias` | ✅ `GET /incidents/my` |
-| Dashboard admin | `/dashboard` | ✅ `GET /admin/dashboard` |
-| Flota | `/flota` | ✅ Mapa + click en card centra ruta |
-| Usuarios | `/usuarios` | ✅ `GET /users` + paginación |
-| Incidencias admin | `/admin-incidencias` | ✅ `GET /incidents` + `PATCH /incidents/:id` |
-| Analíticas | `/analisis` | ✅ `GET /admin/analytics` |
-| Gestión rutas | `/admin-rutas` | ✅ Trazado en mapa con OSRM |
-| Panel conductor | `/conductor/*` | ✅ Dashboard + mapa + paradas + recolección |
-| Configuración | `/configuracion` | 🔜 Solo estado local |
-| Catálogo residuos | `/residuos` | ✅ Catálogo ciudadano por categoría |
+| Onboarding / Registro | `/` | ✅ |
+| Login | `/auth/login` | ✅ |
+| Perfil | `/perfil` | ✅ |
+| Inicio ciudadano | `/inicio` | ✅ |
+| Mapa | `/mapa` | ✅ |
+| Horarios | `/recoleccion` | ✅ |
+| Puntos de recojo | `/puntos-recojo` | ✅ |
+| Reportar incidencia | `/reportar` | ✅ |
+| Mis incidencias | `/incidencias` | ✅ |
+| Dashboard admin | `/dashboard` | ✅ |
+| Flota | `/flota` | ✅ |
+| Usuarios | `/usuarios` | ✅ |
+| Incidencias admin | `/admin-incidencias` | ✅ |
+| Analíticas | `/analisis` | ✅ |
+| Gestión rutas | `/admin-rutas` | ✅ |
+| Panel conductor | `/conductor/*` | ✅ |
+| Configuración | `/configuracion` | 🔜 |
+| Catálogo residuos | `/residuos` | ✅ |
+| Registro ciudadano | `/auth/register` | ✅ |
+| Zonas (admin) | `/admin-zonas` | ✅ CRUD completo |
+| Tracking GPS conductor | `/conductor/ruta` | ✅ Envío cada 15s/20m |
+| Mapa en vivo | `/flota` | ✅ Posiciones de conductores en tiempo real |
+
+### Mejoras arquitectónicas implementadas
+
+| Mejora | Status |
+|--------|--------|
+| TanStack Query — fetching con caché y stale-while-revalidate | ✅ |
+| Swagger / OpenAPI — documentación interactiva en `/docs` | ✅ |
+| Paginación en listas críticas (`incidents`, `schedules`, `users`) | ✅ |
+| Fechas como `DateTime` nativo de Prisma (antes `String`) | ✅ |
+| Soft-delete consistente en todos los módulos | ✅ |
+| `CurrentUser` decorator con tipado fuerte y validación | ✅ |
+| `PrismaService` sin `require()` dinámico | ✅ |
+| PWA — manifest + service worker para instalación en celular | ✅ |
+| Tracking GPS — conductor envía posición cada 15s/20m | ✅ |
+| Mapa en vivo — admin ve posiciones en tiempo real en `/flota` | ✅ |
+| JWT httpOnly cookie — login/register via API route proxy | ✅ |
+| Página `/auth/register` dedicada | ✅ |
+| CRUD zonas admin (`/admin-zonas`) | ✅ |
 
 ### Seguridad
 
@@ -113,10 +140,30 @@ Web Service desde dashboard de Render:
 
 ---
 
-## Próximos pasos prioritarios
+## Lo que falta del MVP
 
-1. **Configuración persistente** — Guardar configuración del sistema en backend
-2. **Paginación** — Agregar skip/take a listas del backend (solo `/users` tiene)
+### Backlog pendiente
+
+| ID | Tarea | Prioridad |
+|----|-------|-----------|
+| BE-57 | `GET/POST /waste-types/:id/classify` — clasificar residuo específico | Baja |
+| FE-12 | JWT en cookie `httpOnly` via API route (hoy en localStorage) | Alta |
+| FE-10 | Página `/auth/register` dedicada (hoy todo en `/`) | Media |
+| FE-51 | `admin/zonas` — CRUD de zonas con página admin dedicada | Media |
+| FE-54 | `StatusBadge` — componente reutilizable de badges | Baja |
+| FE-03 | Componentes base reutilizables (`Button`, `Input`, `Card`, `Spinner`) | Media |
+
+### Crítico para producción
+
+| Aspecto | Estado |
+|---------|--------|
+| Tests automatizados | ❌ Cero tests (unitarios, e2e, frontend) |
+| Refresh token | ❌ Solo JWT único de 7 días |
+| Rate limiting / Helmet | ❌ Sin protección contra fuerza bruta |
+| CI/CD pipeline | ❌ Sin GitHub Actions |
+| Error boundaries | ❌ Sin captura de errores en frontend |
+| Logging estructurado | ❌ Sin Pino/Winston |
+| Monitorización | ❌ Sin Sentry o similar |
 
 ---
 
@@ -163,14 +210,18 @@ Paleta verde tierra inspirada en los Andes, Nunito Sans, esquinas redondeadas, s
 ```
 app/
 ├── globals.css
-├── layout.tsx              ← Root layout con Providers (Auth)
-├── page.tsx                ← Registro ciudadano
-├── providers.tsx           ← AuthProvider global
-├── middleware.ts           ← Edge auth middleware
+├── layout.tsx              ← Root layout con Providers (Auth + Query)
+├── page.tsx                ← Onboarding (Crear cuenta / Iniciar sesión)
+├── providers.tsx           ← AuthProvider + QueryProvider
+├── middleware.ts           ← Edge auth middleware (JWT decode + redirect)
 ├── dev-nav.tsx             ← Navegación dev oculta
+├── api/auth/
+│   ├── login/route.ts      ← Proxy login → httpOnly cookie
+│   ├── register/route.ts   ← Proxy register → httpOnly cookie
+│   └── logout/route.ts     ← Limpia cookie
 ├── auth/
-│   ├── layout.tsx
-│   └── login/page.tsx
+│   ├── login/page.tsx
+│   └── register/page.tsx
 ├── (citizen)/
 │   ├── layout.tsx          ← AuthGuard ciudadano (bottom tabs)
 │   ├── inicio/             ← Dashboard ciudadano
@@ -197,6 +248,8 @@ conductor/
 lib/
 ├── api.ts                  ← HTTP client con JWT interceptor
 ├── auth-context.tsx        ← AuthProvider + useAuth hook
+├── queries.ts              ← TanStack Query factory + query keys
+├── query-provider.tsx      ← QueryClientProvider wrapper
 └── types.ts                ← Interfaces compartidas
 components/
 ├── map-view.tsx             ← Mapa interactivo (MapLibre GL)
@@ -212,14 +265,14 @@ backend/
 │   ├── users/              ← CRUD + stats + zone assignment
 │   ├── zones/              ← CRUD zonas
 │   ├── pickup-points/      ← CRUD puntos de recojo
-│   ├── collection-schedules/ ← CRUD horarios
+│   ├── collection-schedules/ ← CRUD horarios (soft-delete)
 │   ├── incidents/          ← Reportes ciudadanos + gestión admin
 │   ├── routes/             ← CRUD rutas + fleet overview
 │   ├── admin/              ← Dashboard aggregator
 │   ├── prisma/             ← PrismaService (dual SQLite/Turso)
 │   └── common/             ← Guards, decorators, filters, pipes
 ├── prisma/
-│   ├── schema.prisma       ← 10 modelos
+│   ├── schema.prisma       ← 10 modelos (fechas DateTime)
 │   └── seed.ts             ← Datos de prueba
 └── README.md
 ```

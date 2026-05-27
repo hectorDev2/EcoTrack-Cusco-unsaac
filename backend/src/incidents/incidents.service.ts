@@ -22,7 +22,7 @@ export class IncidentsService {
         latitude: dto.latitude ?? null,
         longitude: dto.longitude ?? null,
         address: dto.address ?? null,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       },
       include: incidentInclude,
     });
@@ -36,15 +36,25 @@ export class IncidentsService {
     });
   }
 
-  async findAll(status?: string) {
+  async findAll(status?: string, page = 1, limit = 10) {
     const where: any = {};
     if (status) where.status = status;
 
-    return this.prisma.incident.findMany({
-      where,
-      include: incidentInclude,
-      orderBy: { createdAt: 'desc' },
-    });
+    const [data, total] = await Promise.all([
+      this.prisma.incident.findMany({
+        where,
+        include: incidentInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.incident.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOne(id: string) {

@@ -37,11 +37,11 @@ async function main() {
   console.log('✅ Base de datos limpia\n');
 
   const passwordHash = await bcrypt.hash('123456', 10);
-  const now = new Date().toISOString();
+  const now = new Date();
   const day = (n: number) =>
-    new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+    new Date(Date.now() - n * 24 * 60 * 60 * 1000);
   const hour = (n: number) =>
-    new Date(Date.now() - n * 60 * 60 * 1000).toISOString();
+    new Date(Date.now() - n * 60 * 60 * 1000);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // USUARIOS
@@ -690,8 +690,8 @@ async function main() {
     zoneName: string;
     driverId: string;
     status: string;
-    startedAt: string | null;
-    finishedAt: string | null;
+    startedAt: Date | null;
+    finishedAt: Date | null;
     completedStopIndices: number[];
   }[] = [
     {

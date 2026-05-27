@@ -28,7 +28,7 @@ export class AuthService {
         passwordHash,
         fullName: dto.fullName,
         role: dto.role ?? 'CITIZEN',
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       },
       select: { id: true, email: true, fullName: true, role: true, createdAt: true },
     });

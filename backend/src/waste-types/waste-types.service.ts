@@ -19,7 +19,7 @@ export class WasteTypesService {
 
   async create(dto: CreateWasteTypeDto) {
     return this.prisma.wasteType.create({
-      data: { ...dto, createdAt: new Date().toISOString() },
+      data: { ...dto, createdAt: new Date() },
     });
   }
 

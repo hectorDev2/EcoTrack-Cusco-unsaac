@@ -1,30 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { queries } from '@/lib/queries';
 import { PickupPointCard } from '@/components/pickup-point-card';
-import type { Zone, PickupPoint } from '@/lib/types';
 
 export default function PuntosRecojoPage() {
-  const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState('');
-  const [points, setPoints] = useState<PickupPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.get<Zone[]>('/zones')
-      .then((data) => setZones(data))
-      .catch(() => setError('Error al cargar zonas'))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    const params = selectedZone ? `?zoneId=${selectedZone}` : '';
-    api.get<PickupPoint[]>(`/pickup-points${params}`)
-      .then(setPoints)
-      .catch(() => setError('Error al cargar puntos de recojo'));
-  }, [selectedZone]);
+  const { data: zones = [] } = useQuery(queries.zones.all());
+  const { data: points = [], isLoading } = useQuery(queries.pickupPoints.all(selectedZone || undefined));
 
   return (
     <div className="p-6">
@@ -35,13 +20,6 @@ export default function PuntosRecojoPage() {
         <p className="text-[14px] leading-[20px] text-on-surface-variant mb-6">
           Encontrá los puntos de recolección cercanos a tu zona.
         </p>
-
-        {error && (
-          <div className="mb-4 bg-status-alert/10 border border-status-alert/30 rounded-xl p-4 flex items-center gap-3">
-            <span className="material-symbols-outlined text-status-alert text-sm">error</span>
-            <p className="text-status-alert text-sm font-bold">{error}</p>
-          </div>
-        )}
 
         <div className="mb-6">
           <label className="text-[11px] leading-[14px] tracking-[0.08em] font-bold text-on-surface-variant uppercase block mb-2">

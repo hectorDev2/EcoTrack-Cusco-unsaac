@@ -1,21 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { queries } from '@/lib/queries';
 import { IncidentCard } from '@/components/incident-card';
-import type { Incident } from '@/lib/types';
 
 export default function IncidenciasPage() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.get<Incident[]>('/incidents/my')
-      .then(setIncidents)
-      .catch(() => setError('Error al cargar incidencias'))
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { data: incidents = [], isLoading, error } = useQuery(queries.incidents.my());
 
   return (
     <div className="p-6">
@@ -30,7 +20,7 @@ export default function IncidenciasPage() {
         {error && (
           <div className="mb-4 bg-status-alert/10 border border-status-alert/30 rounded-xl p-4 flex items-center gap-3">
             <span className="material-symbols-outlined text-status-alert text-sm">error</span>
-            <p className="text-status-alert text-sm font-bold">{error}</p>
+            <p className="text-status-alert text-sm font-bold">{(error as Error).message ?? 'Error al cargar incidencias'}</p>
           </div>
         )}
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { queries } from '@/lib/queries';
 import type { WasteType } from '@/lib/types';
 
 const categoryConfig: Record<string, { icon: string; color: string; label: string; examples: string }> = {
@@ -12,15 +12,7 @@ const categoryConfig: Record<string, { icon: string; color: string; label: strin
 };
 
 export default function ResiduosPage() {
-  const [items, setItems] = useState<WasteType[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<WasteType[]>('/waste-types')
-      .then(setItems)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: items = [], isLoading: loading } = useQuery(queries.wasteTypes.all());
 
   const grouped = items.reduce((acc, wt) => {
     if (!acc[wt.category]) acc[wt.category] = [];

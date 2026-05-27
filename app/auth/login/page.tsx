@@ -111,6 +111,18 @@ function LoginForm() {
             )}
           </button>
         </form>
+
+        <p className="mt-6 text-center">
+          <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant">
+            ¿No tienes cuenta?{' '}
+          </span>
+          <a
+            className="text-primary hover:underline text-[12px] leading-[16px] tracking-[0.05em] font-bold cursor-pointer"
+            onClick={() => router.push('/auth/register')}
+          >
+            Regístrate
+          </a>
+        </p>
       </div>
     </div>
   );
