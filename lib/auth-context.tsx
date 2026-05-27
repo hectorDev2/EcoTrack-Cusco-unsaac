@@ -11,6 +11,8 @@ import {
 import { api, ApiClientError, setToken, clearToken, getToken } from './api';
 import type { User } from './types';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -57,14 +59,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, isLoading: true, error: null }));
 
     try {
-      const res = await api.post<{
-        user: User;
-        accessToken: string;
-      }>('/auth/login', { email, password });
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      setToken(res.accessToken);
-      setState({ user: res.user, isLoading: false, error: null });
-      return res.user;
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new ApiClientError(res.status, data.message ?? 'Error al iniciar sesión', data);
+      }
+
+      setToken(data.accessToken);
+      setState({ user: data.user, isLoading: false, error: null });
+      return data.user;
     } catch (err) {
       const message =
         err instanceof ApiClientError
@@ -75,7 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     clearToken();
     setState({ user: null, isLoading: false, error: null });
   }, []);
