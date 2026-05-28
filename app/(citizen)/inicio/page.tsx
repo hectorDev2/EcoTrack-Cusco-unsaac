@@ -126,7 +126,7 @@ export default function InicioPage() {
       </header>
 
       <main className="px-5 pt-6 space-y-6 max-w-2xl mx-auto pb-32">
-        <section className="space-y-1">
+        <section className="space-y-1 animate-fade-in-up stagger-1">
           <h2 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-primary">
             ¡Hola, {firstName}!
           </h2>
@@ -142,7 +142,7 @@ export default function InicioPage() {
         )}
 
         {!loading && nextSchedule && (
-          <div className="relative overflow-hidden rounded-xl bg-primary-container p-6 text-on-primary-container shadow-xl shadow-primary/20 flex flex-col gap-4 border border-white/10 active:scale-95 transition-transform duration-200 cursor-pointer">
+          <div className="relative overflow-hidden rounded-xl bg-primary-container p-6 text-on-primary-container shadow-xl shadow-primary/20 flex flex-col gap-4 border border-white/10 active:scale-95 transition-transform duration-200 cursor-pointer animate-fade-in-up stagger-2">
             <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 bg-white/5 rounded-full blur-3xl" />
             <div className="flex justify-between items-start">
               <div className="flex flex-col gap-1">
@@ -186,7 +186,7 @@ export default function InicioPage() {
         )}
 
         {todaySchedule && (
-          <section className="bg-surface-container-low rounded-xl p-4 border border-outline-variant/30">
+          <section className="bg-surface-container-low rounded-xl p-4 border border-outline-variant/30 animate-fade-in-up stagger-3">
             <div className="flex gap-4 items-start">
               <div className={`p-2 rounded-lg ${wasteColors[todaySchedule.wasteType?.category ?? ''] ?? 'bg-primary/10'}`}>
                 <span className="material-symbols-outlined">{wasteIcons[todaySchedule.wasteType?.category ?? ''] ?? 'delete'}</span>
@@ -205,7 +205,7 @@ export default function InicioPage() {
         )}
 
         {/* Quick actions */}
-        <section className="grid grid-cols-2 gap-4">
+        <section className="grid grid-cols-2 gap-4 animate-fade-in-up stagger-4">
           <button onClick={() => router.push('/recoleccion')}
             className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-container-highest rounded-xl hover:bg-primary/5 transition-all border border-transparent hover:border-primary-fixed active:scale-95 duration-200">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -242,7 +242,7 @@ export default function InicioPage() {
         </section>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 animate-fade-in-up stagger-5">
           <div className="bg-surface-card rounded-xl p-4 border border-outline-variant/20 text-center">
             <p className="text-[24px] leading-[32px] font-bold text-primary">{ppCount}</p>
             <p className="text-[11px] text-on-surface-variant">Puntos de recojo</p>
@@ -255,7 +255,7 @@ export default function InicioPage() {
 
         {/* Incidencias activas */}
         {openCount > 0 && (
-          <section className="bg-status-alert/5 rounded-xl p-4 border border-status-alert/20">
+          <section className="bg-status-alert/5 rounded-xl p-4 border border-status-alert/20 animate-fade-in-up stagger-6">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-status-alert">warning</span>
               <div>

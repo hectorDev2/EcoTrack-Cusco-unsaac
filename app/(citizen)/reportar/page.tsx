@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiClientError } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
 
@@ -20,10 +21,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
 }
 
 export default function ReportarPage() {
+  const { addToast } = useToast();
   const [type, setType] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locating, setLocating] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
@@ -83,7 +84,7 @@ export default function ReportarPage() {
         longitude: longitude ?? undefined,
         address: address || undefined,
       });
-      setSuccess(true);
+      addToast('success', '¡Reporte enviado con éxito! Tu incidencia ha sido registrada.');
       setType('');
       setDescription('');
       setLatitude(null);
@@ -92,8 +93,10 @@ export default function ReportarPage() {
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);
+        addToast('error', err.message);
       } else {
         setError('Error al enviar el reporte');
+        addToast('error', 'Error al enviar el reporte');
       }
     } finally {
       setIsSubmitting(false);
@@ -128,31 +131,6 @@ export default function ReportarPage() {
             Reportar Incidencia
           </h2>
         </div>
-
-        {success && (
-          <div className="mb-6 p-4 bg-primary-container text-on-primary-container rounded-lg border border-primary/20 flex items-center gap-4">
-            <span
-              className="material-symbols-outlined text-primary-fixed-dim"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              check_circle
-            </span>
-            <div className="flex-grow">
-              <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">
-                ¡Reporte enviado con éxito!
-              </p>
-              <p className="text-[14px] leading-[20px] opacity-90">
-                Tu incidencia ha sido registrada.
-              </p>
-            </div>
-            <button
-              onClick={() => setSuccess(false)}
-              className="text-on-primary-container/60 hover:text-on-primary-container"
-            >
-              <span className="material-symbols-outlined">close</span>
-            </button>
-          </div>
-        )}
 
         {error && (
           <div className="mb-6 bg-status-alert/10 border border-status-alert/30 rounded-xl p-4 flex items-center gap-3">

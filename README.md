@@ -140,15 +140,97 @@ Web Service desde dashboard de Render:
 
 ---
 
+## UI Components
+
+Documentación interactiva en `/components`
+
+### Imports
+
+```tsx
+// Componentes
+import { Button, Badge, Spinner, Card, Input, Avatar } from '@/components/ui';
+import { ErrorBoundary, RetryError, OfflineBanner } from '@/components/ui';
+import { Skeleton, SkeletonText, SkeletonCard, SkeletonList } from '@/components/ui';
+
+// Hooks
+import { useToast } from '@/hooks/use-toast';
+import { useOfflineStatus } from '@/hooks/use-offline-status';
+
+// Tokens
+import { WASTE_CATEGORY_COLORS, WASTE_CATEGORY_LABELS } from '@/lib/waste-colors';
+import { STATUS_CONFIG, INCIDENT_TYPE_LABELS } from '@/lib/status';
+```
+
+### Componentes (`components/ui/`)
+
+| Componente | Props | Descripción |
+|-----------|-------|-------------|
+| `Button` | `variant`, `size`, `loading`, `icon`, `iconRight`, `disabled` | 4 variantes, 3 tamaños |
+| `Badge` | `variant`, `color`, `children` | Auto-detecta status/role/waste |
+| `Spinner` | `size` | sm/md/lg |
+| `Card` | `padding`, `accent`, `className` | 4 tamaños, acentos con borde |
+| `Input` | `label`, `error`, `helper`, `disabled` | Estados normal/error/disabled |
+| `Avatar` | `name`, `src`, `size` | Initiales automáticas, fallback imagen |
+| `Skeleton` | `className` | Bloque base para estados de carga |
+| `SkeletonText` | `lines`, `className` | Líneas de texto animado |
+| `SkeletonCard` | `className` | Tarjeta simulada completa |
+| `SkeletonList` | `count` | Lista deSkeletonCards |
+| `ErrorBoundary` | `fallback`, `onError` | Captura errores de React |
+| `RetryError` | `title`, `message`, `onRetry` | UI de error con retry async |
+| `OfflineBanner` | — | Fijo bottom cuando offline |
+
+### Hooks (`hooks/`)
+
+| Hook | Retorna | Descripción |
+|------|---------|-------------|
+| `useToast()` | `{ addToast, removeToast }` | Notificaciones 4 tipos |
+| `useOfflineStatus()` | `boolean` | `true` cuando offline |
+
+### Tokens (`lib/`)
+
+| Módulo | Exports | Uso |
+|--------|---------|-----|
+| `waste-colors.ts` | `WASTE_CATEGORY_COLORS`, `WASTE_CATEGORY_LABELS` | Colores para orgánicos, reciclables, etc |
+| `status.ts` | `STATUS_CONFIG`, `INCIDENT_TYPE_LABELS` | Labels para estados y tipos de incidente |
+
+### Uso rápido
+
+```tsx
+// Toast
+const { addToast } = useToast();
+addToast('success', 'Registro guardado');
+addToast('error', 'Error al procesar', 6000);
+
+// Offline status
+const isOffline = useOfflineStatus();
+
+// Skeleton loading
+<SkeletonList count={5} />
+<SkeletonCard />
+
+// Error boundary
+<ErrorBoundary fallback={<MyCustomError />}>
+  <MyFlakyComponent />
+</ErrorBoundary>
+
+// RetryError component
+<RetryError
+  title="Error al cargar"
+  message="No pudimos obtener los datos"
+  onRetry={fetchData}
+/>
+```
+
+---
+
 ## Lo que falta del MVP
 
 ### Backlog pendiente
 
-| ID | Tarea | Prioridad |
-|----|-------|-----------|
-| BE-57 | `GET/POST /waste-types/:id/classify` — clasificar residuo específico | Baja |
-| FE-54 | `StatusBadge` — componente reutilizable de badges | Baja |
-| FE-03 | Componentes base reutilizables (`Button`, `Input`, `Card`, `Spinner`) | Media |
+| ID | Tarea | Prioridad | Estado |
+|----|-------|-----------|--------|
+| BE-57 | `GET/POST /waste-types/:id/classify` — clasificar residuo específico | Baja | 🔜 |
+| FE-54 | `StatusBadge` — componente reutilizable de badges | Baja | 🔜 |
 
 ### Crítico para producción
 
@@ -158,7 +240,6 @@ Web Service desde dashboard de Render:
 | Refresh token | ❌ Solo JWT único de 7 días |
 | Rate limiting / Helmet | ❌ Sin protección contra fuerza bruta |
 | CI/CD pipeline | ❌ Sin GitHub Actions |
-| Error boundaries | ❌ Sin captura de errores en frontend |
 | Logging estructurado | ❌ Sin Pino/Winston |
 | Monitorización | ❌ Sin Sentry o similar |
 
@@ -187,10 +268,11 @@ Web Service desde dashboard de Render:
 | `/conductor/dashboard` | Panel del conductor — ruta del día + mapa | Requiere DRIVER |
 | `/conductor/mapa` | Mapa de ruta con paradas y trazado OSRM | Requiere DRIVER |
 | `/conductor/ruta` | Paradas y registro de recolección | Requiere DRIVER |
+| `/components` | Showcase de UI components | Público |
 
 ## Design System
 
-Paleta verde tierra inspirada en los Andes, Nunito Sans, esquinas redondeadas, sombras suaves.
+Paleta verde tierra inspirada en los Andes, Nunito Sans, Material Symbols, esquinas redondeadas, sombras suaves.
 
 | Token | Uso |
 |-------|-----|
@@ -201,27 +283,38 @@ Paleta verde tierra inspirada en los Andes, Nunito Sans, esquinas redondeadas, s
 | `waste-organic` (#4CAF50) | Residuos orgánicos |
 | `waste-recyclable` (#2196F3) | Residuos reciclables |
 | `waste-non-recyclable` (#757575) | Residuos no reciclables |
+| `status-alert` (#E76F51) | Estados críticos, alertas |
+
+### Animaciones
+
+| Clase | Efecto |
+|-------|--------|
+| `animate-fade-in-up` | Fade + slide-up 20px, 400ms ease-out |
+| `stagger-1` a `stagger-6` | Delays de 0ms a 500ms para efectos en cascada |
+| `slideIn` (Toast) | Slide desde la derecha para notificaciones |
 
 ## Estructura
 
 ```
 app/
 ├── globals.css
-├── layout.tsx              ← Root layout con Providers (Auth + Query)
+├── layout.tsx              ← Root layout con Providers
 ├── page.tsx                ← Onboarding (Crear cuenta / Iniciar sesión)
-├── providers.tsx           ← AuthProvider + QueryProvider
-├── middleware.ts           ← Edge auth middleware (JWT decode + redirect)
+├── providers.tsx           ← AuthProvider + QueryProvider + ToastProvider + OfflineBanner
+├── components/page.tsx     ← Showcase de UI components
+├── middleware.ts            ← Edge auth middleware (JWT decode + redirect)
 ├── dev-nav.tsx             ← Navegación dev oculta
 ├── api/auth/
 │   ├── login/route.ts      ← Proxy login → httpOnly cookie
 │   ├── register/route.ts   ← Proxy register → httpOnly cookie
-│   └── logout/route.ts     ← Limpia cookie
+│   └── logout/route.ts      ← Limpia cookie
 ├── auth/
 │   ├── login/page.tsx
 │   └── register/page.tsx
+├── components/             ← Showcase de UI components
 ├── (citizen)/
 │   ├── layout.tsx          ← AuthGuard ciudadano (bottom tabs)
-│   ├── inicio/             ← Dashboard ciudadano
+│   ├── inicio/             ← Dashboard ciudadano (con animaciones)
 │   ├── recoleccion/        ← Horarios por zona
 │   ├── puntos-recojo/      ← Puntos de recojo
 │   ├── reportar/           ← Formulario de incidencias
@@ -247,9 +340,26 @@ lib/
 ├── auth-context.tsx        ← AuthProvider + useAuth hook
 ├── queries.ts              ← TanStack Query factory + query keys
 ├── query-provider.tsx      ← QueryClientProvider wrapper
-└── types.ts                ← Interfaces compartidas
+├── types.ts                ← Interfaces compartidas
+├── waste-colors.ts         ← Tokens unificados para categorías de residuos
+└── status.ts              ← Configuración de estados y tipos de incidentes
+hooks/
+├── use-toast.ts            ← Re-export de useToast
+└── use-offline-status.ts  ← Detecta online/offline
 components/
-├── map-view.tsx             ← Mapa interactivo (MapLibre GL)
+├── ui/
+│   ├── Avatar.tsx           ← Initials fallback, sizes sm/md/lg
+│   ├── Badge.tsx            ← Auto-detecta status/role/waste
+│   ├── Button.tsx           ← 4 variantes, 3 tamaños, loading, icons
+│   ├── Card.tsx             ← Padding variants, accent borders
+│   ├── ErrorBoundary.tsx    ← Class component, retry on error
+│   ├── Input.tsx            ← Label, error, helper, disabled
+│   ├── OfflineBanner.tsx    ← Fixed bottom, wifi_off icon
+│   ├── RetryError.tsx       ← Async retry, loading state
+│   ├── Skeleton.tsx         ← Skeleton, SkeletonText, SkeletonCard, SkeletonList
+│   ├── Spinner.tsx          ← sm/md/lg sizes
+│   └── Toast.tsx            ← ToastProvider + useToast hook
+├── map-view.tsx             ← Mapa interactivo (MapLibre GL) con dark mode
 ├── logout-button.tsx
 ├── theme-toggle.tsx
 ├── schedule-card.tsx
@@ -263,16 +373,35 @@ backend/
 │   ├── zones/              ← CRUD zonas
 │   ├── pickup-points/      ← CRUD puntos de recojo
 │   ├── collection-schedules/ ← CRUD horarios (soft-delete)
-│   ├── incidents/          ← Reportes ciudadanos + gestión admin
+│   ├── incidents/           ← Reportes ciudadanos + gestión admin
 │   ├── routes/             ← CRUD rutas + fleet overview
 │   ├── admin/              ← Dashboard aggregator
 │   ├── prisma/             ← PrismaService (dual SQLite/Turso)
 │   └── common/             ← Guards, decorators, filters, pipes
 ├── prisma/
-│   ├── schema.prisma       ← 10 modelos (fechas DateTime)
-│   └── seed.ts             ← Datos de prueba
+│   ├── schema.prisma        ← 11 modelos (fechas DateTime)
+│   └── seed.ts              ← Datos de prueba
 └── README.md
 ```
+
+## Roadmap
+
+### Fase 1 — Quick wins ✅ COMPLETADO
+- [x] `components/ui/` — Button, Badge, Spinner, Toast
+- [x] `lib/waste-colors.ts` — tokens unificados para colores de residuos
+- [x] `lib/status.ts` — configuración de estados
+- [x] Staggered animations en dashboard ciudadano
+
+### Fase 2 — Impacto alto ✅ COMPLETADO
+- [x] Sistema de Toast/Notification centralizado (usado en reportar página)
+- [x] Dark mode refinado para mapa (MapLibre con dark-matter style + labels adaptativos)
+- [x] Showcase page `/components` para visualizar todos los UI components
+
+### Fase 3 — MVP completeness ✅ COMPLETADO
+- [x] Offline indicator visual (banner fijo cuando pierde conexión)
+- [x] Error boundary + RetryError component
+- [x] Loading skeletons: Skeleton, SkeletonText, SkeletonCard, SkeletonList
+- [x] Componentes: Input, Card, Avatar
 
 ## Usuarios por defecto
 
