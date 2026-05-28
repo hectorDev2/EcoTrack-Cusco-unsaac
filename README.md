@@ -147,9 +147,6 @@ Web Service desde dashboard de Render:
 | ID | Tarea | Prioridad |
 |----|-------|-----------|
 | BE-57 | `GET/POST /waste-types/:id/classify` — clasificar residuo específico | Baja |
-| FE-12 | JWT en cookie `httpOnly` via API route (hoy en localStorage) | Alta |
-| FE-10 | Página `/auth/register` dedicada (hoy todo en `/`) | Media |
-| FE-51 | `admin/zonas` — CRUD de zonas con página admin dedicada | Media |
 | FE-54 | `StatusBadge` — componente reutilizable de badges | Baja |
 | FE-03 | Componentes base reutilizables (`Button`, `Input`, `Card`, `Spinner`) | Media |
 
