@@ -9,19 +9,149 @@ Sistema inteligente de recolección de residuos para Cusco, con monitoreo en tie
 
 ---
 
+## Arquitectura
+
+### Flujo de datos
+
+```mermaid
+flowchart LR
+    subgraph Frontend["Frontend — Next.js 16"]
+        A["/"] --> B["/auth/login"]
+        A --> C["/auth/register"]
+        B --> D["Middleware Edge\nJWT decode + RBAC redirect"]
+        D --> E["Citizen\n/inicio"]
+        D --> F["Admin\n/dashboard"]
+        D --> G["Driver\n/conductor/*"]
+        E --> H["TanStack Query\nCaché + SWR"]
+        H --> I["API Routes\n/proxy auth"]
+        I --> J["Backend\nNestJS + Prisma"]
+        J --> K["Turso / SQLite\nEdge Database"]
+    end
+
+    subgraph Conductor["Conductor"]
+        L["GPS Tracking\nnavigator.geolocation"] --> M["POST /routes/:id/location\nCada 15-20s"]
+        M --> J
+        J --> N["Admin Flota\n/flota en tiempo real"]
+    end
+
+    subgraph Ciudadano["Ciudadano"]
+        O["Reportar\n/reportar"] --> H
+        H --> P["POST /incidents"]
+        P --> J
+    end
+```
+
+### Modelo de datos
+
+```mermaid
+erDiagram
+    User ||--o{ UserZone : "assigned"
+    User ||--o{ Route : "drives"
+    User ||--o{ Incident : "reports"
+
+    Zone ||--o{ UserZone : "has_users"
+    Zone ||--o{ PickupPoint : "contains"
+    Zone ||--o{ CollectionSchedule : "has"
+    Zone ||--o{ Route : "belongs_to"
+    Zone ||--o{ Incident : "located_in"
+
+    PickupPoint ||--o{ RouteStop : "is_stop_of"
+    RouteStop ||--|| Route : "belongs_to"
+    RouteStop ||--o{ Collection : "recorded_at"
+
+    Route ||--o{ RouteLocation : "tracked"
+    Route ||--|{ Vehicle : "assigned"
+
+    CollectionSchedule ||--|| WasteType : "collects"
+    Collection ||--|| WasteType : "type"
+
+    Incident ||--o| IncidentStatus : "has"
+```
+
+### Autenticación y autorización
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant F as Frontend
+    participant M as Middleware Edge
+    participant B as Backend
+
+    U->>F: POST /api/auth/login
+    F->>B: /auth/login {email, password}
+    B->>B: bcrypt.compare()
+    B->>F: JWT + Set-Cookie httpOnly
+    F->>M: Request con cookie
+    M->>M: Decodifica JWT
+    M->>M: Verifica rol
+
+    alt rol = ADMIN
+        M->>F: Redirige /dashboard
+    else rol = CITIZEN
+        M->>F: Redirige /inicio
+    else rol = DRIVER
+        M->>F: Redirige /conductor/dashboard
+    end
+
+    U->>F: Accede a ruta protegida
+    F->>M: Cookie JWT
+    M->>M: Decodifica + verifica rol
+    M->>B: Authorization: Bearer JWT
+    B->>B: JwtAuthGuard + RolesGuard
+    B-->>F: Datos reales
+```
+
+### GPS Tracking — Conductor
+
+```mermaid
+sequenceDiagram
+    participant D as Conductor App
+    participant G as Geolocation API
+    participant B as Backend
+    participant A as Admin Flota
+
+    D->>G: navigator.geolocation.getCurrentPosition()
+    G-->>D: { lat, lng, timestamp }
+    D->>D: Encola posición
+    D->>B: POST /routes/:id/location\n{ lat, lng }
+    B->>B: Prisma.routeLocation.create()
+    B-->>D: 201 Created
+
+    loop Every 5s (polling admin)
+        A->>B: GET /routes/fleet
+        B-->>A: [{ driverId, lat, lng, route }]
+    end
+```
+
+### Dark mode — Mapa adaptativo
+
+```mermaid
+flowchart TD
+    A["User activa Dark Mode"] --> B["classList.add('dark')"]
+    B --> C["MutationObserver\ndetecta cambio"]
+    C --> D["darkModeRef = true"]
+    D --> E["syncMarkers()\nsyncRoutes()"]
+    E --> F["createMarkerEl(darkMode)"]
+    F --> G["labelBg: #212120\nlabelText: #e5e2df"]
+    E --> H["map.setStyle()"]
+    H --> I["dark-matter-gl-style"]
+```
+
+---
+
 ## Desarrollo
 
 ```bash
 # Frontend (raíz del proyecto)
-npm run dev
+bun run dev
 # http://localhost:3000
 
 # Backend (directorio backend/)
-cd backend && npm run start:dev
+cd backend && bun run start:dev
 # http://localhost:3001
 
 # Seed (recrea datos de prueba)
-cd backend && npm run prisma:seed
+cd backend && bun run prisma:seed
 
 # Documentación Swagger
 # http://localhost:3001/docs
@@ -38,7 +168,7 @@ Conectar repo desde dashboard de Vercel. Framework se auto-detecta como Next.js.
 | Variable | Valor |
 |----------|-------|
 | `NEXT_PUBLIC_API_URL` | `https://tu-backend.onrender.com` |
-| Build Command | `npm run build` (default) |
+| Build Command | `bun run build` (default) |
 | Output | `.next` (default) |
 
 ### Backend → [Render](https://render.com)
@@ -48,9 +178,9 @@ Web Service desde dashboard de Render:
 | Campo | Valor |
 |-------|-------|
 | Root Directory | `backend` |
-| Build Command | `npm install && npm run build` |
-| Start Command | `npm run start:prod` |
-| Port | `3001` (o el que asigne Render via `PORT`) |
+| Build Command | `bun install && bun run build` |
+| Start Command | `bun run start` |
+| Port | `3001` |
 
 **Variables de entorno:**
 
@@ -63,7 +193,7 @@ Web Service desde dashboard de Render:
 | `CORS_ORIGINS` | `https://tu-frontend.vercel.app` |
 
 > ⚠️ **Importante:** Con Turso, el schema y los datos persisten independientemente del deploy.
-> Para seed inicial de Turso: `cd backend && npm run start:prod:seed` una sola vez.
+> Para seed inicial de Turso: `cd backend && bun run start:prod:seed` una sola vez.
 
 ---
 
@@ -107,7 +237,7 @@ Web Service desde dashboard de Render:
 | Configuración | `/configuracion` | 🔜 |
 | Catálogo residuos | `/residuos` | ✅ |
 | Registro ciudadano | `/auth/register` | ✅ |
-| Zonas (admin) | `/admin-zonas` | ✅ CRUD completo |
+| Zonas (admin) | `/admin-zonas` | ✅ |
 | Tracking GPS conductor | `/conductor/ruta` | ✅ Envío cada 15s/20m |
 | Mapa en vivo | `/flota` | ✅ Posiciones de conductores en tiempo real |
 
@@ -408,7 +538,7 @@ backend/
 Seed disponible en `backend/prisma/seed.ts`. Ejecutar con:
 
 ```bash
-cd backend && npm run prisma:seed
+cd backend && bun run prisma:seed
 ```
 
 | Email | Contraseña | Rol |
