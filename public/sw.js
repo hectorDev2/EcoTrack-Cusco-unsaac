@@ -1,18 +1,33 @@
-const CACHE = 'eco-track-v1';
+const CACHE = 'eco-track-v2';
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(['/', '/manifest.json'])),
+    Promise.all([
+      self.clients.claim(),
+      caches.delete('eco-track-v1'),
+    ]),
   );
 });
 
 self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  if (url.origin !== self.location.origin) return;
+  if (request.method !== 'GET') return;
+  if (url.pathname.startsWith('/api/')) return;
+  if (url.searchParams.has('_rsc')) return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
-        if (response.ok && event.request.method === 'GET') {
+    caches.match(request).then((cached) => {
+      const fetchPromise = fetch(request).then((response) => {
+        if (response.ok) {
           const clone = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE).then((cache) => cache.put(request, clone));
         }
         return response;
       });

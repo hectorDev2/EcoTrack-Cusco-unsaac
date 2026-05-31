@@ -47,3 +47,47 @@ export function formatDuration(seconds: number): string {
   const m = mins % 60;
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
+
+export interface PointDistance {
+  index: number;
+  distance: number;
+  duration: number;
+}
+
+export async function calculateDistances(
+  origin: { lng: number; lat: number },
+  destinations: { lng: number; lat: number }[],
+): Promise<PointDistance[]> {
+  if (destinations.length === 0) return [];
+
+  const coords = `${origin.lng},${origin.lat};${destinations.map((d) => `${d.lng},${d.lat}`).join(';')}`;
+  const url = `${OSRM_URL}/table/v1/driving/${coords}?sources=0&annotations=duration,distance`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.durations?.[0]) return [];
+
+    return data.durations[0].map((duration: number | null, i: number) => ({
+      index: i,
+      distance: data.distances?.[0]?.[i] ?? 0,
+      duration: duration ?? Infinity,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function findNearestByRoad(
+  origin: { lng: number; lat: number },
+  destinations: { lng: number; lat: number }[],
+): Promise<{ index: number; distance: number; duration: number } | null> {
+  const distances = await calculateDistances(origin, destinations);
+  if (distances.length === 0) return null;
+
+  let nearest = distances[0];
+  for (const d of distances) {
+    if (d.duration < nearest.duration) nearest = d;
+  }
+  return nearest;
+}

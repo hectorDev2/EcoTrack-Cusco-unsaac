@@ -65,7 +65,6 @@ export const api = {
 
 export function setToken(token: string) {
   localStorage.setItem('accessToken', token);
-  document.cookie = `auth_token=${token}; path=/; max-age=604800; SameSite=Lax`;
 }
 
 export function clearToken() {
