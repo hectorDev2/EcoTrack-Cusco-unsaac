@@ -47,8 +47,8 @@ export default function IncidenciasAdminPage() {
 
   const fetchIncidents = () => {
     setIsLoading(true);
-    api.get<Incident[]>('/incidents')
-      .then(setIncidents)
+    api.get<{ data: Incident[] }>('/incidents')
+      .then((res) => setIncidents(res.data))
       .catch(() => setError('Error al cargar incidencias'))
       .finally(() => setIsLoading(false));
   };

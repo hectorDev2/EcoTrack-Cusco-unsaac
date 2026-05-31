@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 
 type Role = 'ADMIN' | 'CITIZEN' | 'DRIVER';
 
@@ -9,11 +10,20 @@ interface JwtPayload {
   role: Role;
 }
 
-function decodeJwt(token: string): JwtPayload | null {
+function getSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET no configurado');
+  }
+  return new TextEncoder().encode(secret);
+}
+
+async function verifyJwt(token: string): Promise<JwtPayload | null> {
   try {
-    const payload = token.split('.')[1];
-    const decoded = JSON.parse(atob(payload));
-    return decoded as JwtPayload;
+    const { payload } = await jwtVerify(token, getSecret(), {
+      algorithms: ['HS256'],
+    });
+    return payload as unknown as JwtPayload;
   } catch {
     return null;
   }
@@ -48,13 +58,12 @@ const roleHome: Record<Role, string> = {
 
 const publicRoutes = ['/auth/login', '/auth/register', '/api/auth', '/'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const authCookie = request.cookies.get('auth_token');
   const token = authCookie?.value;
 
-  // Decode JWT to get role
-  const payload = token ? decodeJwt(token) : null;
+  const payload = token ? await verifyJwt(token) : null;
   const role = payload?.role;
 
   const isPublic = publicRoutes.some((route) =>
@@ -64,6 +73,11 @@ export function middleware(request: NextRequest) {
   const isProtected = Object.keys(roleRoutes).some((route) =>
     pathname === route || pathname.startsWith(`${route}/`),
   );
+
+  // Don't redirect authenticated users on API routes (e.g. logout)
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
 
   // Redirect authenticated users on public routes to their home
   if (isPublic && role) {
