@@ -254,19 +254,37 @@ async function main() {
   //   shift, stopType, scheduledTime, frequencyId, orderIndex
 
   type ParadaInput = {
-    nombre: string;
+    nombre?: string;
+    ubicacion?: string;
     hora?: string | null;
     lat?: number | null;
     lng?: number | null;
   };
 
-  type ParadaConMeta = ParadaInput & {
+  type ParadaConMeta = {
+    nombre: string;
+    hora?: string | null;
+    lat?: number | null;
+    lng?: number | null;
     zoneName: string;
     shift: 'MANANA' | 'TARDE' | 'NOCHE' | 'DOMINICAL';
     stopType: 'NORMAL' | 'CAMPANEO' | 'REPECHAJE' | 'VIA_PUBLICA' | 'DOMINICAL';
     frequencyCode: 'LMV' | 'MJS' | 'DOM' | 'DOM_LUN' | 'TODOS' | null;
     orderIndex: number;
   };
+
+  // Normaliza ParadaInput → siempre tiene `nombre` (toma de `ubicacion` si falta)
+  const normalizeParada = (p: ParadaInput): ParadaConMeta => ({
+    nombre: p.nombre || p.ubicacion || '(sin nombre)',
+    hora: p.hora,
+    lat: p.lat,
+    lng: p.lng,
+    zoneName: '',
+    shift: 'MANANA',
+    stopType: 'NORMAL',
+    frequencyCode: null,
+    orderIndex: 0,
+  });
 
   const paradas: ParadaConMeta[] = [];
   let globalOrder = 0;
@@ -293,12 +311,16 @@ async function main() {
     stopType: ParadaConMeta['stopType'],
     frequencyCode: ParadaConMeta['frequencyCode'],
   ) => {
-    items.forEach((item) => {
+    items.forEach((item: ParadaInput) => {
       globalOrder++;
+      const nombre = item.nombre || item.ubicacion || '(sin nombre)';
       // Las que tienen "CAMPANEO" en el nombre se marcan como CAMPANEO
-      const actualStopType = hasCampaneoInName(item.nombre) ? 'CAMPANEO' : stopType;
+      const actualStopType = hasCampaneoInName(nombre) ? 'CAMPANEO' : stopType;
       paradas.push({
-        ...item,
+        nombre,
+        hora: item.hora,
+        lat: item.lat,
+        lng: item.lng,
         zoneName,
         shift,
         stopType: actualStopType,
@@ -324,10 +346,11 @@ async function main() {
 
   // ═══ REPECHAJE (general, no por zona) ═══
   const rp = ruteroWanchaq.rutas.repechaje;
-  rp.lunesMiercolesViernes.ruta.forEach((p) => {
+  rp.lunesMiercolesViernes.ruta.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Wanchaq',
       shift: 'MANANA',
       stopType: 'REPECHAJE',
@@ -335,10 +358,11 @@ async function main() {
       orderIndex: globalOrder,
     });
   });
-  rp.martesJuevesSabado.ruta.forEach((p) => {
+  rp.martesJuevesSabado.ruta.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Wanchaq',
       shift: 'MANANA',
       stopType: 'REPECHAJE',
@@ -349,24 +373,26 @@ async function main() {
 
   // ═══ TURNO TARDE (general) ═══
   const tt = ruteroWanchaq.rutas.turnoTarde;
-  tt.lunesMiercolesViernes.ruta.forEach((p) => {
+  tt.lunesMiercolesViernes.ruta.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Wanchaq',
       shift: 'TARDE',
-      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      stopType: isViaPublica(p.ubicacion ?? '') ? 'VIA_PUBLICA' : 'NORMAL',
       frequencyCode: 'LMV',
       orderIndex: globalOrder,
     });
   });
-  tt.martesJuevesSabado.ruta.forEach((p) => {
+  tt.martesJuevesSabado.ruta.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Wanchaq',
       shift: 'TARDE',
-      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      stopType: isViaPublica(p.ubicacion ?? '') ? 'VIA_PUBLICA' : 'NORMAL',
       frequencyCode: 'MJS',
       orderIndex: globalOrder,
     });
@@ -374,24 +400,26 @@ async function main() {
 
   // ═══ FURGONES (recojo de tierras, vehículo Hino/TKing) ═══
   const fg = ruteroWanchaq.rutas.furgones.hinoTking;
-  fg.lunesMiercolesViernes.ruta.forEach((p) => {
+  fg.lunesMiercolesViernes.ruta.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Wanchaq',
       shift: 'MANANA',
-      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      stopType: isViaPublica(p.ubicacion ?? '') ? 'VIA_PUBLICA' : 'NORMAL',
       frequencyCode: 'LMV',
       orderIndex: globalOrder,
     });
   });
-  fg.martesJuevesSabado.ruta.forEach((p) => {
+  fg.martesJuevesSabado.ruta.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Wanchaq',
       shift: 'MANANA',
-      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      stopType: isViaPublica(p.ubicacion ?? '') ? 'VIA_PUBLICA' : 'NORMAL',
       frequencyCode: 'MJS',
       orderIndex: globalOrder,
     });
@@ -401,10 +429,11 @@ async function main() {
   const td = ruteroWanchaq.rutas.turnoDominical;
   (['zona01', 'zona02', 'zona03'] as const).forEach((zk) => {
     const zoneName = zk === 'zona01' ? 'Zona 1' : zk === 'zona02' ? 'Zona 2' : 'Zona 3';
-    td[zk].turnoManana.forEach((p) => {
+    td[zk].turnoManana.forEach((p: ParadaInput) => {
       globalOrder++;
       paradas.push({
         ...p,
+        nombre: p.ubicacion || p.nombre || '(sin nombre)',
         zoneName,
         shift: 'DOMINICAL',
         stopType: 'DOMINICAL',
@@ -417,10 +446,11 @@ async function main() {
   // ═══ TURNO NOCHE (2 zonas) ═══
   const tn = ruteroWanchaq.rutas.turnoNoche;
   // zona02 domingoYLunes
-  tn.zona02.domingoYLunes.forEach((p) => {
+  tn.zona02.domingoYLunes.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Zona 2',
       shift: 'NOCHE',
       stopType: 'NORMAL',
@@ -429,10 +459,11 @@ async function main() {
     });
   });
   // zona01 lunesADomingo
-  tn.zona01.lunesADomingo.forEach((p) => {
+  tn.zona01.lunesADomingo.forEach((p: ParadaInput) => {
     globalOrder++;
     paradas.push({
       ...p,
+      nombre: p.ubicacion || p.nombre || '(sin nombre)',
       zoneName: 'Zona 1',
       shift: 'NOCHE',
       stopType: 'NORMAL',
@@ -440,7 +471,6 @@ async function main() {
       orderIndex: globalOrder,
     });
   });
-
   console.log(`📍 ${paradas.length} paradas parseadas del rutero`);
 
   // Insertar en DB
