@@ -168,8 +168,8 @@ Conectar repo desde dashboard de Vercel. Framework se auto-detecta como Next.js.
 | Variable | Valor |
 |----------|-------|
 | `NEXT_PUBLIC_API_URL` | `https://tu-backend.onrender.com` |
-| Build Command | `bun run build` (default) |
-| Output | `.next` (default) |
+| Build Command | `npm run build` |
+| Output | `.next` |
 
 ### Backend → [Render](https://render.com)
 
@@ -178,8 +178,8 @@ Web Service desde dashboard de Render:
 | Campo | Valor |
 |-------|-------|
 | Root Directory | `backend` |
-| Build Command | `bun install && bun run build` |
-| Start Command | `bun run start` |
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm run start:prod` |
 | Port | `3001` |
 
 **Variables de entorno:**
@@ -193,7 +193,16 @@ Web Service desde dashboard de Render:
 | `CORS_ORIGINS` | `https://tu-frontend.vercel.app` |
 
 > ⚠️ **Importante:** Con Turso, el schema y los datos persisten independientemente del deploy.
-> Para seed inicial de Turso: `cd backend && bun run start:prod:seed` una sola vez.
+> Para seed inicial de Turso: `cd backend && npm run start:prod:seed` una sola vez.
+
+### Troubleshooting
+
+| Problema | Causa probable | Solución |
+|----------|----------------|----------|
+| App crashes on startup | `JWT_SECRET` no está definido | Verificar que `JWT_SECRET` esté configurado en las env vars de Render |
+| Build fails on Render | Versión de Node incorrecta | Usar Node 20 (definido en `render.yaml`) |
+| Frontend muestra pantalla en blanco | `NEXT_PUBLIC_API_URL` no está configurado en Vercel | Agregar `NEXT_PUBLIC_API_URL` en Environment Variables del proyecto Vercel |
+| 401 en la primera request | `JWT_SECRET` se autogeneró al redeploy | Render genera un nuevo secret automáticamente — los tokens anteriores quedan inválidos. Los usuarios deben iniciar sesión nuevamente |
 
 ---
 
