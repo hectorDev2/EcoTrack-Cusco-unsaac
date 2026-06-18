@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { queries } from '@/lib/queries';
 import { ScheduleCard } from '@/components/schedule-card';
 import type { Zone, CollectionSchedule } from '@/lib/types';
 
@@ -11,6 +13,8 @@ export default function RecoleccionPage() {
   const [schedules, setSchedules] = useState<CollectionSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: frequencies } = useQuery(queries.frequencies.all());
 
   useEffect(() => {
     api.get<Zone[]>('/zones')
@@ -44,6 +48,42 @@ export default function RecoleccionPage() {
           <div className="mb-4 bg-status-alert/10 border border-status-alert/30 rounded-xl p-4 flex items-center gap-3">
             <span className="material-symbols-outlined text-status-alert text-sm">error</span>
             <p className="text-status-alert text-sm font-bold">{error}</p>
+          </div>
+        )}
+
+        {/* Frecuencias */}
+        {frequencies && frequencies.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-[11px] leading-[14px] tracking-[0.08em] font-bold text-on-surface-variant uppercase block mb-3">
+              Frecuencias de recolección
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {frequencies.map((freq) => (
+                <div
+                  key={freq.id}
+                  className="bg-surface-card rounded-xl border border-outline-variant p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-primary text-sm">
+                        event_repeat
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <span className="inline-block px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-extrabold uppercase tracking-wider text-primary">
+                        {freq.code}
+                      </span>
+                      <p className="text-[14px] font-bold text-on-surface mt-1">
+                        {freq.label}
+                      </p>
+                      <p className="text-[12px] text-on-surface-variant mt-0.5">
+                        {freq.pickupPointsCount ?? 0} paradas
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

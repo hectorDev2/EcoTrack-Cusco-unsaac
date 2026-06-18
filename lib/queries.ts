@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, User, UserStats } from './types';
+import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, User, UserStats, FrequencyConfig } from './types';
 
 export const queryKeys = {
   incidents: {
@@ -11,6 +11,9 @@ export const queryKeys = {
   },
   pickupPoints: {
     all: (zoneId?: string) => ['pickup-points', zoneId] as const,
+  },
+  frequencies: {
+    all: () => ['frequencies'] as const,
   },
   zones: {
     all: () => ['zones'] as const,
@@ -68,6 +71,12 @@ export const queries = {
     all: () => ({
       queryKey: queryKeys.zones.all(),
       queryFn: () => api.get<Zone[]>('/zones'),
+    }),
+  },
+  frequencies: {
+    all: () => ({
+      queryKey: queryKeys.frequencies.all(),
+      queryFn: () => api.get<FrequencyConfig[]>('/frequencies'),
     }),
   },
   wasteTypes: {

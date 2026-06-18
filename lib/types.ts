@@ -29,6 +29,7 @@ export interface FrequencyConfig {
   code: FrequencyCode;
   label: string;  // "Lunes, Miércoles y Viernes"
   days: string;   // "MON,WED,FRI"
+  pickupPointsCount?: number;
 }
 
 export interface PickupPoint {
