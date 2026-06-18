@@ -36,9 +36,11 @@ async function main() {
   await prisma.collection.deleteMany();
   await prisma.routeStop.deleteMany();
   await prisma.route.deleteMany();
+  await prisma.routeLocation.deleteMany();
   await prisma.incident.deleteMany();
   await prisma.collectionSchedule.deleteMany();
   await prisma.pickupPoint.deleteMany();
+  await prisma.frequencyConfig.deleteMany();
   await prisma.userZone.deleteMany();
   await prisma.wasteType.deleteMany();
   await prisma.zone.deleteMany();
