@@ -22,6 +22,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ZonesModule } from './zones/zones.module';
 import { PickupPointsModule } from './pickup-points/pickup-points.module';
+import { FrequenciesModule } from './frequencies/frequencies.module';
 import { CollectionSchedulesModule } from './collection-schedules/collection-schedules.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { RoutesModule } from './routes/routes.module';
@@ -40,6 +41,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     UsersModule,
     ZonesModule,
     PickupPointsModule,
+    FrequenciesModule,
     CollectionSchedulesModule,
     IncidentsModule,
     RoutesModule,
