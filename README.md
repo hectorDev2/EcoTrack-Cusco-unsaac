@@ -190,7 +190,7 @@ Web Service desde dashboard de Render:
 | `TURSO_AUTH_TOKEN` | Token de Turso |
 | `JWT_SECRET` | Secreto para firmar JWT |
 | `JWT_EXPIRATION` | `7d` |
-| `CORS_ORIGINS` | `https://tu-frontend.vercel.app` |
+| `CORS_ORIGINS` | `https://tu-frontend.vercel.app` — Dominios permitidos para CORS (ver `render.yaml`) |
 
 > ⚠️ **Importante:** Con Turso, el schema y los datos persisten independientemente del deploy.
 > Para seed inicial de Turso: `cd backend && npm run start:prod:seed` una sola vez.
