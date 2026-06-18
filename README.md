@@ -547,8 +547,10 @@ backend/
 Seed disponible en `backend/prisma/seed.ts`. Ejecutar con:
 
 ```bash
-cd backend && bun run prisma:seed
+cd backend && npm run prisma:seed
 ```
+
+> ⚠️ Estas credenciales son solo para demo. Para producción, rotar todas las contraseñas.
 
 | Email | Contraseña | Rol |
 |-------|-----------|-----|

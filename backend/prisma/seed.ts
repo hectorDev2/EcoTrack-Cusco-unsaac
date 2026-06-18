@@ -3,6 +3,9 @@ import * as bcrypt from 'bcrypt';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
+// ⚠️  DEMO SEED ONLY — All users have password "123456"
+// For production deployment, rotate all passwords before going live
+
 config({ path: resolve(__dirname, '../.env') });
 
 function createPrismaClient() {
