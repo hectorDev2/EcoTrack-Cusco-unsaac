@@ -1,3 +1,4 @@
+import helmet from 'helmet';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -20,6 +21,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new AppValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  app.use(helmet());
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Eco Track Cusco API')
