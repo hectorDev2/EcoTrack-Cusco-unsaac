@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
 import * as bcrypt from 'bcrypt';
 import { config } from 'dotenv';
 import { resolve } from 'path';
@@ -7,6 +8,11 @@ import { resolve } from 'path';
 // For production deployment, rotate all passwords before going live
 
 config({ path: resolve(__dirname, '../.env') });
+
+// Cargar el rutero oficial de compactadores de Wanchaq 2024
+const ruteroWanchaq = JSON.parse(
+  fs.readFileSync(resolve(__dirname, 'data/wanchaq-rutero.json'), 'utf-8'),
+);
 
 function createPrismaClient() {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
@@ -167,348 +173,333 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ZONAS (distritos de Cusco)
+  // ZONAS (Distrito de Wanchaq - Rutero de Compactadores 2024)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const zonesData = [
-    {
-      name: 'Centro Histórico',
-      description: 'Zona monumental, turística y comercial del Cusco',
-    },
-    {
-      name: 'San Blas',
-      description: 'Barrio artesanal, bohemio y cultural con calles empedradas',
-    },
-    {
-      name: 'San Sebastián',
-      description: 'Distrito residencial y comercial en crecimiento',
-    },
-    {
-      name: 'Santiago',
-      description: 'Distrito popular con zona industrial y mercados',
-    },
-    {
+  // Zona padre: el distrito completo
+  const wanchaqZone = await prisma.zone.create({
+    data: {
       name: 'Wanchaq',
-      description: 'Distrito moderno, comercial y financiero',
+      description: 'Distrito de Wanchaq - Zona de operación del sistema de compactadores',
+      status: 'ACTIVE',
+      createdAt: now,
     },
+  });
+  console.log(`✅ Zona Wanchaq (padre)`);
+
+  // 5 Zonas internas del rutero oficial
+  const internalZonesData = [
+    { name: 'Zona 1', description: 'Zona interna 1 de Wanchaq según rutero oficial 2024' },
+    { name: 'Zona 2', description: 'Zona interna 2 de Wanchaq según rutero oficial 2024' },
+    { name: 'Zona 3', description: 'Zona interna 3 de Wanchaq según rutero oficial 2024' },
+    { name: 'Zona 4', description: 'Zona interna 4 de Wanchaq según rutero oficial 2024' },
+    { name: 'Zona 5', description: 'Zona interna 5 de Wanchaq según rutero oficial 2024' },
   ];
 
-  const zoneIds: Record<string, string> = {};
-  for (const z of zonesData) {
+  const internalZoneIds: Record<string, string> = {};
+  for (const z of internalZonesData) {
     const created = await prisma.zone.create({
-      data: { ...z, createdAt: now },
+      data: { ...z, status: 'ACTIVE', createdAt: now },
     });
-    zoneIds[z.name] = created.id;
-    console.log(`✅ Zona ${z.name}`);
+    internalZoneIds[z.name] = created.id;
+    console.log(`✅ ${z.name}`);
+  }
+
+  // Backward compat: zoneIds apunta a las 5 zonas internas (como el seed original)
+  const zoneIds = { ...internalZoneIds, Wanchaq: wanchaqZone.id };
+  const allZoneIds = [wanchaqZone.id, ...Object.values(internalZoneIds)];
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ASIGNACIONES USUARIO-ZONA (todos los usuarios a Wanchaq)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  for (const userId of Object.values(users).map((u) => u.id)) {
+    await prisma.userZone.create({
+      data: { userId, zoneId: wanchaqZone.id, assignedAt: now },
+    });
+  }
+  console.log(`✅ Asignaciones usuario-zona (9 usuarios → Wanchaq)`);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FRECUENCIAS (FrequencyConfig) - según rutero oficial
+  // ═══════════════════════════════════════════════════════════════════════════
+  const frequencyConfigs = [
+    { code: 'LMV', label: 'Lunes, Miércoles y Viernes', days: 'MON,WED,FRI' },
+    { code: 'MJS', label: 'Martes, Jueves y Sábado', days: 'TUE,THU,SAT' },
+    { code: 'DOM', label: 'Solo Domingo', days: 'SUN' },
+    { code: 'DOM_LUN', label: 'Domingo y Lunes', days: 'SUN,MON' },
+    { code: 'TODOS', label: 'Todos los días', days: 'MON,TUE,WED,THU,FRI,SAT,SUN' },
+  ] as const;
+
+  const frequencyIds: Record<string, string> = {};
+  for (const f of frequencyConfigs) {
+    const created = await prisma.frequencyConfig.create({ data: f });
+    frequencyIds[f.code] = created.id;
+    console.log(`✅ Frequency ${f.code}: ${f.label}`);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ASIGNACIONES USUARIO-ZONA
+  // PUNTOS DE RECOJO (Rutero de Compactadores Wanchaq 2024)
   // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // El rutero tiene 6 turnos/secciones:
+  //   - turnoManana: 5 zonas × 2 frecuencias (LMV, MJS)
+  //   - repechaje: 2 frecuencias (LMV, MJS) — general, no por zona
+  //   - turnoTarde: 2 frecuencias (LMV, MJS) — general
+  //   - furgones: 2 frecuencias (LMV, MJS) — recojo de tierras
+  //   - turnoDominical: 3 zonas (Mañana)
+  //   - turnoNoche: 2 zonas (domingoYLunes, lunesADomingo)
+  //
+  // Para cada parada generamos un PickupPoint con los nuevos campos:
+  //   shift, stopType, scheduledTime, frequencyId, orderIndex
 
-  const allZoneIds = Object.values(zoneIds);
-  // Admin: todas las zonas
-  for (const zoneId of allZoneIds) {
-    await prisma.userZone.create({
-      data: { userId: admin.id, zoneId, assignedAt: now },
-    });
-  }
-  // Driver 1: Centro Histórico + San Blas
-  for (const name of ['Centro Histórico', 'San Blas']) {
-    await prisma.userZone.create({
-      data: { userId: driver1.id, zoneId: zoneIds[name], assignedAt: now },
-    });
-  }
-  // Driver 2: San Sebastián + Santiago + Wanchaq
-  for (const name of ['San Sebastián', 'Santiago', 'Wanchaq']) {
-    await prisma.userZone.create({
-      data: { userId: driver2.id, zoneId: zoneIds[name], assignedAt: now },
-    });
-  }
-  // Ciudadanos: cada uno en 1-2 zonas
-  const citizenZoneAssignments = [
-    { citizenIdx: 0, zoneNames: ['Centro Histórico', 'San Blas'] },
-    { citizenIdx: 1, zoneNames: ['San Blas', 'Wanchaq'] },
-    { citizenIdx: 2, zoneNames: ['San Sebastián'] },
-    { citizenIdx: 3, zoneNames: ['Santiago', 'Centro Histórico'] },
-    { citizenIdx: 4, zoneNames: ['Wanchaq', 'San Sebastián'] },
-  ];
-  for (const assign of citizenZoneAssignments) {
-    for (const zoneName of assign.zoneNames) {
-      await prisma.userZone.create({
-        data: {
-          userId: citizens[assign.citizenIdx].id,
-          zoneId: zoneIds[zoneName],
-          assignedAt: now,
-        },
+  type ParadaInput = {
+    nombre: string;
+    hora?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+  };
+
+  type ParadaConMeta = ParadaInput & {
+    zoneName: string;
+    shift: 'MANANA' | 'TARDE' | 'NOCHE' | 'DOMINICAL';
+    stopType: 'NORMAL' | 'CAMPANEO' | 'REPECHAJE' | 'VIA_PUBLICA' | 'DOMINICAL';
+    frequencyCode: 'LMV' | 'MJS' | 'DOM' | 'DOM_LUN' | 'TODOS' | null;
+    orderIndex: number;
+  };
+
+  const paradas: ParadaConMeta[] = [];
+  let globalOrder = 0;
+
+  // Helper: detectar si es recojo de vía pública
+  const isViaPublica = (n: string) =>
+    /RECOJO DE RRSS/i.test(n) || /RECOJO RRSS/i.test(n) || /VIA PUBLICA/i.test(n);
+
+  // Helper: detectar si es "campaneo" en el nombre (caso especial del JSON)
+  const hasCampaneoInName = (n: string) => /CAMPANEO/i.test(n);
+
+  // Helper: formatear hora (de "6:00" a "06:00")
+  const fmtHora = (h?: string | null) => {
+    if (!h) return null;
+    const [hh, mm] = h.split(':');
+    return `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`;
+  };
+
+  // Helper: agregar paradas normales de un array
+  const addParadas = (
+    items: ParadaInput[],
+    zoneName: string,
+    shift: ParadaConMeta['shift'],
+    stopType: ParadaConMeta['stopType'],
+    frequencyCode: ParadaConMeta['frequencyCode'],
+  ) => {
+    items.forEach((item) => {
+      globalOrder++;
+      // Las que tienen "CAMPANEO" en el nombre se marcan como CAMPANEO
+      const actualStopType = hasCampaneoInName(item.nombre) ? 'CAMPANEO' : stopType;
+      paradas.push({
+        ...item,
+        zoneName,
+        shift,
+        stopType: actualStopType,
+        frequencyCode,
+        orderIndex: globalOrder,
       });
+    });
+  };
+
+  // ═══ TURNO MAÑANA (5 zonas × 2 frecuencias) ═══
+  const tm = ruteroWanchaq.rutas.turnoManana;
+  (['zona01', 'zona02', 'zona03', 'zona04', 'zona05'] as const).forEach((zk) => {
+    const zona = tm[zk];
+    const zoneName = zk === 'zona01' ? 'Zona 1' : zk === 'zona02' ? 'Zona 2' : zk === 'zona03' ? 'Zona 3' : zk === 'zona04' ? 'Zona 4' : 'Zona 5';
+
+    // LMV
+    addParadas(zona.lunesMiercolesViernes.ruta, zoneName, 'MANANA', 'NORMAL', 'LMV');
+    addParadas(zona.lunesMiercolesViernes.campaneo, zoneName, 'MANANA', 'CAMPANEO', 'LMV');
+    // MJS
+    addParadas(zona.martesJuevesSabado.ruta, zoneName, 'MANANA', 'NORMAL', 'MJS');
+    addParadas(zona.martesJuevesSabado.campaneo, zoneName, 'MANANA', 'CAMPANEO', 'MJS');
+  });
+
+  // ═══ REPECHAJE (general, no por zona) ═══
+  const rp = ruteroWanchaq.rutas.repechaje;
+  rp.lunesMiercolesViernes.ruta.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Wanchaq',
+      shift: 'MANANA',
+      stopType: 'REPECHAJE',
+      frequencyCode: 'LMV',
+      orderIndex: globalOrder,
+    });
+  });
+  rp.martesJuevesSabado.ruta.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Wanchaq',
+      shift: 'MANANA',
+      stopType: 'REPECHAJE',
+      frequencyCode: 'MJS',
+      orderIndex: globalOrder,
+    });
+  });
+
+  // ═══ TURNO TARDE (general) ═══
+  const tt = ruteroWanchaq.rutas.turnoTarde;
+  tt.lunesMiercolesViernes.ruta.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Wanchaq',
+      shift: 'TARDE',
+      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      frequencyCode: 'LMV',
+      orderIndex: globalOrder,
+    });
+  });
+  tt.martesJuevesSabado.ruta.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Wanchaq',
+      shift: 'TARDE',
+      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      frequencyCode: 'MJS',
+      orderIndex: globalOrder,
+    });
+  });
+
+  // ═══ FURGONES (recojo de tierras, vehículo Hino/TKing) ═══
+  const fg = ruteroWanchaq.rutas.furgones.hinoTking;
+  fg.lunesMiercolesViernes.ruta.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Wanchaq',
+      shift: 'MANANA',
+      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      frequencyCode: 'LMV',
+      orderIndex: globalOrder,
+    });
+  });
+  fg.martesJuevesSabado.ruta.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Wanchaq',
+      shift: 'MANANA',
+      stopType: isViaPublica(p.ubicacion) ? 'VIA_PUBLICA' : 'NORMAL',
+      frequencyCode: 'MJS',
+      orderIndex: globalOrder,
+    });
+  });
+
+  // ═══ TURNO DOMINICAL (3 zonas, sin hora) ═══
+  const td = ruteroWanchaq.rutas.turnoDominical;
+  (['zona01', 'zona02', 'zona03'] as const).forEach((zk) => {
+    const zoneName = zk === 'zona01' ? 'Zona 1' : zk === 'zona02' ? 'Zona 2' : 'Zona 3';
+    td[zk].turnoManana.forEach((p) => {
+      globalOrder++;
+      paradas.push({
+        ...p,
+        zoneName,
+        shift: 'DOMINICAL',
+        stopType: 'DOMINICAL',
+        frequencyCode: 'DOM',
+        orderIndex: globalOrder,
+      });
+    });
+  });
+
+  // ═══ TURNO NOCHE (2 zonas) ═══
+  const tn = ruteroWanchaq.rutas.turnoNoche;
+  // zona02 domingoYLunes
+  tn.zona02.domingoYLunes.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Zona 2',
+      shift: 'NOCHE',
+      stopType: 'NORMAL',
+      frequencyCode: 'DOM_LUN',
+      orderIndex: globalOrder,
+    });
+  });
+  // zona01 lunesADomingo
+  tn.zona01.lunesADomingo.forEach((p) => {
+    globalOrder++;
+    paradas.push({
+      ...p,
+      zoneName: 'Zona 1',
+      shift: 'NOCHE',
+      stopType: 'NORMAL',
+      frequencyCode: 'TODOS',
+      orderIndex: globalOrder,
+    });
+  });
+
+  console.log(`📍 ${paradas.length} paradas parseadas del rutero`);
+
+  // Insertar en DB
+  let pickupCount = 0;
+  for (const p of paradas) {
+    const zoneId = p.zoneName === 'Wanchaq' ? wanchaqZone.id : internalZoneIds[p.zoneName];
+    if (!zoneId) {
+      console.warn(`⚠️  Zone no encontrada: ${p.zoneName}`);
+      continue;
     }
-  }
-  console.log(
-    `✅ Asignaciones usuario-zona (${allZoneIds.length * 2 + 8} registros)`,
-  );
+    const hora = fmtHora(p.hora);
+    // Construir name con tags al final
+    const tags: string[] = [];
+    if (p.shift) tags.push(`[${p.shift}]`);
+    if (p.stopType) tags.push(`[${p.stopType}]`);
+    if (p.frequencyCode) tags.push(`[${p.frequencyCode}]`);
+    const tagStr = tags.length > 0 ? ` ${tags.join(' ')}` : '';
+    const fullName = `${hora ? `[${hora}] ` : ''}${p.nombre}${tagStr}`;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PUNTOS DE RECOJO
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const pickupPointsData = [
-    {
-      zoneName: 'Centro Histórico',
-      name: 'Plaza de Armas - Principal',
-      address: 'Plaza de Armas s/n',
-      lat: -13.5167,
-      lng: -71.9781,
-    },
-    {
-      zoneName: 'Centro Histórico',
-      name: 'Calle Triunfo',
-      address: 'Calle Triunfo 124',
-      lat: -13.5172,
-      lng: -71.9788,
-    },
-    {
-      zoneName: 'Centro Histórico',
-      name: 'Av. El Sol',
-      address: 'Av. El Sol 350',
-      lat: -13.5185,
-      lng: -71.9769,
-    },
-    {
-      zoneName: 'San Blas',
-      name: 'Plaza San Blas',
-      address: 'Plaza San Blas s/n',
-      lat: -13.5156,
-      lng: -71.9756,
-    },
-    {
-      zoneName: 'San Blas',
-      name: 'Calle Suecia',
-      address: 'Calle Suecia 340',
-      lat: -13.5148,
-      lng: -71.9744,
-    },
-    {
-      zoneName: 'San Blas',
-      name: 'Mirador San Blas',
-      address: 'Calle Tandapata 120',
-      lat: -13.5139,
-      lng: -71.9739,
-    },
-    {
-      zoneName: 'San Sebastián',
-      name: 'Av. de la Cultura',
-      address: 'Av. de la Cultura 1500',
-      lat: -13.5278,
-      lng: -71.9567,
-    },
-    {
-      zoneName: 'San Sebastián',
-      name: 'Mercado San Sebastián',
-      address: 'Av. Túpac Amaru 200',
-      lat: -13.5312,
-      lng: -71.9501,
-    },
-    {
-      zoneName: 'Santiago',
-      name: 'Parque Santiago',
-      address: 'Av. Santiago s/n',
-      lat: -13.5345,
-      lng: -71.989,
-    },
-    {
-      zoneName: 'Santiago',
-      name: 'Mercado Santiago',
-      address: 'Av. Juan Velasco 500',
-      lat: -13.5378,
-      lng: -71.9912,
-    },
-    {
-      zoneName: 'Santiago',
-      name: 'Av. Grau',
-      address: 'Av. Grau 400',
-      lat: -13.536,
-      lng: -71.9875,
-    },
-    {
-      zoneName: 'Wanchaq',
-      name: 'Parque Wanchaq',
-      address: 'Av. Velasco Astete 300',
-      lat: -13.5222,
-      lng: -71.96,
-    },
-    {
-      zoneName: 'Wanchaq',
-      name: 'Real Plaza',
-      address: 'Av. de la Cultura 700',
-      lat: -13.5205,
-      lng: -71.9589,
-    },
-  ];
-
-  const pickupPointIds: string[] = [];
-  for (const pp of pickupPointsData) {
-    const created = await prisma.pickupPoint.create({
+    await prisma.pickupPoint.create({
       data: {
-        zoneId: zoneIds[pp.zoneName],
-        name: pp.name,
-        address: pp.address,
-        latitude: pp.lat,
-        longitude: pp.lng,
+        zoneId,
+        name: fullName,
+        address: p.nombre,
+        latitude: p.lat ?? -13.5300,
+        longitude: p.lng ?? -71.9565,
+        shift: p.shift as any,
+        stopType: p.stopType as any,
+        scheduledTime: hora,
+        frequencyId: p.frequencyCode ? frequencyIds[p.frequencyCode] : null,
+        orderIndex: p.orderIndex,
+        status: 'ACTIVE',
       },
     });
-    pickupPointIds.push(created.id);
-    console.log(`✅ PickupPoint ${pp.name}`);
+    pickupCount++;
   }
+  console.log(`✅ ${pickupCount} PickupPoints creados`);
+
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // HORARIOS DE RECOLECCIÓN
   // ═══════════════════════════════════════════════════════════════════════════
-
-  const schedulesData = [
-    // Centro Histórico — 3 días
-    {
-      zoneName: 'Centro Histórico',
-      day: 'MONDAY',
-      start: '06:00',
-      end: '10:00',
-      wasteCategory: 'ORGANIC',
-    },
-    {
-      zoneName: 'Centro Histórico',
-      day: 'WEDNESDAY',
-      start: '06:00',
-      end: '10:00',
-      wasteCategory: 'RECYCLABLE',
-    },
-    {
-      zoneName: 'Centro Histórico',
-      day: 'FRIDAY',
-      start: '06:00',
-      end: '10:00',
-      wasteCategory: 'NON_RECYCLABLE',
-    },
-    // San Blas — 3 días
-    {
-      zoneName: 'San Blas',
-      day: 'TUESDAY',
-      start: '07:00',
-      end: '11:00',
-      wasteCategory: 'ORGANIC',
-    },
-    {
-      zoneName: 'San Blas',
-      day: 'THURSDAY',
-      start: '07:00',
-      end: '11:00',
-      wasteCategory: 'RECYCLABLE',
-    },
-    {
-      zoneName: 'San Blas',
-      day: 'SATURDAY',
-      start: '08:00',
-      end: '12:00',
-      wasteCategory: 'NON_RECYCLABLE',
-    },
-    // San Sebastián — 3 días
-    {
-      zoneName: 'San Sebastián',
-      day: 'MONDAY',
-      start: '08:00',
-      end: '12:00',
-      wasteCategory: 'ORGANIC',
-    },
-    {
-      zoneName: 'San Sebastián',
-      day: 'WEDNESDAY',
-      start: '08:00',
-      end: '12:00',
-      wasteCategory: 'RECYCLABLE',
-    },
-    {
-      zoneName: 'San Sebastián',
-      day: 'FRIDAY',
-      start: '08:00',
-      end: '12:00',
-      wasteCategory: 'NON_RECYCLABLE',
-    },
-    // Santiago — 2 días
-    {
-      zoneName: 'Santiago',
-      day: 'TUESDAY',
-      start: '09:00',
-      end: '13:00',
-      wasteCategory: 'ORGANIC',
-    },
-    {
-      zoneName: 'Santiago',
-      day: 'THURSDAY',
-      start: '09:00',
-      end: '13:00',
-      wasteCategory: 'RECYCLABLE',
-    },
-    // Wanchaq — 3 días
-    {
-      zoneName: 'Wanchaq',
-      day: 'MONDAY',
-      start: '07:00',
-      end: '11:00',
-      wasteCategory: 'ORGANIC',
-    },
-    {
-      zoneName: 'Wanchaq',
-      day: 'WEDNESDAY',
-      start: '07:00',
-      end: '11:00',
-      wasteCategory: 'RECYCLABLE',
-    },
-    {
-      zoneName: 'Wanchaq',
-      day: 'FRIDAY',
-      start: '07:00',
-      end: '11:00',
-      wasteCategory: 'NON_RECYCLABLE',
-    },
-    // Extra: orgánico sábados en todas las zonas
-    {
-      zoneName: 'Centro Histórico',
-      day: 'SATURDAY',
-      start: '07:00',
-      end: '11:00',
-      wasteCategory: 'ORGANIC',
-    },
-    {
-      zoneName: 'San Sebastián',
-      day: 'SATURDAY',
-      start: '09:00',
-      end: '13:00',
-      wasteCategory: 'ORGANIC',
-    },
-    {
-      zoneName: 'Wanchaq',
-      day: 'SATURDAY',
-      start: '08:00',
-      end: '12:00',
-      wasteCategory: 'ORGANIC',
-    },
-  ];
-
-  for (const s of schedulesData) {
-    const wasteTypeId = wasteTypes[s.wasteCategory];
-    if (!wasteTypeId) continue;
+  // HORARIOS DE RECOLECCIÓN (basado en las 5 frecuencias del rutero)
+  // ═══════════════════════════════════════════════════════════════════════════
+  const nonRecyclableId = wasteTypes['NON_RECYCLABLE'];
+  for (const f of frequencyConfigs) {
     await prisma.collectionSchedule.create({
       data: {
-        zoneId: zoneIds[s.zoneName],
-        wasteTypeId,
-        dayOfWeek: s.day,
-        startTime: s.start,
-        endTime: s.end,
+        zoneId: wanchaqZone.id,
+        wasteTypeId: nonRecyclableId,
+        dayOfWeek: f.days,
+        startTime: '04:00',
+        endTime: '11:00',
+        frequencyId: frequencyIds[f.code],
+        status: 'ACTIVE',
       },
     });
   }
-  console.log(`✅ Horarios (${schedulesData.length} registros)`);
+  console.log(`✅ ${frequencyConfigs.length} CollectionSchedules creados`);
 
-  // ═══════════════════════════════════════════════════════════════════════════
   // INCIDENCIAS
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -522,7 +513,7 @@ async function main() {
   }[] = [
     // Abiertas (OPEN)
     {
-      zoneName: 'Centro Histórico',
+      zoneName: 'Wanchaq',
       type: 'CONTAINER_DAMAGED',
       description:
         'Contenedor de la Plaza de Armas tiene la tapa rota y desprende mal olor. Urge reemplazo.',
@@ -531,7 +522,7 @@ async function main() {
       daysAgo: 1,
     },
     {
-      zoneName: 'San Blas',
+      zoneName: 'Wanchaq',
       type: 'ILLEGAL_DUMPING',
       description:
         'Escombros y restos de construcción abandonados en la esquina de Calle Suecia con Carmen Alto desde hace 3 días.',
@@ -549,7 +540,7 @@ async function main() {
       daysAgo: 1,
     },
     {
-      zoneName: 'San Sebastián',
+      zoneName: 'Wanchaq',
       type: 'OTHER',
       description:
         'Perros callejeros rompen las bolsas cada noche en el mercado. Se necesitan contenedores con tapa segura.',
@@ -558,7 +549,7 @@ async function main() {
       daysAgo: 3,
     },
     {
-      zoneName: 'Santiago',
+      zoneName: 'Wanchaq',
       type: 'CONTAINER_DAMAGED',
       description:
         'Contenedor de orgánicos del parque tiene la base rota y derrama líquidos en toda la vereda.',
@@ -567,7 +558,7 @@ async function main() {
       daysAgo: 1,
     },
     {
-      zoneName: 'Centro Histórico',
+      zoneName: 'Wanchaq',
       type: 'ILLEGAL_DUMPING',
       description:
         'Colchones y muebles viejos abandonados en la puerta del colegio San Francisco de Asís.',
@@ -578,7 +569,7 @@ async function main() {
 
     // En progreso (IN_PROGRESS)
     {
-      zoneName: 'San Blas',
+      zoneName: 'Wanchaq',
       type: 'CONTAINER_DAMAGED',
       description:
         'Contenedor de reciclables de la Plaza San Blas tiene la puerta trabada y no se puede usar.',
@@ -596,7 +587,7 @@ async function main() {
       daysAgo: 4,
     },
     {
-      zoneName: 'San Sebastián',
+      zoneName: 'Wanchaq',
       type: 'MISSED_COLLECTION',
       description:
         'Segunda semana consecutiva que no recogen los residuos reciclables en la Av. de la Cultura.',
@@ -607,7 +598,7 @@ async function main() {
 
     // Resueltas (RESOLVED)
     {
-      zoneName: 'Santiago',
+      zoneName: 'Wanchaq',
       type: 'CONTAINER_DAMAGED',
       description:
         'Contenedor de basura del mercado Santiago fue reemplazado por uno nuevo.',
@@ -616,7 +607,7 @@ async function main() {
       daysAgo: 10,
     },
     {
-      zoneName: 'Centro Histórico',
+      zoneName: 'Wanchaq',
       type: 'MISSED_COLLECTION',
       description:
         'Recolección no realizada en la Calle Triunfo por avería del camión. Ya se reprogramó.',
@@ -625,7 +616,7 @@ async function main() {
       daysAgo: 12,
     },
     {
-      zoneName: 'San Blas',
+      zoneName: 'Wanchaq',
       type: 'OTHER',
       description:
         'Acumulación de hojas secas y ramas en la Calle Tandapata. Se realizó poda y limpieza.',
@@ -645,7 +636,7 @@ async function main() {
       daysAgo: 15,
     },
     {
-      zoneName: 'San Sebastián',
+      zoneName: 'Wanchaq',
       type: 'ILLEGAL_DUMPING',
       description:
         'Escombros retirados del Mercado San Sebastián. Se identificó al infractor.',
@@ -654,7 +645,7 @@ async function main() {
       daysAgo: 14,
     },
     {
-      zoneName: 'Santiago',
+      zoneName: 'Wanchaq',
       type: 'MISSED_COLLECTION',
       description: 'Recolección reprogramada y completada sin inconvenientes.',
       status: 'CLOSED',
@@ -662,7 +653,7 @@ async function main() {
       daysAgo: 20,
     },
     {
-      zoneName: 'Centro Histórico',
+      zoneName: 'Wanchaq',
       type: 'CONTAINER_DAMAGED',
       description: 'Contenedor de la Av. El Sol reparado. Reporte cerrado.',
       status: 'CLOSED',
@@ -675,7 +666,7 @@ async function main() {
     await prisma.incident.create({
       data: {
         reportedBy: citizens[inc.citizenIdx].id,
-        zoneId: zoneIds[inc.zoneName],
+        zoneId: wanchaqZone.id,
         type: inc.type,
         description: inc.description,
         status: inc.status,
@@ -684,124 +675,6 @@ async function main() {
     });
   }
   console.log(`✅ Incidencias (${incidentsData.length} registros)`);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RUTAS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const routeDefs: {
-    zoneName: string;
-    driverId: string;
-    status: string;
-    startedAt: Date | null;
-    finishedAt: Date | null;
-    completedStopIndices: number[];
-  }[] = [
-    {
-      zoneName: 'Centro Histórico',
-      driverId: driver1.id,
-      status: 'IN_PROGRESS',
-      startedAt: hour(3),
-      finishedAt: null,
-      completedStopIndices: [0],
-    },
-    {
-      zoneName: 'San Blas',
-      driverId: driver1.id,
-      status: 'IN_PROGRESS',
-      startedAt: hour(1),
-      finishedAt: null,
-      completedStopIndices: [0, 1],
-    },
-    {
-      zoneName: 'Wanchaq',
-      driverId: driver2.id,
-      status: 'PENDING',
-      startedAt: null,
-      finishedAt: null,
-      completedStopIndices: [],
-    },
-    {
-      zoneName: 'San Sebastián',
-      driverId: driver2.id,
-      status: 'COMPLETED',
-      startedAt: hour(8),
-      finishedAt: hour(2),
-      completedStopIndices: [0, 1],
-    },
-    {
-      zoneName: 'Santiago',
-      driverId: driver2.id,
-      status: 'PENDING',
-      startedAt: null,
-      finishedAt: null,
-      completedStopIndices: [],
-    },
-    {
-      zoneName: 'Centro Histórico',
-      driverId: driver1.id,
-      status: 'COMPLETED',
-      startedAt: hour(30),
-      finishedAt: hour(24),
-      completedStopIndices: [0, 1, 2],
-    },
-  ];
-
-  // Group pickup points by zone
-  const allPPs = await prisma.pickupPoint.findMany({
-    orderBy: { name: 'asc' },
-  });
-  const ppByZone: Record<string, typeof allPPs> = {};
-  for (const pp of allPPs) {
-    if (!ppByZone[pp.zoneId]) ppByZone[pp.zoneId] = [];
-    ppByZone[pp.zoneId].push(pp);
-  }
-
-  for (const rd of routeDefs) {
-    const zoneId = zoneIds[rd.zoneName];
-    const zonePPs = ppByZone[zoneId] ?? [];
-    if (zonePPs.length === 0) continue;
-
-    const route = await prisma.route.create({
-      data: {
-        zoneId,
-        driverId: rd.driverId,
-        status: rd.status,
-        startedAt: rd.startedAt,
-        finishedAt: rd.finishedAt,
-        createdAt: day(
-          rd.completedStopIndices.length === zonePPs.length ? 2 : 0,
-        ),
-      },
-    });
-
-    for (let i = 0; i < zonePPs.length; i++) {
-      const isCompleted = rd.completedStopIndices.includes(i);
-      const stop = await prisma.routeStop.create({
-        data: {
-          routeId: route.id,
-          pickupPointId: zonePPs[i].id,
-          orderIndex: i,
-          status: isCompleted ? 'COMPLETED' : 'PENDING',
-        },
-      });
-
-      // Create collection records for completed stops
-      if (isCompleted) {
-        await prisma.collection.create({
-          data: {
-            routeStopId: stop.id,
-            wasteTypeId: wasteTypes['ORGANIC'],
-            collectedAt: rd.startedAt ?? now,
-            notes: 'Recolección completada sin novedades',
-          },
-        });
-      }
-    }
-    console.log(
-      `✅ Ruta ${rd.zoneName} (${rd.status}) — ${zonePPs.length} paradas, ${rd.completedStopIndices.length} completadas`,
-    );
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SUMMARY
@@ -814,23 +687,19 @@ async function main() {
     schedules: await prisma.collectionSchedule.count(),
     incidents: await prisma.incident.count(),
     wasteTypes: await prisma.wasteType.count(),
-    routes: await prisma.route.count(),
-    routeStops: await prisma.routeStop.count(),
-    collections: await prisma.collection.count(),
+    frequencies: await prisma.frequencyConfig.count(),
   };
 
   console.log('\n═══════════════════════════════════════');
   console.log('🎉 SEED COMPLETADO EXITOSAMENTE');
   console.log('═══════════════════════════════════════');
-  console.log(`   Usuarios:      ${counts.users} (9)`);
-  console.log(`   Zonas:         ${counts.zones} (5)`);
-  console.log(`   Puntos Recojo: ${counts.pickupPoints} (13)`);
-  console.log(`   Horarios:      ${counts.schedules} (17)`);
-  console.log(`   Incidencias:   ${counts.incidents} (16)`);
-  console.log(`   Tipos Residuo: ${counts.wasteTypes} (4)`);
-  console.log(`   Rutas:         ${counts.routes} (6)`);
-  console.log(`   Paradas:       ${counts.routeStops}`);
-  console.log(`   Recolecciones: ${counts.collections}`);
+  console.log(`   Usuarios:       ${counts.users} (9)`);
+  console.log(`   Zonas:          ${counts.zones} (6: Wanchaq + 5 Zonas)`);
+  console.log(`   Puntos Recojo:  ${counts.pickupPoints} (del rutero de compactadores)`);
+  console.log(`   Horarios:       ${counts.schedules} (5 frecuencias)`);
+  console.log(`   Incidencias:    ${counts.incidents} (16)`);
+  console.log(`   Tipos Residuo:  ${counts.wasteTypes} (4)`);
+  console.log(`   Frecuencias:    ${counts.frequencies} (LMV, MJS, DOM, DOM_LUN, TODOS)`);
   console.log('═══════════════════════════════════════');
   console.log('\n📧 CREDENCIALES:');
   console.log('   admin@terracivic.pe          / 123456  (Administrador)');

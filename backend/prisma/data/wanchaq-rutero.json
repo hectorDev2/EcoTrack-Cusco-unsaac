@@ -1,0 +1,434 @@
+{
+  "municipalidad": "MUNICIPALIDAD DISTRITAL DE WANCHAQ",
+  "gerencia": "GERENCIA DE GESTION AMBIENTAL Y DE SERVICIOS MUNICIPALES",
+  "unidad": "UNIDAD DE LIMPIEZA PÚBLICA",
+  "anio": 2024,
+  "coordenadas_distrito": { "lat": -13.5300, "lng": -71.9565 },
+  "rutas": {
+    "turnoManana": {
+      "zona01": {
+        "lunesMiercolesViernes": {
+          "horaInicio": "4:10",
+          "ruta": [
+            { "nombre": "AV TUPAC AMARU, ESPINAR JR. CANAS JR.CALCA LOCAL ALATRISTA", "lat": null, "lng": null },
+            { "nombre": "AV HUAYRUROPATA, AV. LOS INCAS Y CLINICA MAC SALUD", "lat": -13.5268, "lng": -71.9542 },
+            { "nombre": "SAN JOSE, ICPNA RESIDENCIAL, CLINICA CAMILA", "lat": null, "lng": null }
+          ],
+          "campaneo": [
+            { "ubicacion": "Av. PEDRO VILCA APAZA", "hora": "6:00", "lat": null, "lng": null },
+            { "ubicacion": "C.H PACHACUTEQ", "hora": "6:20", "lat": null, "lng": null },
+            { "ubicacion": "PLAZA TUPAC AMARU", "hora": "6:40", "lat": -13.5270, "lng": -71.9535 },
+            { "ubicacion": "AV. TOMASA TTITO CONDEMAYTA", "hora": "7:10", "lat": null, "lng": null },
+            { "ubicacion": "AV. DIAGONAL ANGAMOS", "hora": "7:40", "lat": -13.5260, "lng": -71.9610 },
+            { "ubicacion": "AV. MICAELA BASTIDAS", "hora": "8:10", "lat": -13.5256, "lng": -71.9529 },
+            { "ubicacion": "AV. LA CULTURA", "hora": "8:40", "lat": -13.5207, "lng": -71.9682 },
+            { "ubicacion": "CONDOMINIO INGENIEROS", "hora": "9:30", "lat": null, "lng": null },
+            { "ubicacion": "CEVICHERIA DE HUAYROROPATA", "hora": "9:50", "lat": -13.5268, "lng": -71.9542 },
+            { "ubicacion": "REPECHAJE AV. HUAYRUROPATA", "hora": "10:00", "lat": -13.5268, "lng": -71.9542 }
+          ]
+        },
+        "martesJuevesSabado": {
+          "horaInicio": "4:10",
+          "ruta": [
+            { "nombre": "RECOJO DE RRSS DE VIA PUBLICA", "lat": null, "lng": null },
+            { "nombre": "AV. TULLUMAYO, ARCUPUNCO AV. CULTURA (HASTA DIAGONAL)", "lat": -13.5230, "lng": -71.9650 }
+          ],
+          "campaneo": [
+            { "ubicacion": "AV. VELASCO ASTETE", "hora": "6:00", "lat": -13.5381, "lng": -71.9384 },
+            { "ubicacion": "URB. CAPAC YUPANQUI", "hora": "6:30", "lat": null, "lng": null },
+            { "ubicacion": "CCHH. HILARIO MENDIVIL", "hora": "6:40", "lat": null, "lng": null },
+            { "ubicacion": "URB. KENNEDY B", "hora": "7:10", "lat": null, "lng": null },
+            { "ubicacion": "URB. SAN JUDAS CHICO", "hora": "7:40", "lat": null, "lng": null },
+            { "ubicacion": "URB. VELASCO ASTETE", "hora": "8:00", "lat": -13.5381, "lng": -71.9384 },
+            { "ubicacion": "URB LOS ALAMOS", "hora": "8:40", "lat": null, "lng": null },
+            { "ubicacion": "URB. SR DE LOS MILAGROS CAMPANEO - (MARTES, JUEVES, SABADO)", "hora": "9:10", "lat": null, "lng": null },
+            { "ubicacion": "AA HH. SOL NACIENTE CAMPANEO - (MARTES, JUEVES, SABADO)", "hora": "9:30", "lat": null, "lng": null }
+          ]
+        }
+      },
+      "zona02": {
+        "lunesMiercolesViernes": {
+          "horaInicio": "4:20",
+          "ruta": [
+            { "nombre": "RECOJO DE RRSS EN SUS RESPECTIVAS ZONAS, AV HUAMANTIANA", "lat": -13.5300, "lng": -71.9515 }
+          ],
+          "campaneo": [
+            { "ubicacion": "AV. PROLONGACION LOS INCAS", "hora": "6:00", "lat": -13.5278, "lng": -71.9502 },
+            { "ubicacion": "JR.JOSE CARLOS MARIATIGUE", "hora": "6:20", "lat": null, "lng": null },
+            { "ubicacion": "JR RICARDO PALMA (parte baja) PASAJE JOSE DE LA AYA", "hora": "06:30", "lat": null, "lng": null },
+            { "ubicacion": "AV. GORDON MAGNE", "hora": "06:50", "lat": null, "lng": null },
+            { "ubicacion": "PASAJE LOS CEDROS, CALLE ROVERTO ACOSTA", "hora": "7:10", "lat": null, "lng": null },
+            { "ubicacion": "AV. CULTURA", "hora": "7:20", "lat": -13.5207, "lng": -71.9682 },
+            { "ubicacion": "URB. MARCAVALLE", "hora": "7:40", "lat": -13.5350, "lng": -71.9500 },
+            { "ubicacion": "URB. CERVEZEROS", "hora": "8:00", "lat": null, "lng": null },
+            { "ubicacion": "AV. GASTON ZAPATA", "hora": "8:20", "lat": null, "lng": null },
+            { "ubicacion": "RICARDO PALMA", "hora": "8:30", "lat": null, "lng": null },
+            { "ubicacion": "PARQUE ESPAÑA", "hora": "8:50", "lat": null, "lng": null },
+            { "ubicacion": "AV. CULTURA (CAJA CUSCO HASTA LA CANASTA)", "hora": "9:00", "lat": -13.5207, "lng": -71.9682 },
+            { "ubicacion": "JR. SANTOS CHOCANO, JR. CIRO ALEGRIA", "hora": "9:20", "lat": null, "lng": null },
+            { "ubicacion": "JR. J. MARIA ARGUEDAS, JR. SESAR VALLEJO", "hora": "09:50", "lat": null, "lng": null },
+            { "ubicacion": "COLEGIO SANTA ANA (LOS MIERCOLES)", "hora": "10:00", "lat": null, "lng": null },
+            { "ubicacion": "TALLER MECANICA CULTURA GRIFO", "hora": "10:10", "lat": null, "lng": null },
+            { "ubicacion": "CAJA CUSCO ETAPOY (URB. SANTA BEATRIZ)", "hora": "10:30", "lat": null, "lng": null }
+          ]
+        },
+        "martesJuevesSabado": {
+          "horaInicio": "4:20",
+          "ruta": [{ "nombre": "RECOJO DE RRSS DE LA VIA PUBLICA", "lat": null, "lng": null }],
+          "campaneo": [
+            { "ubicacion": "URB. KENNEDY 'A'", "hora": "6:00", "lat": null, "lng": null },
+            { "ubicacion": "SAN JUDAS CHICO", "hora": "7:00", "lat": null, "lng": null },
+            { "ubicacion": "URB. LA FLORIDA LAS GARDENIAS", "hora": "7:40", "lat": null, "lng": null },
+            { "ubicacion": "URB. LA FLORIDA LOS CIPRECES", "hora": "8:00", "lat": null, "lng": null },
+            { "ubicacion": "JR. LOS KACTUS, JR. LAS CACTUS", "hora": "8:30", "lat": null, "lng": null },
+            { "ubicacion": "JR. LAS BEGONIAS, JR. CLAVELES", "hora": "8:50", "lat": null, "lng": null },
+            { "ubicacion": "AV. PERU", "hora": "9:10", "lat": -13.5300, "lng": -71.9600 },
+            { "ubicacion": "AV. QOSQO", "hora": "9:20", "lat": -13.5290, "lng": -71.9605 },
+            { "ubicacion": "JR. LIBERTAR (CIVICHERIA VICHAYITO) - JR. 18 DE MAYO", "hora": "9:30", "lat": null, "lng": null },
+            { "ubicacion": "AV. 28 DE JULIO (SUBIDA)", "hora": "9:50", "lat": -13.5240, "lng": -71.9620 }
+          ]
+        }
+      },
+      "zona03": {
+        "lunesMiercolesViernes": {
+          "horaInicio": "4:20",
+          "ruta": [
+            { "nombre": "RECOJO DE RRSS DE VIA PUBLICA", "lat": null, "lng": null },
+            { "nombre": "AV. 28 DE JULIO (SUBIDA) AV. PACHACUTEC AV MANCO CAPAC", "lat": -13.5240, "lng": -71.9620 }
+          ],
+          "campaneo": [
+            { "ubicacion": "AV. TACNA (PARTE ALTA)", "hora": "6:00", "lat": -13.5320, "lng": -71.9630 },
+            { "ubicacion": "AV. HUAYNA CAPAC (PARTE ALTA)", "hora": "6:20", "lat": -13.5310, "lng": -71.9635 },
+            { "ubicacion": "AV. HUASCAR (PARTE BAJA)", "hora": "6:30", "lat": -13.5298, "lng": -71.9645 },
+            { "ubicacion": "AV. INFANCIA", "hora": "7:40", "lat": -13.5210, "lng": -71.9580 },
+            { "ubicacion": "AV. LA PAZ", "hora": "7:50", "lat": -13.5220, "lng": -71.9600 },
+            { "ubicacion": "AV. PRIMAVERA", "hora": "8:00", "lat": -13.5190, "lng": -71.9570 },
+            { "ubicacion": "AV. CONFRATERNIDAD, CCHH. ALAMOS, CC HH. LA ALBORADA", "hora": "8:20", "lat": null, "lng": null },
+            { "ubicacion": "LINIA FERRIA AV. ALAMEDA PACHACUTEC", "hora": "8:30", "lat": -13.5230, "lng": -71.9650 },
+            { "ubicacion": "CENTRO ARTESANAL, AV. TULLUMAYO", "hora": "8:50", "lat": -13.5230, "lng": -71.9650 },
+            { "ubicacion": "CC.HH AMAUTA", "hora": "9:00", "lat": null, "lng": null },
+            { "ubicacion": "CALLE ARCOPUNCO", "hora": "9:10", "lat": null, "lng": null },
+            { "ubicacion": "AV. LA CULTURA, DIAGONAL RAMON ZAVALETA", "hora": "9:20", "lat": -13.5207, "lng": -71.9682 },
+            { "ubicacion": "AV. TACNA (PARTE BAJA)", "hora": "9:30", "lat": -13.5320, "lng": -71.9630 },
+            { "ubicacion": "AV. HUAYNA CCAPAC (PARTE BAJA)", "hora": "9:40", "lat": -13.5310, "lng": -71.9635 },
+            { "ubicacion": "AV. MANCO INCA", "hora": "9:50", "lat": -13.5285, "lng": -71.9550 },
+            { "ubicacion": "AV. GARCILASO", "hora": "10:00", "lat": -13.5220, "lng": -71.9640 },
+            { "ubicacion": "AV. HUASCAR", "hora": "10:20", "lat": -13.5298, "lng": -71.9645 },
+            { "ubicacion": "CONDOMINIO HUASCAR", "hora": "10:30", "lat": null, "lng": null }
+          ]
+        },
+        "martesJuevesSabado": {
+          "horaInicio": "4:20",
+          "ruta": [{ "nombre": "RECOJO DE RRSS MOLINO 1 Y 2", "lat": null, "lng": null }],
+          "campaneo": [
+            { "ubicacion": "AV. 28 DE JULIO BAJADA (3ER PARADERO)", "hora": "6:00", "lat": -13.5240, "lng": -71.9620 },
+            { "ubicacion": "JR. UNION", "hora": "6:50", "lat": -13.5310, "lng": -71.9615 },
+            { "ubicacion": "JR. QORICANCHA", "hora": "7:00", "lat": null, "lng": null },
+            { "ubicacion": "AV 28 DE JULIO PARTE BAJA", "hora": "7:10", "lat": -13.5240, "lng": -71.9620 },
+            { "ubicacion": "AV. JORGE CHAVEZ", "hora": "7:20", "lat": -13.5325, "lng": -71.9620 },
+            { "ubicacion": "AV. COSTANERA", "hora": "7:30", "lat": -13.5315, "lng": -71.9610 },
+            { "ubicacion": "URB. REYNA DE BELEN", "hora": "8:30", "lat": null, "lng": null },
+            { "ubicacion": "APV. DANIEL PAIVA", "hora": "8:50", "lat": null, "lng": null },
+            { "ubicacion": "APV. SIMON HERRERA", "hora": "9:00", "lat": null, "lng": null },
+            { "ubicacion": "APV. JOSE OLAYA", "hora": "9:20", "lat": null, "lng": null },
+            { "ubicacion": "APV. VALLECITO", "hora": "9:50", "lat": null, "lng": null }
+          ]
+        }
+      },
+      "zona04": {
+        "lunesMiercolesViernes": {
+          "horaInicio": "4:20",
+          "ruta": [
+            { "nombre": "RECOJO DE RRSS. DE VIA PUBLICA", "lat": null, "lng": null },
+            { "nombre": "REPUBLICA DE BOLIVIA, REPUBLICA DE URUGUAY AV. AMERICA", "lat": -13.5350, "lng": -71.9510 }
+          ],
+          "campaneo": [
+            { "ubicacion": "JR. RETIRO", "hora": "6:00", "lat": null, "lng": null },
+            { "ubicacion": "AV. 24 DE JUNIO", "hora": "6:10", "lat": null, "lng": null },
+            { "ubicacion": "URB. FIDERANDA", "hora": "6:20", "lat": null, "lng": null },
+            { "ubicacion": "PARQUE INTI QAWARINA", "hora": "6:30", "lat": null, "lng": null },
+            { "ubicacion": "URB. CUATRO TORRES", "hora": "6:45", "lat": null, "lng": null },
+            { "ubicacion": "URB. SANTA TERESA PARTE ALTA", "hora": "7:10", "lat": null, "lng": null },
+            { "ubicacion": "URB. LOS SAUCES (PROLOG. TUPAC AMARU)", "hora": "7:30", "lat": null, "lng": null },
+            { "ubicacion": "URB. SANTA URSULA", "hora": "8:00", "lat": null, "lng": null },
+            { "ubicacion": "PRONAA", "hora": "8:30", "lat": null, "lng": null },
+            { "ubicacion": "URB. JOSE C. MARIATEGUI", "hora": "9:50", "lat": null, "lng": null },
+            { "ubicacion": "AV. REPUBLICA DE PERU", "hora": "9:20", "lat": -13.5370, "lng": -71.9520 },
+            { "ubicacion": "URB. VILLA PERIODISTA", "hora": "9:40", "lat": null, "lng": null }
+          ]
+        },
+        "martesJuevesSabado": {
+          "horaInicio": "4:10",
+          "ruta": [
+            { "nombre": "RECOJO DE RRSS. VIA PUBLICA", "lat": null, "lng": null },
+            { "nombre": "URB. SAUCES URB. SANTA URSULA", "lat": null, "lng": null }
+          ],
+          "campaneo": [
+            { "ubicacion": "URB. SANTA TERESA PARTE BAJA", "hora": "6:00", "lat": null, "lng": null },
+            { "ubicacion": "AV. REP DE URUGUAY", "hora": "6:20", "lat": -13.5355, "lng": -71.9505 },
+            { "ubicacion": "REPUBLICA DE ECUADOR", "hora": "6:40", "lat": -13.5360, "lng": -71.9500 },
+            { "ubicacion": "AV. LAS AMERICAS", "hora": "7:30", "lat": -13.5370, "lng": -71.9525 },
+            { "ubicacion": "AV. REP. DE BOLIVIA", "hora": "8:00", "lat": -13.5350, "lng": -71.9510 },
+            { "ubicacion": "AV. REP. DE PARAGUAY", "hora": "8:50", "lat": -13.5360, "lng": -71.9500 },
+            { "ubicacion": "AV. REP. DE VENEZUELA", "hora": "9:10", "lat": -13.5355, "lng": -71.9495 },
+            { "ubicacion": "AV. REP. DE ARGENTINA", "hora": "9:30", "lat": -13.5365, "lng": -71.9490 },
+            { "ubicacion": "AV.REP. CHILE", "hora": "9:40", "lat": -13.5370, "lng": -71.9485 },
+            { "ubicacion": "AV. REP. DE COLOMBIA", "hora": "9:45", "lat": -13.5375, "lng": -71.9480 },
+            { "ubicacion": "VIA EXPRESA, SAN FERNANDO", "hora": "9:50", "lat": -13.5380, "lng": -71.9480 },
+            { "ubicacion": "EMPRESA COLA REAL", "hora": "10:00", "lat": null, "lng": null },
+            { "ubicacion": "EMPRESA LECHE GLORIA", "hora": "10:20", "lat": null, "lng": null },
+            { "ubicacion": "EMPRESA HELADOS ARTICA", "hora": "10:40", "lat": null, "lng": null }
+          ]
+        }
+      },
+      "zona05": {
+        "lunesMiercolesViernes": {
+          "horaInicio": "4:20",
+          "ruta": [{ "nombre": "RECOJO DE RRSS DE VIA PUBLICA", "lat": null, "lng": null }],
+          "campaneo": [
+            { "ubicacion": "PARQUE QUILLABAMBA", "hora": "6:00", "lat": -13.5275, "lng": -71.9500 },
+            { "ubicacion": "JR. ANTA", "hora": "6:30", "lat": -13.5270, "lng": -71.9505 },
+            { "ubicacion": "CALLE MARISCAL GAMARRA", "hora": "6:40", "lat": null, "lng": null },
+            { "ubicacion": "RAMON CASTILLA", "hora": "6:50", "lat": null, "lng": null },
+            { "ubicacion": "JR. LIBERTAD, JR. JUSTICIA", "hora": "7:00", "lat": -13.5285, "lng": -71.9600 },
+            { "ubicacion": "URB. SAN BORJA ALTA (JR IQUITOS, JR ANCHASH)", "hora": "7:20", "lat": null, "lng": null },
+            { "ubicacion": "URB. SAN BORJA BAJA", "hora": "8:00", "lat": null, "lng": null },
+            { "ubicacion": "URB. MATEO PUMACAHUA", "hora": "8:20", "lat": -13.5260, "lng": -71.9500 },
+            { "ubicacion": "AV. TUPAC AMARU", "hora": "8:30", "lat": -13.5270, "lng": -71.9535 },
+            { "ubicacion": "JR. COYA", "hora": "8:50", "lat": -13.5260, "lng": -71.9500 },
+            { "ubicacion": "JR. SICUANI", "hora": "9:00", "lat": null, "lng": null },
+            { "ubicacion": "JR. PARURO, LAMAY, URUBAMBA", "hora": "9:10", "lat": null, "lng": null },
+            { "ubicacion": "JR. ACOMAYO", "hora": "9:30", "lat": null, "lng": null },
+            { "ubicacion": "PARQUE QUISPICANCHIS", "hora": "10:00", "lat": null, "lng": null }
+          ]
+        },
+        "martesJuevesSabado": {
+          "horaInicio": "4:20",
+          "ruta": [
+            { "nombre": "RECOJO DE RRSS DE VIA PUBLICA, AV. LA CULTURA (P. BAJA) AV. M.GORDON MAGNE Y URB. MARCAVALLE Y LOCAL (MARCA VALLE)", "lat": -13.5207, "lng": -71.9682 }
+          ],
+          "campaneo": [
+            { "ubicacion": "URB. LA COLINA", "hora": "6:00", "lat": null, "lng": null },
+            { "ubicacion": "URB. ENTEL PERU", "hora": "6:20", "lat": null, "lng": null },
+            { "ubicacion": "URB. SANTA BEATRIZ", "hora": "6:40", "lat": null, "lng": null },
+            { "ubicacion": "URB. MORALES BERMUDEZ", "hora": "7:00", "lat": null, "lng": null },
+            { "ubicacion": "AV. HUAMANTIANA", "hora": "7:10", "lat": -13.5300, "lng": -71.9515 },
+            { "ubicacion": "AV. TUPAC AMARU", "hora": "7:20", "lat": -13.5270, "lng": -71.9535 },
+            { "ubicacion": "JR. ESPINAR", "hora": "8:10", "lat": -13.5275, "lng": -71.9540 },
+            { "ubicacion": "JR. CANAS", "hora": "8:30", "lat": null, "lng": null },
+            { "ubicacion": "PARQUE SAN SEBASTIAN", "hora": "8:50", "lat": null, "lng": null },
+            { "ubicacion": "JR. LIBERTAD", "hora": "9:00", "lat": -13.5285, "lng": -71.9600 },
+            { "ubicacion": "AV. JUSTICIA", "hora": "9:30", "lat": -13.5290, "lng": -71.9610 },
+            { "ubicacion": "JR. CALCA", "hora": "10:00", "lat": null, "lng": null }
+          ]
+        }
+      }
+    },
+    "repechaje": {
+      "lunesMiercolesViernes": {
+        "horaInicio": "4:20",
+        "ruta": [
+          { "ubicacion": "AV. 28 DE JULIO (BAJADA Y SUBIDA)", "hora": "4:20", "lat": -13.5240, "lng": -71.9620 },
+          { "ubicacion": "MERCADO TTIO Y TTIO NORTE", "hora": "5:00", "lat": null, "lng": null },
+          { "ubicacion": "AV. LA LIBERTAD", "hora": "5:30", "lat": -13.5275, "lng": -71.9580 },
+          { "ubicacion": "AV. QOSQO", "hora": "5:45", "lat": -13.5290, "lng": -71.9605 },
+          { "ubicacion": "AV. PERU", "hora": "6:00", "lat": -13.5300, "lng": -71.9600 },
+          { "ubicacion": "AV. JORGE CHAVEZ", "hora": "6:30", "lat": -13.5325, "lng": -71.9620 },
+          { "ubicacion": "JR. UNION", "hora": "6:50", "lat": -13.5310, "lng": -71.9615 },
+          { "ubicacion": "AV. COSTANERA", "hora": "7:00", "lat": -13.5315, "lng": -71.9610 },
+          { "ubicacion": "AV. DANIEL PAIVA - URB. SEMON HERRERA", "hora": "7:30", "lat": null, "lng": null },
+          { "ubicacion": "AV. VELASCO ASTETE - CCHH. HILARIO MENDIVIL", "hora": "8:00", "lat": -13.5381, "lng": -71.9384 },
+          { "ubicacion": "CONTORNO CERCO PERIMETRICO DE AEROPUERTO", "hora": "8:20", "lat": null, "lng": null },
+          { "ubicacion": "URB. SOL NACIENTE", "hora": "8:40", "lat": null, "lng": null }
+        ]
+      },
+      "martesJuevesSabado": {
+        "horaInicio": "4:10",
+        "ruta": [
+          { "ubicacion": "OVALO PACHACUTEQ", "hora": "4:10", "lat": null, "lng": null },
+          { "ubicacion": "AV. INFANCIA - AV. LA PAZ", "hora": "4:20", "lat": -13.5210, "lng": -71.9580 },
+          { "ubicacion": "AV. CONFRATERNIDAD Y PRIMAVERA", "hora": "4:50", "lat": -13.5190, "lng": -71.9570 },
+          { "ubicacion": "CALLEJON RETIRO", "hora": "5:00", "lat": null, "lng": null },
+          { "ubicacion": "URB. FIDERANDA, URB. CUATRO TORRES", "hora": "5:20", "lat": null, "lng": null },
+          { "ubicacion": "AV. PACHACUTEQ", "hora": "5:40", "lat": -13.5240, "lng": -71.9650 },
+          { "ubicacion": "AV. MANCO CCAPAC - AV. TULLUMAYO", "hora": "5:50", "lat": -13.5285, "lng": -71.9550 },
+          { "ubicacion": "AV. HUASCAR Y MERCADO DE WANCHAQ", "hora": "6:30", "lat": -13.5298, "lng": -71.9645 },
+          { "ubicacion": "AV. GARCILASO", "hora": "6:40", "lat": -13.5220, "lng": -71.9640 },
+          { "ubicacion": "AV. HUAYNA CAPAC - AV TACNA", "hora": "7:00", "lat": -13.5310, "lng": -71.9635 },
+          { "ubicacion": "DIAGONAL RAMON ZAVALETA", "hora": "7:30", "lat": -13.5260, "lng": -71.9610 },
+          { "ubicacion": "PLAZA TUPAC AMARU", "hora": "7:40", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "CCHH. PACHACUTEQ", "hora": "7:50", "lat": null, "lng": null },
+          { "ubicacion": "AV. LA CULTURA (PARTE ALTA HASTA D. ANGAMOS)", "hora": "8:00", "lat": -13.5207, "lng": -71.9682 },
+          { "ubicacion": "AV. LOS INCAS", "hora": "8:10", "lat": -13.5278, "lng": -71.9502 },
+          { "ubicacion": "AV. MICAELA BASTIDAS", "hora": "8:20", "lat": -13.5256, "lng": -71.9529 },
+          { "ubicacion": "AV. TOMASA TTITO CONDEMAYTA", "hora": "8:30", "lat": null, "lng": null },
+          { "ubicacion": "AV. HUAYRUROPATA", "hora": "8:50", "lat": -13.5268, "lng": -71.9542 },
+          { "ubicacion": "LOCAL DE LIMPIEZA PUBLICA (ALATRISTA)", "hora": "9:00", "lat": null, "lng": null },
+          { "ubicacion": "JR. IQUITOS, ANCASH", "hora": "9:10", "lat": -13.5265, "lng": -71.9500 },
+          { "ubicacion": "URB. SAN BORJA BAJA - AV. JR. ANTA", "hora": "9:30", "lat": -13.5270, "lng": -71.9505 },
+          { "ubicacion": "RESERBORIO LA FLORIDA, PARQ. QUILLABAMBA", "hora": "9:50", "lat": -13.5275, "lng": -71.9500 },
+          { "ubicacion": "PARQUE SICUANI,COYA, PARURO Y ACOMAYO", "hora": "10:00", "lat": null, "lng": null },
+          { "ubicacion": "AV. TUPAC AMARU (PARTE ALTA)", "hora": "10:10", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "URB. MATEO PUMACAHUA", "hora": "10:20", "lat": -13.5260, "lng": -71.9500 }
+        ]
+      }
+    },
+    "turnoTarde": {
+      "lunesMiercolesViernes": {
+        "ruta": [
+          { "ubicacion": "SUPERMERCADOS ORION, SUPER SOL PLAZA T. AMARU", "hora": "12:20", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "REGION CUSCO", "hora": "13:00", "lat": null, "lng": null },
+          { "ubicacion": "SUPER MERCADO SUPER SOL (AV. JORGE CHAVEZ)", "hora": "14:00", "lat": -13.5325, "lng": -71.9620 },
+          { "ubicacion": "MERCADO TTIO", "hora": "15:00", "lat": null, "lng": null },
+          { "ubicacion": "CALLE CONSTANZA (CANASTA)", "hora": "15:30", "lat": null, "lng": null },
+          { "ubicacion": "AV. LOS INCAS", "hora": "15:40", "lat": -13.5278, "lng": -71.9502 },
+          { "ubicacion": "ESSALUD", "hora": null, "lat": null, "lng": null },
+          { "ubicacion": "AV. MICAELA BASTIDAS", "hora": "16:00", "lat": -13.5256, "lng": -71.9529 },
+          { "ubicacion": "CCHH. PACHACUTEQ, PLAZA TUPAC AMARU", "hora": "16:10", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "MERCADO DE WANCHAQ", "hora": "16:30", "lat": -13.5300, "lng": -71.9640 }
+        ]
+      },
+      "martesJuevesSabado": {
+        "ruta": [
+          { "ubicacion": "PERU RAIL (JUEVES) ES SALUD", "hora": "12:20", "lat": null, "lng": null },
+          { "ubicacion": "SUPERMERCADOS ORION (MARCAVALLE)", "hora": "13:00", "lat": -13.5350, "lng": -71.9500 },
+          { "ubicacion": "C. REFORMATORIO DE MENORES (MARCAVALLE)", "hora": "14:00", "lat": null, "lng": null },
+          { "ubicacion": "MERCADO TTIO", "hora": "14:45", "lat": null, "lng": null },
+          { "ubicacion": "AV. MICAELA BASTIDAS", "hora": "15:30", "lat": -13.5256, "lng": -71.9529 },
+          { "ubicacion": "CCHH. PACHACUTEQ, PLAZA TUPAC AMARU", "hora": "16:00", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "MERCADO WANCHAQ", "hora": "16:30", "lat": -13.5300, "lng": -71.9640 }
+        ]
+      }
+    },
+    "furgones": {
+      "hinoTking": {
+        "lunesMiercolesViernes": {
+          "tipo": "RECOJO DE TIERRAS",
+          "horaInicio": "4:00",
+          "ruta": [
+            { "ubicacion": "URB. KENNIDE A URB. ENTEL URB. BEATRIS", "hora": "6:00", "lat": null, "lng": null },
+            { "ubicacion": "JR. LIBERTAD AV JUSTICIA (PARTE BAJA)", "hora": "6:30", "lat": -13.5285, "lng": -71.9600 },
+            { "ubicacion": "AV. 28 DE JULIO (BAJADA Y SUBIDA)", "hora": "6:45", "lat": -13.5240, "lng": -71.9620 },
+            { "ubicacion": "AV PRINCIPALES Y RECOJO DE TACHOS DE BARRIDO", "hora": "7:00", "lat": null, "lng": null },
+            { "ubicacion": "CALLE UNION", "hora": "7:20", "lat": -13.5310, "lng": -71.9615 },
+            { "ubicacion": "AV. COSTANERA AV. DANIEL PAIVA", "hora": "7:30", "lat": -13.5315, "lng": -71.9610 },
+            { "ubicacion": "URB. SIMON HERRERA", "hora": "07:40", "lat": null, "lng": null },
+            { "ubicacion": "AV VELASCO ASTETE CCHH. HILARIO MINDIVIL", "hora": "7:55", "lat": -13.5381, "lng": -71.9384 },
+            { "ubicacion": "AV. JORGE CHAVES", "hora": "8:10", "lat": -13.5325, "lng": -71.9620 },
+            { "ubicacion": "AV LIBERTAD AV. PERU AV. COSQO", "hora": "8:20", "lat": -13.5290, "lng": -71.9605 },
+            { "ubicacion": "AV TUPAC AMARO URB. TTIO LA FLORIDA", "hora": "9:00", "lat": -13.5270, "lng": -71.9535 }
+          ]
+        },
+        "martesJuevesSabado": {
+          "tipo": "RECOJO DE TIERRAS",
+          "horaInicio": "4:00",
+          "ruta": [
+            { "ubicacion": "AV. PRINCIPALES Y RECOJO DE TACHOS DE BARRIDO", "hora": "6:30", "lat": null, "lng": null },
+            { "ubicacion": "ALAMEDA PACHACUTEQ", "hora": "6:50", "lat": -13.5230, "lng": -71.9650 },
+            { "ubicacion": "AV. TULLUMAYO", "hora": "7:00", "lat": -13.5230, "lng": -71.9650 },
+            { "ubicacion": "AV. LA CULTURA PARTE ALTA", "hora": "7:10", "lat": -13.5207, "lng": -71.9682 },
+            { "ubicacion": "AV. LOS INCAS - AV MICAELA BASTIDAS", "hora": "7:20", "lat": -13.5256, "lng": -71.9529 },
+            { "ubicacion": "PLAZA TUPAC AMARU", "hora": "7:40", "lat": -13.5270, "lng": -71.9535 },
+            { "ubicacion": "AV. GARCILASO, AV. HUASCAR", "hora": "07:50", "lat": -13.5220, "lng": -71.9640 },
+            { "ubicacion": "AV. PACHACUTEQ - AV. MANCO CAPAC", "hora": "8:10", "lat": -13.5240, "lng": -71.9650 },
+            { "ubicacion": "AV. TOMASA TTITO CONDEMAYTA", "hora": "8:20", "lat": null, "lng": null },
+            { "ubicacion": "AV. HUAYRURO PATA", "hora": "8:30", "lat": -13.5268, "lng": -71.9542 },
+            { "ubicacion": "URB. CUATRO TORRES", "hora": "8:40", "lat": null, "lng": null },
+            { "ubicacion": "AV. INFANCIA", "hora": "8:50", "lat": -13.5210, "lng": -71.9580 },
+            { "ubicacion": "URB. SAN BORJA (JR. IQUITOS Y JR. ANCASH)", "hora": "9:00", "lat": -13.5265, "lng": -71.9500 },
+            { "ubicacion": "JR. ANTA, AV. TUPAC AMARU", "hora": "9:20", "lat": -13.5270, "lng": -71.9535 },
+            { "ubicacion": "RESERVORIO DE FLORIDA, PARQUE QUILLABAMBA", "hora": "9:30", "lat": -13.5275, "lng": -71.9500 }
+          ]
+        }
+      }
+    },
+    "turnoDominical": {
+      "zona01": {
+        "turnoManana": [
+          { "ubicacion": "AV. INFANCIA - AV. LA PAZ", "lat": -13.5210, "lng": -71.9580 },
+          { "ubicacion": "AV. CONFRERNIDAD - CALLE PRIMAVERA", "lat": -13.5190, "lng": -71.9570 },
+          { "ubicacion": "AV PACHACUTEC", "lat": -13.5240, "lng": -71.9650 },
+          { "ubicacion": "AV. MANCO CAPAC", "lat": -13.5285, "lng": -71.9550 },
+          { "ubicacion": "AV. GARCILASO - AV. HUASCAR", "lat": -13.5220, "lng": -71.9640 },
+          { "ubicacion": "AV. TULLUMAYO - ARCOPUNCO", "lat": -13.5230, "lng": -71.9650 },
+          { "ubicacion": "AV. CULTURA (HASTA DIAGONAL)", "lat": -13.5207, "lng": -71.9682 },
+          { "ubicacion": "AV HUAYNA CAPAC - AV TACNA", "lat": -13.5310, "lng": -71.9635 },
+          { "ubicacion": "PLAZA TUPAC AMARU - CCHH. PACHACUTEC", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "AV LOS INCAS - AV MICAELA BASTIDAS", "lat": -13.5256, "lng": -71.9529 },
+          { "ubicacion": "AV TOMASA TTITO CONDEMAYTA", "lat": null, "lng": null },
+          { "ubicacion": "AV HUAYRUROPATA", "lat": -13.5268, "lng": -71.9542 },
+          { "ubicacion": "JR.ANCASH - JR.IQUITOS", "lat": -13.5265, "lng": -71.9500 }
+        ]
+      },
+      "zona02": {
+        "turnoManana": [
+          { "ubicacion": "AV. 28 DE JULIO (bajada y subida)", "lat": -13.5240, "lng": -71.9620 },
+          { "ubicacion": "CALLE UNION", "lat": -13.5310, "lng": -71.9615 },
+          { "ubicacion": "AV. COSTANERA", "lat": -13.5315, "lng": -71.9610 },
+          { "ubicacion": "AV DANIEL PAIVA URB. SIMON HERRERA", "lat": null, "lng": null },
+          { "ubicacion": "AV. VELASCO ASTETE", "lat": -13.5381, "lng": -71.9384 },
+          { "ubicacion": "SR DE LOS MILAGROS", "lat": null, "lng": null },
+          { "ubicacion": "CCHH. HILARIO MENDIVIL", "lat": null, "lng": null },
+          { "ubicacion": "PARED DEL AEROPUERTO", "lat": null, "lng": null },
+          { "ubicacion": "URB. KENNEDY 'B'", "lat": null, "lng": null },
+          { "ubicacion": "AV. JORGE CHAVES", "lat": -13.5325, "lng": -71.9620 },
+          { "ubicacion": "AV. QOSQO AV. JR. LIBERTAD", "lat": -13.5290, "lng": -71.9605 },
+          { "ubicacion": "AV. PERU", "lat": -13.5300, "lng": -71.9600 }
+        ]
+      },
+      "zona03": {
+        "turnoManana": [
+          { "ubicacion": "UR.CUATRO TORRES - UR. FIDERANDA", "lat": null, "lng": null },
+          { "ubicacion": "URB. MATEO PUMACAHUA AV TUPAC A. HASTA CALCA", "lat": -13.5260, "lng": -71.9500 },
+          { "ubicacion": "JR CALCA", "lat": null, "lng": null },
+          { "ubicacion": "UR. SAN BORJA - JR.ANTA", "lat": -13.5270, "lng": -71.9505 },
+          { "ubicacion": "AV TUPAC AMARU JR. ESPINAR", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "CANCHA SAN FRANCISCO", "lat": null, "lng": null },
+          { "ubicacion": "PARQUE SICUANI", "lat": null, "lng": null },
+          { "ubicacion": "RESERBORIO DE FLORIDA - PARQUE QUILLABANBA", "lat": -13.5275, "lng": -71.9500 },
+          { "ubicacion": "URB.ENTEL PERU", "lat": null, "lng": null },
+          { "ubicacion": "AV. REPUBLICA DE BRASIL", "lat": -13.5370, "lng": -71.9520 },
+          { "ubicacion": "AV.REPUBLICA DE BOLIVIA AV REPUBLICA DE URUGUAY", "lat": -13.5350, "lng": -71.9510 },
+          { "ubicacion": "URB. MARCAVALLE Y LOCAL DE MARCAVALLE", "lat": -13.5350, "lng": -71.9500 },
+          { "ubicacion": "URB SANTA ROSA", "lat": null, "lng": null },
+          { "ubicacion": "URB. SAUcES Y SANTA URSULA", "lat": null, "lng": null }
+        ]
+      }
+    },
+    "turnoNoche": {
+      "zona02": {
+        "domingoYLunes": [
+          { "ubicacion": "CALLE UNION , MOLINO (CAMPANEO)", "lat": -13.5310, "lng": -71.9615 },
+          { "ubicacion": "AV. COSTANERA", "lat": -13.5315, "lng": -71.9610 },
+          { "ubicacion": "AV JORGE CHAVEZ", "lat": -13.5325, "lng": -71.9620 },
+          { "ubicacion": "AV. VELAZCO ASTETE (BAJADA Y SUBIDA)", "lat": -13.5381, "lng": -71.9384 },
+          { "ubicacion": "AV. QOSQO", "lat": -13.5290, "lng": -71.9605 },
+          { "ubicacion": "AV. DIAGONAL ANGAMOS", "lat": -13.5260, "lng": -71.9610 },
+          { "ubicacion": "AV. LA CULTURA", "lat": -13.5207, "lng": -71.9682 },
+          { "ubicacion": "URB. SANTA ROSA", "lat": null, "lng": null },
+          { "ubicacion": "URB. MARCAVALLE", "lat": -13.5350, "lng": -71.9500 },
+          { "ubicacion": "AV TUPAC AMARU (RESERBORIO DE FLORIDA)", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "AV. JR. ANTA - JR. ANCASH", "lat": -13.5270, "lng": -71.9505 },
+          { "ubicacion": "FIDERANDA", "lat": null, "lng": null },
+          { "ubicacion": "AV. INFANCIA", "lat": -13.5210, "lng": -71.9580 },
+          { "ubicacion": "CONFRATERNIDAD", "lat": -13.5190, "lng": -71.9570 }
+        ]
+      },
+      "zona01": {
+        "lunesADomingo": [
+          { "ubicacion": "PLAZA TUPAC AMARU, CCHHH. PACHACUTEQ", "hora": "20:00", "lat": -13.5270, "lng": -71.9535 },
+          { "ubicacion": "AV. CULTURA", "hora": "20:30", "lat": -13.5207, "lng": -71.9682 },
+          { "ubicacion": "AV. HUAYRURO PATA", "hora": "21:00", "lat": -13.5268, "lng": -71.9542 },
+          { "ubicacion": "AV. MANCOCAPAC", "hora": "21:30", "lat": -13.5285, "lng": -71.9550 },
+          { "ubicacion": "AV. PACHACUTEQ", "hora": "22:00", "lat": -13.5240, "lng": -71.9650 },
+          { "ubicacion": "AV. CONSTANZA - AV. LOS INCAS", "hora": "22:30", "lat": -13.5278, "lng": -71.9502 },
+          { "ubicacion": "AV. MICAELA BASTIDAS", "hora": "23:00", "lat": -13.5256, "lng": -71.9529 },
+          { "ubicacion": "AV. GARCILASO, AV. TULLUMAYO", "hora": "23:30", "lat": -13.5220, "lng": -71.9640 },
+          { "ubicacion": "AV. HUASCAR, MERCADO DE WANCHAQ", "hora": "0:05", "lat": -13.5298, "lng": -71.9645 },
+          { "ubicacion": "AV. HUAYNA CAPAC, AV. TACNA", "hora": "0:20", "lat": -13.5310, "lng": -71.9635 },
+          { "ubicacion": "REPECHAJEAR TODAS LAS AV. YA INDICADAS", "hora": null, "lat": null, "lng": null }
+        ]
+      }
+    }
+  }
+}
