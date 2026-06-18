@@ -3,8 +3,8 @@
 Sistema inteligente de recolección de residuos para Cusco, con monitoreo en tiempo real y participación ciudadana.
 
 **Frontend:** Next.js 16 · App Router · React 19 · Tailwind CSS v4 · TanStack Query · PWA \
-**Backend:** NestJS 11 · TypeScript · Prisma · SQLite / Turso (libSQL) · Swagger \
-**Auth:** JWT con Passport (backend) + middleware edge + guards por rol + httpOnly cookies \
+**Backend:** NestJS 11 · TypeScript · Prisma · SQLite / Turso (libSQL) · Swagger · Helmet · Throttler \
+**Auth:** JWT con Passport (backend) + middleware edge + guards por rol + httpOnly cookies + rate limiting \
 **Tracking:** GPS en tiempo real con geolocation API + polling en mapa admin
 
 ---
@@ -143,15 +143,15 @@ flowchart TD
 
 ```bash
 # Frontend (raíz del proyecto)
-bun run dev
+npm run dev
 # http://localhost:3000
 
 # Backend (directorio backend/)
-cd backend && bun run start:dev
+cd backend && npm run start:dev
 # http://localhost:3001
 
 # Seed (recrea datos de prueba)
-cd backend && bun run prisma:seed
+cd backend && npm run prisma:seed
 
 # Documentación Swagger
 # http://localhost:3001/docs
@@ -188,21 +188,24 @@ Web Service desde dashboard de Render:
 |----------|-------------|
 | `TURSO_DATABASE_URL` | `libsql://...` (obligatorio en Render) |
 | `TURSO_AUTH_TOKEN` | Token de Turso |
-| `JWT_SECRET` | Secreto para firmar JWT |
+| `JWT_SECRET` | Secreto para firmar JWT. En producción, usar una cadena fuerte aleatoria: `openssl rand -base64 32` |
 | `JWT_EXPIRATION` | `7d` |
-| `CORS_ORIGINS` | `https://tu-frontend.vercel.app` — Dominios permitidos para CORS (ver `render.yaml`) |
+| `CORS_ORIGINS` | Orígenes permitidos para CORS, separados por coma. Ej: `https://tu-frontend.vercel.app` |
 
 > ⚠️ **Importante:** Con Turso, el schema y los datos persisten independientemente del deploy.
 > Para seed inicial de Turso: `cd backend && npm run start:prod:seed` una sola vez.
+> Para frontend en Vercel: `NEXT_PUBLIC_API_URL` debe ser la URL del backend en Render.
 
 ### Troubleshooting
 
 | Problema | Causa probable | Solución |
 |----------|----------------|----------|
-| App crashes on startup | `JWT_SECRET` no está definido | Verificar que `JWT_SECRET` esté configurado en las env vars de Render |
-| Build fails on Render | Versión de Node incorrecta | Usar Node 20 (definido en `render.yaml`) |
-| Frontend muestra pantalla en blanco | `NEXT_PUBLIC_API_URL` no está configurado en Vercel | Agregar `NEXT_PUBLIC_API_URL` en Environment Variables del proyecto Vercel |
-| 401 en la primera request | `JWT_SECRET` se autogeneró al redeploy | Render genera un nuevo secret automáticamente — los tokens anteriores quedan inválidos. Los usuarios deben iniciar sesión nuevamente |
+| Backend crashea al startup con "JWT_SECRET is required" | Variable no configurada en Render | Configurar `JWT_SECRET` en Environment → Add Environment Variable |
+| Render deploy falla con "Cannot find module" | Build artifacts no encontrados | Verificar que `start:prod` apunta a `dist/src/main` |
+| Frontend muestra pantalla en blanco | `NEXT_PUBLIC_API_URL` no configurada o mal | Verificar variable en Vercel dashboard, redeploy |
+| 401 en todos los requests | `JWT_SECRET` fue regenerado por Render | Los usuarios deben volver a iniciar sesión (esperado al primer deploy) |
+| 429 Too Many Requests en /auth/login | Rate limiting activo | Esperar 60 segundos, o ajustar límites en `app.module.ts` |
+| Tests e2e fallan con "JWT_SECRET is required" | Variable no seteada en CI/CD | Configurar `JWT_SECRET` como secret en GitHub Actions (ya se hace en workflow) |
 
 ---
 
@@ -267,6 +270,16 @@ Web Service desde dashboard de Render:
 | JWT httpOnly cookie — login/register via API route proxy | ✅ |
 | Página `/auth/register` dedicada | ✅ |
 | CRUD zonas admin (`/admin-zonas`) | ✅ |
+| Helmet — headers de seguridad HTTP | ✅ |
+| Rate limiting (@nestjs/throttler) — login 10/min, register 5/min | ✅ |
+| Validación runtime de JWT_SECRET — fail-fast en startup | ✅ |
+| Validación de NEXT_PUBLIC_API_URL — fail-fast en build | ✅ |
+| GitHub Actions CI — lint + typecheck + tests on push/PR | ✅ |
+| Try-catch en fetch (frontend) — ApiClientError(0) en network errors | ✅ |
+| Try-catch en Prisma $connect (backend) — error claro si Turso falla | ✅ |
+| Compound index en RouteLocation(routeId, recordedAt) | ✅ |
+| Tests unitarios backend — 89 tests, 9 archivos | ✅ |
+| Tests e2e backend — 9 tests (auth, incidents, collections, admin) | ✅ |
 
 ### Seguridad
 
@@ -375,10 +388,7 @@ const isOffline = useOfflineStatus();
 
 | Aspecto | Estado |
 |---------|--------|
-| Tests automatizados | ❌ Cero tests (unitarios, e2e, frontend) |
 | Refresh token | ❌ Solo JWT único de 7 días |
-| Rate limiting / Helmet | ❌ Sin protección contra fuerza bruta |
-| CI/CD pipeline | ❌ Sin GitHub Actions |
 | Logging estructurado | ❌ Sin Pino/Winston |
 | Monitorización | ❌ Sin Sentry o similar |
 
