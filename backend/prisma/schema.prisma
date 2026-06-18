@@ -166,6 +166,7 @@ model RouteLocation {
 
   route Route @relation(fields: [routeId], references: [id])
 
+  @@index([routeId, recordedAt])
   @@map("route_locations")
 }
 
