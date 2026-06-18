@@ -13,6 +13,24 @@ export interface WasteType {
   description?: string;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Turnos según rutero de compactadores Wanchaq 2024
+// ═══════════════════════════════════════════════════════════════════════════
+export type Shift = 'MANANA' | 'TARDE' | 'NOCHE' | 'DOMINICAL';
+
+// Tipos de parada según rutero oficial
+export type StopType = 'NORMAL' | 'CAMPANEO' | 'REPECHAJE' | 'VIA_PUBLICA' | 'DOMINICAL';
+
+// Códigos de frecuencia
+export type FrequencyCode = 'LMV' | 'MJS' | 'DOM' | 'DOM_LUN' | 'TODOS';
+
+export interface FrequencyConfig {
+  id: string;
+  code: FrequencyCode;
+  label: string;  // "Lunes, Miércoles y Viernes"
+  days: string;   // "MON,WED,FRI"
+}
+
 export interface PickupPoint {
   id: string;
   zoneId: string;
@@ -21,7 +39,16 @@ export interface PickupPoint {
   latitude: number;
   longitude: number;
   status: string;
+
+  // Campos del rutero de compactadores
+  shift?: Shift | null;
+  stopType: StopType;
+  scheduledTime?: string | null;  // "HH:MM"
+  frequencyId?: string | null;
+  orderIndex: number;
+
   zone?: { id: string; name: string };
+  frequency?: FrequencyConfig | null;
 }
 
 export interface CollectionSchedule {
@@ -31,8 +58,10 @@ export interface CollectionSchedule {
   dayOfWeek: string;
   startTime: string;
   endTime: string;
+  frequencyId?: string | null;
   zone?: { id: string; name: string };
   wasteType?: { id: string; name: string; category: string };
+  frequency?: FrequencyConfig | null;
 }
 
 export interface User {
