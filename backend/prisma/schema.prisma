@@ -67,6 +67,36 @@ model WasteType {
   @@map("waste_types")
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ENUMS - Turnos, Tipos de parada y Frecuencias del rutero de compactadores
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Turno del día en que se realiza la ruta
+enum Shift {
+  MANANA     // Mañana (4:00 - 12:00)
+  TARDE      // Tarde (12:00 - 18:00)
+  NOCHE      // Noche (18:00 - 00:00)
+  DOMINICAL  // Turno dominical
+}
+
+/// Tipo de parada según el rutero oficial
+enum StopType {
+  NORMAL        // Parada regular
+  CAMPANEO      // Campaneo (parada con aviso sonoro)
+  REPECHAJE     // Repechaje (recorrido adicional de repaso)
+  VIA_PUBLICA   // Recojo de RRSS de vía pública
+  DOMINICAL     // Parada solo domingos
+}
+
+/// Código de frecuencia de la ruta
+enum FrequencyCode {
+  LMV      // Lunes, Miércoles y Viernes
+  MJS      // Martes, Jueves y Sábado
+  DOM      // Solo Domingo
+  DOM_LUN  // Domingo y Lunes
+  TODOS    // Todos los días
+}
+
 model PickupPoint {
   id        String  @id @default(cuid())
   zoneId    String  @map("zone_id")
@@ -76,10 +106,38 @@ model PickupPoint {
   longitude Float
   status    String  @default("ACTIVE")
 
-  zone       Zone        @relation(fields: [zoneId], references: [id])
-  routeStops RouteStop[]
+  // ═══════════════════════════════════════════════════════════════════════
+  // CAMPOS NUEVOS - Rutero de compactadores 2024
+  // ═══════════════════════════════════════════════════════════════════════
+  shift         Shift?        @map("shift")         // Turno: Mañana/Tarde/Noche/Dominical
+  stopType      StopType      @default(NORMAL) @map("stop_type")  // Tipo de parada
+  scheduledTime String?       @map("scheduled_time") // Hora programada HH:MM
+  frequencyId   String?       @map("frequency_id")  // FK a FrequencyConfig
+  orderIndex    Int           @default(0) @map("order_index") // Orden de recorrido
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // RELACIONES
+  // ═══════════════════════════════════════════════════════════════════════
+  zone          Zone              @relation(fields: [zoneId], references: [id])
+  frequency     FrequencyConfig?  @relation(fields: [frequencyId], references: [id])
+  routeStops    RouteStop[]
+
+  @@index([zoneId, shift, frequencyId])
+  @@index([shift, stopType])
   @@map("pickup_points")
+}
+
+/// Frecuencia de la ruta (LMV, MJS, DOM, etc) según el rutero oficial
+model FrequencyConfig {
+  id    String        @id @default(cuid())
+  code  FrequencyCode @unique
+  label String        // "Lunes, Miércoles y Viernes"
+  days  String        // "MON,WED,FRI" - días en formato iCal
+
+  pickupPoints       PickupPoint[]
+  collectionSchedules CollectionSchedule[]
+
+  @@map("frequency_configs")
 }
 
 model CollectionSchedule {
@@ -91,8 +149,12 @@ model CollectionSchedule {
   endTime     String @map("end_time")
   status      String @default("ACTIVE")
 
-  zone      Zone      @relation(fields: [zoneId], references: [id])
-  wasteType WasteType @relation(fields: [wasteTypeId], references: [id])
+  // Campo opcional para vincular a la frecuencia del rutero
+  frequencyId String? @map("frequency_id")
+
+  zone      Zone             @relation(fields: [zoneId], references: [id])
+  wasteType WasteType        @relation(fields: [wasteTypeId], references: [id])
+  frequency FrequencyConfig? @relation(fields: [frequencyId], references: [id])
 
   @@map("collection_schedules")
 }
