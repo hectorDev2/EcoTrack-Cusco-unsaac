@@ -9,13 +9,18 @@ interface JwtPayload {
   role: string;
 }
 
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret || jwtSecret === '') {
+  throw new Error('JWT_SECRET is required');
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET!,
+      secretOrKey: jwtSecret,
     });
   }
 
