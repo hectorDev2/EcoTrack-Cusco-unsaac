@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+if (!apiUrl) {
+  throw new Error('NEXT_PUBLIC_API_URL environment variable is required');
+}
+const API_URL = apiUrl;
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
