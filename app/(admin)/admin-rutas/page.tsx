@@ -15,8 +15,11 @@ interface RouteStop {
 
 interface AdminRoute {
   id: string;
+  name?: string | null;
+  shift?: string | null;
+  frequency?: string | null;
   zone: { id: string; name: string };
-  driver: { id: string; fullName: string; email: string };
+  driver: { id: string; fullName: string; email: string } | null;
   status: string;
   totalStops: number;
   completedStops: number;
@@ -135,7 +138,7 @@ export default function AdminRutasPage() {
     const wps: RouteWaypoint[] = stops.map((s) => ({
       lng: s.pickupPoint.longitude,
       lat: s.pickupPoint.latitude,
-      label: s.pickupPoint.name,
+      label: s.pickupPoint.address || s.pickupPoint.name,
     }));
 
     setRouteMapMarkers(stops.map((s) => ({
@@ -144,7 +147,7 @@ export default function AdminRutasPage() {
       lat: s.pickupPoint.latitude,
       color: s.status === 'COMPLETED' ? '#2E7D32' : '#154212',
       icon: (s.status === 'COMPLETED' ? 'check_circle' : 'location_on') as string,
-      label: s.pickupPoint.name,
+      label: s.pickupPoint.address || s.pickupPoint.name,
     })));
 
     if (wps.length < 2) {
@@ -687,7 +690,7 @@ export default function AdminRutasPage() {
             <div className="flex items-center justify-between p-5 border-b border-outline-variant/20">
               <div>
                 <h3 className="text-[18px] font-bold text-on-surface">
-                  {routeMapModal.zone?.name ?? 'Ruta'}
+                  {routeMapModal.name ?? routeMapModal.zone?.name ?? 'Ruta'}
                 </h3>
                 <p className="text-[13px] text-on-surface-variant">
                   {routeMapModal.driver?.fullName ?? 'Sin conductor'} · {routeMapModal.totalStops} paradas
@@ -725,7 +728,7 @@ export default function AdminRutasPage() {
                     }`}>
                       {i + 1}
                     </span>
-                    <span className="font-bold text-on-surface">{s.pickupPoint.name}</span>
+                    <span className="font-bold text-on-surface">{s.pickupPoint.address || s.pickupPoint.name}</span>
                   </div>
                 ))}
               </div>
