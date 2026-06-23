@@ -9,12 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@nestjs/swagger": "^11.4.4",
+    "@nestjs/throttler": "^6.5.0",
     "@tanstack/react-query": "^5.100.14",
+    "helmet": "^8.2.0",
     "jose": "^6.2.3",
     "maplibre-gl": "^5.24.0",
     "next": "16.2.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
