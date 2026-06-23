@@ -109,6 +109,18 @@ export interface Incident {
   zone?: { id: string; name: string } | null;
 }
 
+export interface Vehicle {
+  id: string;
+  plate: string;
+  brand?: string | null;
+  model?: string | null;
+  capacity?: number | null;
+  status: string;
+  driverId?: string | null;
+  createdAt: string;
+  driver?: { id: string; fullName: string; email: string } | null;
+}
+
 export interface ApiError {
   message: string;
   statusCode: number;
