@@ -8,7 +8,6 @@ const mockDate = new Date('2025-01-01T00:00:00.000Z');
 
 describe('AdminService', () => {
   let service: AdminService;
-  let prisma: MockPrisma;
 
   const mockPrisma: MockPrisma = {
     zone: {
@@ -49,7 +48,6 @@ describe('AdminService', () => {
     }).compile();
 
     service = module.get<AdminService>(AdminService);
-    prisma = module.get(PrismaService);
     jest.clearAllMocks();
   });
 
@@ -58,9 +56,9 @@ describe('AdminService', () => {
       mockPrisma.zone.count.mockResolvedValue(5);
       mockPrisma.pickupPoint.count.mockResolvedValue(15);
       mockPrisma.incident.count
-        .mockResolvedValueOnce(3)  // OPEN
-        .mockResolvedValueOnce(2)  // IN_PROGRESS
-        .mockResolvedValueOnce(8)  // RESOLVED
+        .mockResolvedValueOnce(3) // OPEN
+        .mockResolvedValueOnce(2) // IN_PROGRESS
+        .mockResolvedValueOnce(8) // RESOLVED
         .mockResolvedValueOnce(1); // CLOSED
       mockPrisma.incident.findMany.mockResolvedValue([
         {
@@ -68,7 +66,11 @@ describe('AdminService', () => {
           title: 'Incidente reciente',
           status: 'OPEN',
           createdAt: mockDate,
-          reporter: { id: 'user-1', fullName: 'Juan Pérez', email: 'juan@test.com' },
+          reporter: {
+            id: 'user-1',
+            fullName: 'Juan Pérez',
+            email: 'juan@test.com',
+          },
           zone: { id: 'zone-1', name: 'Centro Histórico' },
         },
       ]);
@@ -160,9 +162,24 @@ describe('AdminService', () => {
       ];
 
       const mockPickupPoints = [
-        { id: 'pp1', zoneId: 'z1', status: 'ACTIVE', zone: { id: 'z1', name: 'Centro Histórico' } },
-        { id: 'pp2', zoneId: 'z1', status: 'ACTIVE', zone: { id: 'z1', name: 'Centro Histórico' } },
-        { id: 'pp3', zoneId: 'z2', status: 'ACTIVE', zone: { id: 'z2', name: 'San Blas' } },
+        {
+          id: 'pp1',
+          zoneId: 'z1',
+          status: 'ACTIVE',
+          zone: { id: 'z1', name: 'Centro Histórico' },
+        },
+        {
+          id: 'pp2',
+          zoneId: 'z1',
+          status: 'ACTIVE',
+          zone: { id: 'z1', name: 'Centro Histórico' },
+        },
+        {
+          id: 'pp3',
+          zoneId: 'z2',
+          status: 'ACTIVE',
+          zone: { id: 'z2', name: 'San Blas' },
+        },
       ];
 
       const mockSchedules = [
@@ -214,7 +231,11 @@ describe('AdminService', () => {
       ];
 
       const mockRoutes = [
-        { id: 'r1', status: 'IN_PROGRESS', stops: [{ id: 'stop1' }, { id: 'stop2' }] },
+        {
+          id: 'r1',
+          status: 'IN_PROGRESS',
+          stops: [{ id: 'stop1' }, { id: 'stop2' }],
+        },
         { id: 'r2', status: 'COMPLETED', stops: [{ id: 'stop3' }] },
       ];
 
@@ -241,13 +262,17 @@ describe('AdminService', () => {
 
       // Waste composition
       expect(result.wasteComposition).toHaveLength(2);
-      const plastico = result.wasteComposition.find((w) => w.name === 'Plástico');
+      const plastico = result.wasteComposition.find(
+        (w) => w.name === 'Plástico',
+      );
       expect(plastico?.count).toBe(2);
       expect(plastico?.percentage).toBe(67); // 2/3 * 100
 
       // Zone ranking
       expect(result.zoneRanking).toHaveLength(2);
-      const centro = result.zoneRanking.find((z) => z.name === 'Centro Histórico');
+      const centro = result.zoneRanking.find(
+        (z) => z.name === 'Centro Histórico',
+      );
       expect(centro).toBeDefined();
       expect(centro!.pickupPoints).toBe(2);
       expect(centro!.incidents).toBe(2);

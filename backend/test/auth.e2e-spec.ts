@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import type { Server } from 'http';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import * as bcrypt from 'bcrypt';
@@ -39,7 +41,7 @@ describe('Auth (e2e)', () => {
         createdAt: new Date(),
       });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as Server)
         .post('/auth/register')
         .send({
           email: 'nuevo@test.com',
@@ -70,7 +72,7 @@ describe('Auth (e2e)', () => {
         createdAt: new Date(),
       });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as Server)
         .post('/auth/login')
         .send({ email: 'login@test.com', password: '123456' })
         .expect(201);
@@ -91,7 +93,7 @@ describe('Auth (e2e)', () => {
         createdAt: new Date(),
       });
 
-      await request(app.getHttpServer())
+      await request(app.getHttpServer() as Server)
         .post('/auth/login')
         .send({ email: 'login@test.com', password: 'wrong-password' })
         .expect(401);

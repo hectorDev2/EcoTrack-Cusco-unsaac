@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import type { Server } from 'http';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { bootstrapE2E, E2eContext, mockPrisma } from './app.e2e-helper';
@@ -29,7 +31,7 @@ describe('Admin (e2e)', () => {
         role: 'ADMIN',
       });
 
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as Server)
         .get('/admin/dashboard')
         .set('Authorization', `Bearer ${ctx.generateToken('ADMIN')}`)
         .expect(200);
@@ -57,7 +59,7 @@ describe('Admin (e2e)', () => {
 
     it('debe retornar 403 si el usuario no es ADMIN', async () => {
       // Default mock: CITIZEN → RolesGuard rechaza
-      await request(app.getHttpServer())
+      await request(app.getHttpServer() as Server)
         .get('/admin/dashboard')
         .set('Authorization', `Bearer ${ctx.generateToken('CITIZEN')}`)
         .expect(403);

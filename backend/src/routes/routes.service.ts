@@ -76,16 +76,33 @@ export class RoutesService {
     await this.findOne(id);
 
     const data: Record<string, any> = {};
-    if (dto.status) data.status = dto.status;
-    if (dto.status === 'IN_PROGRESS') data.startedAt = new Date();
-    if (dto.status === 'COMPLETED') data.finishedAt = new Date();
-    if (dto.driverId) data.driverId = dto.driverId;
+    if (dto.name !== undefined)      data.name      = dto.name;
+    if (dto.shift !== undefined)     data.shift     = dto.shift;
+    if (dto.frequency !== undefined) data.frequency = dto.frequency;
+    if (dto.driverId !== undefined)  data.driverId  = dto.driverId || null;
+    if (dto.status) {
+      data.status = dto.status;
+      if (dto.status === 'IN_PROGRESS') data.startedAt = new Date();
+      if (dto.status === 'COMPLETED')   data.finishedAt = new Date();
+    }
 
-    return this.prisma.route.update({
-      where: { id },
-      data,
-      include: routeInclude,
-    });
+    await this.prisma.route.update({ where: { id }, data });
+
+    if (dto.pickupPointIds !== undefined) {
+      await this.prisma.routeStop.deleteMany({ where: { routeId: id } });
+      if (dto.pickupPointIds.length > 0) {
+        await this.prisma.routeStop.createMany({
+          data: dto.pickupPointIds.map((ppId, i) => ({
+            routeId: id,
+            pickupPointId: ppId,
+            orderIndex: i,
+            status: 'PENDING',
+          })),
+        });
+      }
+    }
+
+    return this.findOne(id);
   }
 
   async findByZone(zoneId: string) {

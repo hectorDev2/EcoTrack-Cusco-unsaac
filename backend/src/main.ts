@@ -42,4 +42,4 @@ async function bootstrap() {
   console.log(`📖 Documentación en http://localhost:${port}/docs`);
 }
 
-bootstrap();
+void bootstrap();

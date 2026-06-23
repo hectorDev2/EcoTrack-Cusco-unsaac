@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import type { Server } from 'http';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { bootstrapE2E, E2eContext, mockPrisma } from './app.e2e-helper';
@@ -49,13 +51,21 @@ describe('Collections (e2e)', () => {
         collectedAt: new Date(),
         notes: null,
         routeStop: {
-          pickupPoint: { id: 'pp-1', name: 'Punto de Prueba', address: 'Av. Prueba 123' },
+          pickupPoint: {
+            id: 'pp-1',
+            name: 'Punto de Prueba',
+            address: 'Av. Prueba 123',
+          },
         },
-        wasteType: { id: 'e2e-waste-type-id', name: 'Plástico', category: 'RECYCLABLE' },
+        wasteType: {
+          id: 'e2e-waste-type-id',
+          name: 'Plástico',
+          category: 'RECYCLABLE',
+        },
       };
       mockPrisma.collection.create.mockResolvedValue(fakeCollection);
 
-      const res = await request(app.getHttpServer())
+      const res = await request(app.getHttpServer() as Server)
         .post('/collections')
         .set('Authorization', `Bearer ${ctx.generateToken('DRIVER')}`)
         .send({
@@ -73,7 +83,7 @@ describe('Collections (e2e)', () => {
 
     it('debe retornar 403 si el usuario no tiene role DRIVER', async () => {
       // Default mock: user.findUnique returns CITIZEN → RolesGuard rechaza
-      await request(app.getHttpServer())
+      await request(app.getHttpServer() as Server)
         .post('/collections')
         .set('Authorization', `Bearer ${ctx.generateToken('CITIZEN')}`)
         .send({

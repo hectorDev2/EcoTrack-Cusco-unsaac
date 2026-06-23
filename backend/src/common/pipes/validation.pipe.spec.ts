@@ -1,3 +1,4 @@
+import { ArgumentMetadata } from '@nestjs/common';
 import { IsString, MinLength } from 'class-validator';
 import { AppValidationPipe } from './validation.pipe';
 
@@ -19,10 +20,9 @@ describe('AppValidationPipe', () => {
   });
 
   it('debe pasar un DTO válido', async () => {
-    const result = await pipe.transform({ name: 'Juan' }, {
-      type: 'body',
-      metatype: TestDto,
-    } as any);
+    const metadata: ArgumentMetadata = { type: 'body', metatype: TestDto };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const result = await pipe.transform({ name: 'Juan' }, metadata);
 
     expect(result).toEqual({ name: 'Juan' });
   });
