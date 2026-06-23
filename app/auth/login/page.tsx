@@ -124,6 +124,31 @@ function LoginForm() {
           </a>
         </p>
       </div>
+
+      {/* Credenciales de prueba */}
+      <div className="mt-4 bg-surface-card rounded-2xl border border-outline-variant p-5 w-full max-w-sm">
+        <p className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase mb-3">
+          Cuentas de prueba · contraseña: <span className="text-primary">123456</span>
+        </p>
+        <div className="space-y-1.5">
+          {[
+            { label: 'Administrador', email: 'admin@ecotrack.pe', color: 'text-primary' },
+            { label: 'Conductor', email: 'carlos.conductor@ecotrack.pe', color: 'text-waste-organic' },
+            { label: 'Conductor', email: 'maria.conductora@ecotrack.pe', color: 'text-waste-organic' },
+            { label: 'Ciudadano', email: 'juan@ecotrack.pe', color: 'text-on-surface-variant' },
+          ].map(({ label, email, color }) => (
+            <button
+              key={email}
+              type="button"
+              onClick={() => { setEmail(email); setPassword('123456'); }}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-surface-container-low transition-colors text-left group"
+            >
+              <span className={`text-[11px] font-bold ${color}`}>{label}</span>
+              <span className="text-[11px] text-on-surface-variant group-hover:text-on-surface font-mono transition-colors">{email}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
