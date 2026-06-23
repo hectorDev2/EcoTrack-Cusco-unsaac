@@ -50,10 +50,13 @@ export class RoutesService {
     const route = await this.prisma.route.create({
       data: {
         zoneId: dto.zoneId,
-        driverId: dto.driverId,
+        driverId: dto.driverId ?? null,
+        name: dto.name ?? null,
+        shift: dto.shift ?? null,
+        frequency: dto.frequency ?? null,
         status: dto.status ?? 'PENDING',
         createdAt: new Date(),
-      },
+      } as any,
     });
 
     if (dto.pickupPointIds && dto.pickupPointIds.length > 0) {
@@ -204,7 +207,7 @@ export class RoutesService {
       alerts,
       routes: routes.map((r) => ({
         id: r.id,
-        name: `Ruta ${r.zone?.name ?? 'Sin zona'}`,
+        name: (r as any).name ?? `Ruta ${r.zone?.name ?? 'Sin zona'}`,
         zone: r.zone?.name ?? 'Sin zona',
         driver: r.driver?.fullName ?? 'Sin conductor',
         status: r.status,

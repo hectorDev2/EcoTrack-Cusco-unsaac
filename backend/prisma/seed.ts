@@ -60,55 +60,55 @@ async function main() {
 
   const usersData = [
     {
-      email: 'admin@terracivic.pe',
+      email: 'admin@ecotrack.pe',
       fullName: 'Hector Mamani',
       role: 'ADMIN',
       status: 'ACTIVE',
     },
     {
-      email: 'carlos.conductor@terracivic.pe',
+      email: 'carlos.conductor@ecotrack.pe',
       fullName: 'Carlos Quispe',
       role: 'DRIVER',
       status: 'ACTIVE',
     },
     {
-      email: 'maria.conductor@terracivic.pe',
+      email: 'maria.conductora@ecotrack.pe',
       fullName: 'Maria Huaman',
       role: 'DRIVER',
       status: 'ACTIVE',
     },
     {
-      email: 'juan@terracivic.pe',
+      email: 'juan@ecotrack.pe',
       fullName: 'Juan Quispe',
       role: 'CITIZEN',
       status: 'ACTIVE',
     },
     {
-      email: 'rosa@terracivic.pe',
+      email: 'rosa@ecotrack.pe',
       fullName: 'Rosa Mamani',
       role: 'CITIZEN',
       status: 'ACTIVE',
     },
     {
-      email: 'pedro@terracivic.pe',
+      email: 'pedro@ecotrack.pe',
       fullName: 'Pedro Ccahuana',
       role: 'CITIZEN',
       status: 'ACTIVE',
     },
     {
-      email: 'lucia@terracivic.pe',
+      email: 'lucia@ecotrack.pe',
       fullName: 'Lucia Huilca',
       role: 'CITIZEN',
       status: 'ACTIVE',
     },
     {
-      email: 'miguel@terracivic.pe',
+      email: 'miguel@ecotrack.pe',
       fullName: 'Miguel Sotomayor',
       role: 'CITIZEN',
       status: 'ACTIVE',
     },
     {
-      email: 'inactivo@terracivic.pe',
+      email: 'inactivo@ecotrack.pe',
       fullName: 'Usuario Inactivo',
       role: 'CITIZEN',
       status: 'INACTIVE',
@@ -124,15 +124,15 @@ async function main() {
     console.log(`✅ Usuario ${u.email} (${u.role})`);
   }
 
-  const admin = users['admin@terracivic.pe'];
-  const driver1 = users['carlos.conductor@terracivic.pe'];
-  const driver2 = users['maria.conductor@terracivic.pe'];
+  const admin = users['admin@ecotrack.pe'];
+  const driver1 = users['carlos.conductor@ecotrack.pe'];
+  const driver2 = users['maria.conductora@ecotrack.pe'];
   const citizens = [
-    users['juan@terracivic.pe'],
-    users['rosa@terracivic.pe'],
-    users['pedro@terracivic.pe'],
-    users['lucia@terracivic.pe'],
-    users['miguel@terracivic.pe'],
+    users['juan@ecotrack.pe'],
+    users['rosa@ecotrack.pe'],
+    users['pedro@ecotrack.pe'],
+    users['lucia@ecotrack.pe'],
+    users['miguel@ecotrack.pe'],
   ];
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -178,7 +178,9 @@ async function main() {
   // ZONAS (Distrito de Wanchaq - Rutero de Compactadores 2024)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Zona padre: el distrito completo
+  // Única zona: el distrito completo de Wanchaq
+  // Las "Zona 1-5" del rutero son rutas operativas dentro de Wanchaq,
+  // no zonas independientes. Se crean como Routes al asignar conductores.
   const wanchaqZone = await prisma.zone.create({
     data: {
       name: 'Wanchaq',
@@ -187,29 +189,11 @@ async function main() {
       createdAt: now,
     },
   });
-  console.log(`✅ Zona Wanchaq (padre)`);
+  console.log(`✅ Zona Wanchaq`);
 
-  // 5 Zonas internas del rutero oficial
-  const internalZonesData = [
-    { name: 'Zona 1', description: 'Zona interna 1 de Wanchaq según rutero oficial 2024' },
-    { name: 'Zona 2', description: 'Zona interna 2 de Wanchaq según rutero oficial 2024' },
-    { name: 'Zona 3', description: 'Zona interna 3 de Wanchaq según rutero oficial 2024' },
-    { name: 'Zona 4', description: 'Zona interna 4 de Wanchaq según rutero oficial 2024' },
-    { name: 'Zona 5', description: 'Zona interna 5 de Wanchaq según rutero oficial 2024' },
-  ];
-
-  const internalZoneIds: Record<string, string> = {};
-  for (const z of internalZonesData) {
-    const created = await prisma.zone.create({
-      data: { ...z, status: 'ACTIVE', createdAt: now },
-    });
-    internalZoneIds[z.name] = created.id;
-    console.log(`✅ ${z.name}`);
-  }
-
-  // Backward compat: zoneIds apunta a las 5 zonas internas (como el seed original)
-  const zoneIds = { ...internalZoneIds, Wanchaq: wanchaqZone.id };
-  const allZoneIds = [wanchaqZone.id, ...Object.values(internalZoneIds)];
+  // Todos los pickup points se asignan a Wanchaq.
+  // La diferenciación por zona interna (1-5) se mantiene en el nombre del punto.
+  const allZoneIds = [wanchaqZone.id];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ASIGNACIONES USUARIO-ZONA (todos los usuarios a Wanchaq)
@@ -475,26 +459,19 @@ async function main() {
   });
   console.log(`📍 ${paradas.length} paradas parseadas del rutero`);
 
-  // Insertar en DB
+  // Insertar en DB y agrupar IDs por (zoneName, shift, frequencyCode) para las rutas
   let pickupCount = 0;
-  for (const p of paradas) {
-    const zoneId = p.zoneName === 'Wanchaq' ? wanchaqZone.id : internalZoneIds[p.zoneName];
-    if (!zoneId) {
-      console.warn(`⚠️  Zone no encontrada: ${p.zoneName}`);
-      continue;
-    }
-    const hora = fmtHora(p.hora);
-    // Construir name con tags al final
-    const tags: string[] = [];
-    if (p.shift) tags.push(`[${p.shift}]`);
-    if (p.stopType) tags.push(`[${p.stopType}]`);
-    if (p.frequencyCode) tags.push(`[${p.frequencyCode}]`);
-    const tagStr = tags.length > 0 ? ` ${tags.join(' ')}` : '';
-    const fullName = `${hora ? `[${hora}] ` : ''}${p.nombre}${tagStr}`;
+  // key: "Zona 1|MANANA|LMV", value: array de pickupPoint ids en orden
+  const pickupIdsByRoute: Record<string, string[]> = {};
 
-    await prisma.pickupPoint.create({
+  for (const p of paradas) {
+    const hora = fmtHora(p.hora);
+    // nombre limpio: solo la dirección, con hora si existe
+    const fullName = hora ? `[${hora}] ${p.nombre}` : p.nombre;
+
+    const created = await prisma.pickupPoint.create({
       data: {
-        zoneId,
+        zoneId: wanchaqZone.id,
         name: fullName,
         address: p.nombre,
         latitude: p.lat ?? -13.5300,
@@ -507,10 +484,77 @@ async function main() {
         status: 'ACTIVE',
       },
     });
+
+    // Agrupar para crear RouteStops más adelante
+    const routeKey = `${p.zoneName}|${p.shift}|${p.frequencyCode ?? 'TODOS'}`;
+    if (!pickupIdsByRoute[routeKey]) pickupIdsByRoute[routeKey] = [];
+    pickupIdsByRoute[routeKey].push(created.id);
+
     pickupCount++;
   }
   console.log(`✅ ${pickupCount} PickupPoints creados`);
 
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RUTAS (plantillas del rutero oficial - sin conductor asignado)
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // Cada combinación zoneName|shift|frequency del rutero se convierte en una
+  // ruta plantilla. Los conductores se asignan operativamente desde /admin-rutas.
+  //
+  // Naming: "Zona 1 — Mañana LMV", "Repechaje — Mañana MJS", etc.
+
+  const SHIFT_LABEL: Record<string, string> = {
+    MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
+  };
+  const FREQ_LABEL: Record<string, string> = {
+    LMV: 'LMV', MJS: 'MJS', DOM: 'DOM', DOM_LUN: 'Dom+Lun', TODOS: 'Todos',
+  };
+
+  // Asignación de conductores por zona/turno:
+  // Carlos → zonas impares (1, 3, 5), Repechaje LMV, Tarde LMV, Noche Zona 1, Dominical Z1
+  // Maria  → zonas pares  (2, 4),     Repechaje MJS, Tarde MJS, Noche Zona 2, Dominical Z2-Z3, Furgón
+  const getDriverId = (zoneName: string, freqCode: string): string => {
+    const odd = ['Zona 1', 'Zona 3', 'Zona 5', 'Wanchaq'];
+    if (odd.includes(zoneName) && (freqCode === 'LMV' || freqCode === 'DOM' || freqCode === 'TODOS')) {
+      return driver1.id;
+    }
+    return driver2.id;
+  };
+
+  let routeCount = 0;
+  for (const [routeKey, ppIds] of Object.entries(pickupIdsByRoute)) {
+    const [zoneName, shift, freqCode] = routeKey.split('|');
+    const label = `${zoneName} — ${SHIFT_LABEL[shift] ?? shift} ${FREQ_LABEL[freqCode] ?? freqCode}`;
+    const driverId = getDriverId(zoneName, freqCode);
+
+    const route = await prisma.route.create({
+      data: {
+        zoneId: wanchaqZone.id,
+        driverId,
+        name: label,
+        shift,
+        frequency: freqCode,
+        status: 'PENDING',
+        createdAt: now,
+      } as any,  // `name`, `shift`, `frequency` requieren migrate-turso antes del seed
+    });
+
+    // Crear RouteStops en orden
+    for (let i = 0; i < ppIds.length; i++) {
+      await prisma.routeStop.create({
+        data: {
+          routeId: route.id,
+          pickupPointId: ppIds[i],
+          orderIndex: i + 1,
+          status: 'PENDING',
+        },
+      });
+    }
+
+    routeCount++;
+  }
+  console.log(`✅ ${routeCount} Rutas plantilla creadas (del rutero oficial)`);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════════════════
@@ -716,6 +760,8 @@ async function main() {
     users: await prisma.user.count(),
     zones: await prisma.zone.count(),
     pickupPoints: await prisma.pickupPoint.count(),
+    routes: await prisma.route.count(),
+    routeStops: await prisma.routeStop.count(),
     schedules: await prisma.collectionSchedule.count(),
     incidents: await prisma.incident.count(),
     wasteTypes: await prisma.wasteType.count(),
@@ -726,23 +772,25 @@ async function main() {
   console.log('🎉 SEED COMPLETADO EXITOSAMENTE');
   console.log('═══════════════════════════════════════');
   console.log(`   Usuarios:       ${counts.users} (9)`);
-  console.log(`   Zonas:          ${counts.zones} (6: Wanchaq + 5 Zonas)`);
+  console.log(`   Zonas:          ${counts.zones} (1: Wanchaq)`);
   console.log(`   Puntos Recojo:  ${counts.pickupPoints} (del rutero de compactadores)`);
+  console.log(`   Rutas:          ${counts.routes} (plantillas del rutero)`);
+  console.log(`   Paradas (stops):${counts.routeStops}`);
   console.log(`   Horarios:       ${counts.schedules} (5 frecuencias)`);
   console.log(`   Incidencias:    ${counts.incidents} (16)`);
   console.log(`   Tipos Residuo:  ${counts.wasteTypes} (4)`);
   console.log(`   Frecuencias:    ${counts.frequencies} (LMV, MJS, DOM, DOM_LUN, TODOS)`);
   console.log('═══════════════════════════════════════');
   console.log('\n📧 CREDENCIALES:');
-  console.log('   admin@terracivic.pe          / 123456  (Administrador)');
-  console.log('   carlos.conductor@terracivic.pe / 123456  (Conductor)');
-  console.log('   maria.conductor@terracivic.pe  / 123456  (Conductor)');
-  console.log('   juan@terracivic.pe           / 123456  (Ciudadano)');
-  console.log('   rosa@terracivic.pe           / 123456  (Ciudadano)');
-  console.log('   pedro@terracivic.pe          / 123456  (Ciudadano)');
-  console.log('   lucia@terracivic.pe          / 123456  (Ciudadano)');
-  console.log('   miguel@terracivic.pe         / 123456  (Ciudadano)');
-  console.log('   inactivo@terracivic.pe       / 123456  (Inactivo)');
+  console.log('   admin@ecotrack.pe          / 123456  (Administrador)');
+  console.log('   carlos.conductor@ecotrack.pe / 123456  (Conductor)');
+  console.log('   maria.conductora@ecotrack.pe  / 123456  (Conductor)');
+  console.log('   juan@ecotrack.pe           / 123456  (Ciudadano)');
+  console.log('   rosa@ecotrack.pe           / 123456  (Ciudadano)');
+  console.log('   pedro@ecotrack.pe          / 123456  (Ciudadano)');
+  console.log('   lucia@ecotrack.pe          / 123456  (Ciudadano)');
+  console.log('   miguel@ecotrack.pe         / 123456  (Ciudadano)');
+  console.log('   inactivo@ecotrack.pe       / 123456  (Inactivo)');
 }
 
 main()

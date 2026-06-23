@@ -5,19 +5,18 @@ import { PrismaLibSQL } from '@prisma/adapter-libsql';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    const dbUrl = process.env.DATABASE_URL || '';
     const tursoUrl = process.env.TURSO_DATABASE_URL;
+    const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-    if (dbUrl.startsWith('file:') || !tursoUrl) {
-      super();
-    } else {
-      super({
-        adapter: new PrismaLibSQL({
-          url: tursoUrl,
-          authToken: process.env.TURSO_AUTH_TOKEN!,
-        }),
-      });
-    }
+    if (!tursoUrl) throw new Error('TURSO_DATABASE_URL is required');
+    if (!tursoToken) throw new Error('TURSO_AUTH_TOKEN is required');
+
+    super({
+      adapter: new PrismaLibSQL({
+        url: tursoUrl,
+        authToken: tursoToken,
+      }),
+    });
   }
 
   async onModuleInit() {

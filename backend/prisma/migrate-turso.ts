@@ -1,3 +1,12 @@
+/**
+ * migrate-turso.ts
+ *
+ * Aplica migraciones incrementales a Turso (libSQL) vía SQL directo.
+ * Solo usa ALTER TABLE ADD COLUMN — nunca reconstruye tablas.
+ *
+ * Ejecutar con: npm run prisma:push:turso
+ */
+
 import { PrismaClient } from '@prisma/client';
 import { PrismaLibSQL } from '@prisma/adapter-libsql';
 import * as fs from 'fs';
@@ -17,9 +26,7 @@ function loadEnv() {
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
-    if (!process.env[key]) {
-      process.env[key] = val;
-    }
+    if (!process.env[key]) process.env[key] = val;
   }
 }
 
@@ -35,34 +42,42 @@ async function migrate() {
   }
 
   console.log('🚀 Conectando a Turso...');
-
   const adapter = new PrismaLibSQL({ url: tursoUrl, authToken: authToken! });
   const prisma = new PrismaClient({ adapter });
 
-  try {
-    await prisma.$connect();
-    console.log('✅ Conectado');
-
-    const columns = ['latitude', 'longitude', 'address'];
-    for (const col of columns) {
-      const sql =
-        col === 'address'
-          ? `ALTER TABLE incidents ADD COLUMN ${col} TEXT;`
-          : `ALTER TABLE incidents ADD COLUMN ${col} REAL;`;
-
-      try {
-        await prisma.$executeRawUnsafe(sql);
-        console.log(`  ✅ Columna "${col}" agregada`);
-      } catch (e: any) {
-        if (e.message?.includes('duplicate column')) {
-          console.log(`  ⏭️  Columna "${col}" ya existe`);
-        } else {
-          throw e;
-        }
+  async function addColumn(table: string, col: string, type: string) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+      console.log(`  ✅ ${table}.${col} agregada`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('duplicate column') || msg.includes('already exists')) {
+        console.log(`  ⏭️  ${table}.${col} ya existe`);
+      } else {
+        throw e;
       }
     }
+  }
 
-    console.log('✅ Migración completada');
+  try {
+    await prisma.$connect();
+    console.log('✅ Conectado\n');
+
+    // ── incidents: columnas de ubicación ─────────────────────────────────────
+    console.log('📦 incidents:');
+    await addColumn('incidents', 'latitude', 'REAL');
+    await addColumn('incidents', 'longitude', 'REAL');
+    await addColumn('incidents', 'address', 'TEXT');
+
+    // ── routes: columnas para plantillas del rutero ───────────────────────────
+    // Nota: driver_id sigue siendo NOT NULL en el esquema original de Turso.
+    // El seed asigna siempre un conductor, así que no se necesita cambiar el constraint.
+    console.log('\n📦 routes:');
+    await addColumn('routes', 'name', 'TEXT');
+    await addColumn('routes', 'shift', 'TEXT');
+    await addColumn('routes', 'frequency', 'TEXT');
+
+    console.log('\n✅ Migración completada');
   } finally {
     await prisma.$disconnect();
   }

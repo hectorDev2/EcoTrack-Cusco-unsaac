@@ -283,7 +283,7 @@ describe('RoutesService', () => {
       const result = await service.findByDriver('driver-1');
 
       expect(result).toHaveLength(1);
-      expect(result[0].driver.fullName).toBe('Carlos Conductor');
+      expect(result[0].driver?.fullName).toBe('Carlos Conductor');
     });
 
     it('debe retornar lista vacía si el conductor no tiene rutas', async () => {

@@ -162,14 +162,17 @@ model CollectionSchedule {
 model Route {
   id         String  @id @default(cuid())
   zoneId     String  @map("zone_id")
-  driverId   String  @map("driver_id")
+  driverId   String? @map("driver_id")   // nullable: rutas plantilla sin conductor asignado
+  name       String?                      // nombre descriptivo: "Zona 1 - Mañana LMV"
+  shift      String?                      // MANANA | TARDE | NOCHE | DOMINICAL
+  frequency  String?                      // LMV | MJS | DOM | DOM_LUN | TODOS
   status     String  @default("PENDING")
   startedAt  DateTime? @map("started_at")
   finishedAt DateTime? @map("finished_at")
   createdAt  DateTime  @default(now()) @map("created_at")
 
   zone      Zone       @relation(fields: [zoneId], references: [id])
-  driver    User       @relation(fields: [driverId], references: [id])
+  driver    User?      @relation(fields: [driverId], references: [id])
   stops     RouteStop[]
   locations RouteLocation[]
   incidents Incident[]
