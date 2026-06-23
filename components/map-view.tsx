@@ -149,7 +149,9 @@ export default function MapView({
   const darkModeRef = useRef(isDarkMode());
   const onMapClickRef = useRef(onMapClick);
   const onMarkerClickRef = useRef(onMarkerClick);
+  // eslint-disable-next-line react-hooks/refs
   onMapClickRef.current = onMapClick;
+  // eslint-disable-next-line react-hooks/refs
   onMarkerClickRef.current = onMarkerClick;
 
   // Track dark mode changes
