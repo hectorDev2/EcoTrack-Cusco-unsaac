@@ -77,6 +77,13 @@ export default function AdminRutasPage() {
   const [routeMapInfo, setRouteMapInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [routeMapLoading, setRouteMapLoading] = useState(false);
 
+  // Edit modal
+  const [editRoute, setEditRoute] = useState<AdminRoute | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editShift, setEditShift] = useState('');
+  const [editFrequency, setEditFrequency] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+
   const fetchData = () => {
     setLoading(true);
     Promise.all([
@@ -274,6 +281,51 @@ export default function AdminRutasPage() {
       setError(err instanceof ApiClientError ? err.message : 'Error al crear ruta');
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleEditOpen = async (route: AdminRoute) => {
+    setEditRoute(route);
+    setEditName(route.name ?? '');
+    setEditShift(route.shift ?? '');
+    setEditFrequency(route.frequency ?? '');
+    setFormDriver(route.driver?.id ?? '');
+    setFormZone(route.zone.id);
+    setCalculatedRoute([]);
+    setRouteInfo(null);
+    try {
+      const pps = await api.get<PickupPoint[]>(`/pickup-points?zoneId=${route.zone.id}`);
+      setPickupPoints(pps);
+      const stops = [...route.stops].sort((a, b) => a.orderIndex - b.orderIndex);
+      setWaypoints(stops.map((s) => ({
+        lng: s.pickupPoint.longitude,
+        lat: s.pickupPoint.latitude,
+        label: s.pickupPoint.address || s.pickupPoint.name,
+        pickupPointId: s.pickupPoint.id,
+      })));
+    } catch {}
+  };
+
+  const handleEditSave = async () => {
+    if (!editRoute) return;
+    setEditLoading(true);
+    try {
+      await api.patch(`/routes/${editRoute.id}`, {
+        name: editName || undefined,
+        shift: editShift || undefined,
+        frequency: editFrequency || undefined,
+        driverId: formDriver || undefined,
+        pickupPointIds: waypoints.filter((w) => w.pickupPointId).map((w) => w.pickupPointId!),
+      });
+      setEditRoute(null);
+      setWaypoints([]);
+      setCalculatedRoute([]);
+      setRouteInfo(null);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Error al guardar cambios');
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -630,6 +682,14 @@ export default function AdminRutasPage() {
                     Mapa
                   </button>
 
+                  <button
+                    onClick={() => handleEditOpen(r)}
+                    className="text-[11px] font-bold text-on-surface-variant flex items-center gap-1 hover:text-primary hover:underline px-2 py-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">edit</span>
+                    Editar
+                  </button>
+
                   <select
                     value=""
                     onChange={async (e) => {
@@ -679,6 +739,160 @@ export default function AdminRutasPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal edición de ruta */}
+      {editRoute && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditRoute(null)}>
+          <div className="bg-surface-card rounded-2xl w-full max-w-5xl max-h-[90vh] shadow-2xl border border-outline-variant/20 overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-outline-variant/20">
+              <div>
+                <h3 className="text-[18px] font-bold text-on-surface">Editar Ruta</h3>
+                <p className="text-[13px] text-on-surface-variant">{editRoute.name ?? editRoute.zone?.name ?? 'Sin nombre'}</p>
+              </div>
+              <button onClick={() => setEditRoute(null)} className="p-2 hover:bg-surface-variant rounded-full text-on-surface-variant">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Contenido: mapa + panel */}
+            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-5 min-h-0">
+              {/* Mapa */}
+              <div className="lg:col-span-3 h-[420px] lg:h-auto relative">
+                <MapView
+                  center={pickupPoints.length > 0 ? [pickupPoints[0].longitude, pickupPoints[0].latitude] : [-71.9675, -13.5320]}
+                  zoom={15}
+                  markers={pickupPoints.map((pp) => ({
+                    id: pp.id,
+                    lng: pp.longitude,
+                    lat: pp.latitude,
+                    color: waypoints.some((w) => w.pickupPointId === pp.id) ? '#2E7D32' : '#154212',
+                    icon: (waypoints.some((w) => w.pickupPointId === pp.id) ? 'check_circle' : 'location_on') as string,
+                    label: pp.address || pp.name,
+                  }))}
+                  routes={calculatedRoute}
+                  onMarkerClick={(m) => {
+                    const pp = pickupPoints.find((p) => p.id === m.id);
+                    if (pp) togglePickupPoint(pp);
+                  }}
+                />
+                {routeInfo && (
+                  <div className="absolute bottom-4 left-4 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-xl shadow-lg text-[12px] flex gap-4">
+                    <span className="font-bold text-primary">{formatDistance(routeInfo.distance)}</span>
+                    <span className="text-on-surface-variant">·</span>
+                    <span className="font-bold text-primary">{formatDuration(routeInfo.duration)}</span>
+                  </div>
+                )}
+                {calculating && (
+                  <div className="absolute top-4 right-4 z-10 bg-surface/90 backdrop-blur px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2">
+                    <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[11px] font-bold text-on-surface">Calculando...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Panel de edición */}
+              <div className="lg:col-span-2 p-5 flex flex-col gap-4 overflow-y-auto">
+                <div>
+                  <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-1.5">Nombre</label>
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Ej: Zona 1 — Mañana LMV"
+                    className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-[13px] focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-1.5">Turno</label>
+                    <select value={editShift} onChange={(e) => setEditShift(e.target.value)}
+                      className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] focus:ring-2 focus:ring-primary outline-none">
+                      <option value="">Sin turno</option>
+                      <option value="MANANA">Mañana</option>
+                      <option value="TARDE">Tarde</option>
+                      <option value="NOCHE">Noche</option>
+                      <option value="DOMINICAL">Dominical</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-1.5">Frecuencia</label>
+                    <select value={editFrequency} onChange={(e) => setEditFrequency(e.target.value)}
+                      className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] focus:ring-2 focus:ring-primary outline-none">
+                      <option value="">Sin frecuencia</option>
+                      <option value="LMV">Lun · Mié · Vie</option>
+                      <option value="MJS">Mar · Jue · Sáb</option>
+                      <option value="DOM">Solo Domingo</option>
+                      <option value="DOM_LUN">Dom · Lun</option>
+                      <option value="TODOS">Todos los días</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-1.5">Conductor</label>
+                  <select value={formDriver} onChange={(e) => setFormDriver(e.target.value)}
+                    className="w-full bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-[13px] focus:ring-2 focus:ring-primary outline-none">
+                    <option value="">Sin conductor</option>
+                    {drivers.map((d) => (<option key={d.id} value={d.id}>{d.fullName}</option>))}
+                  </select>
+                </div>
+
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase">Paradas ({waypoints.length})</label>
+                    <span className="text-[10px] text-on-surface-variant">Click en marcadores del mapa</span>
+                  </div>
+                  {waypoints.length === 0 ? (
+                    <div className="bg-surface-container-low rounded-xl p-3 text-center">
+                      <p className="text-[12px] text-on-surface-variant">Sin paradas seleccionadas</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                      {waypoints.map((wp, i) => (
+                        <div key={`edit-${wp.pickupPointId ?? i}`} className="flex items-center gap-2 bg-surface-container-low rounded-lg p-2">
+                          <span className="w-5 h-5 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                          <span className="flex-1 text-[11px] font-bold text-on-surface truncate">{wp.label ?? `Punto ${i + 1}`}</span>
+                          <div className="flex gap-0.5">
+                            <button onClick={() => moveWaypoint(i, -1)} disabled={i === 0}
+                              className="p-0.5 rounded hover:bg-surface-variant disabled:opacity-30 text-on-surface-variant">
+                              <span className="material-symbols-outlined text-[14px]">keyboard_arrow_up</span>
+                            </button>
+                            <button onClick={() => moveWaypoint(i, 1)} disabled={i === waypoints.length - 1}
+                              className="p-0.5 rounded hover:bg-surface-variant disabled:opacity-30 text-on-surface-variant">
+                              <span className="material-symbols-outlined text-[14px]">keyboard_arrow_down</span>
+                            </button>
+                            <button onClick={() => removeWaypoint(i)}
+                              className="p-0.5 rounded hover:bg-error/10 text-error">
+                              <span className="material-symbols-outlined text-[14px]">close</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setEditRoute(null)}
+                    className="flex-1 py-2.5 rounded-xl border border-outline-variant text-[13px] font-bold text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                    Cancelar
+                  </button>
+                  <button onClick={handleEditSave} disabled={editLoading}
+                    className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-md transition-shadow">
+                    {editLoading ? (
+                      <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[16px]">save</span>
+                    )}
+                    Guardar cambios
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
