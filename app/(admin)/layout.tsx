@@ -11,7 +11,6 @@ const navItems = [
   { href: '/dashboard', icon: 'dashboard', label: 'Panel' },
   { href: '/admin-incidencias', icon: 'report_problem', label: 'Incidencias' },
   { href: '/flota', icon: 'local_shipping', label: 'Flota' },
-  { href: '/admin-zonas', icon: 'map', label: 'Zonas' },
   { href: '/admin-rutas', icon: 'route', label: 'Rutas' },
   { href: '/analisis', icon: 'bar_chart', label: 'Analíticas' },
   { href: '/usuarios', icon: 'group', label: 'Usuarios' },

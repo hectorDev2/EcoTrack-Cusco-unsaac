@@ -492,7 +492,7 @@ async function main() {
 
     pickupCount++;
   }
-  console.log(`✅ ${pickupCount} PickupPoints creados`);
+  console.log(` ${pickupCount} PickupPoints creados`);
 
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -515,7 +515,7 @@ async function main() {
   // Carlos → zonas impares (1, 3, 5), Repechaje LMV, Tarde LMV, Noche Zona 1, Dominical Z1
   // Maria  → zonas pares  (2, 4),     Repechaje MJS, Tarde MJS, Noche Zona 2, Dominical Z2-Z3, Furgón
   const getDriverId = (zoneName: string, freqCode: string): string => {
-    const odd = ['Zona 1', 'Zona 3', 'Zona 5', 'Wanchaq'];
+    const odd = ['Zona 1', 'Zona 2', 'Zona 3', 'Zona 4', 'Zona 5', 'Repechaje'];
     if (odd.includes(zoneName) && (freqCode === 'LMV' || freqCode === 'DOM' || freqCode === 'TODOS')) {
       return driver1.id;
     }
@@ -554,7 +554,7 @@ async function main() {
 
     routeCount++;
   }
-  console.log(`✅ ${routeCount} Rutas plantilla creadas (del rutero oficial)`);
+  console.log(` ${routeCount} Rutas plantilla creadas (del rutero oficial)`);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════════════════
@@ -574,7 +574,7 @@ async function main() {
       },
     });
   }
-  console.log(`✅ ${frequencyConfigs.length} CollectionSchedules creados`);
+  console.log(` ${frequencyConfigs.length} CollectionSchedules creados`);
 
   // INCIDENCIAS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -587,156 +587,156 @@ async function main() {
     citizenIdx: number;
     daysAgo: number;
   }[] = [
-    // Abiertas (OPEN)
-    {
-      zoneName: 'Wanchaq',
-      type: 'CONTAINER_DAMAGED',
-      description:
-        'Contenedor de la Plaza de Armas tiene la tapa rota y desprende mal olor. Urge reemplazo.',
-      status: 'OPEN',
-      citizenIdx: 0,
-      daysAgo: 1,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'ILLEGAL_DUMPING',
-      description:
-        'Escombros y restos de construcción abandonados en la esquina de Calle Suecia con Carmen Alto desde hace 3 días.',
-      status: 'OPEN',
-      citizenIdx: 1,
-      daysAgo: 2,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'MISSED_COLLECTION',
-      description:
-        'No pasó el camión de reciclables el miércoles en Av. Velasco Astete. Los vecinos acumulan bolsas en la vereda.',
-      status: 'OPEN',
-      citizenIdx: 4,
-      daysAgo: 1,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'OTHER',
-      description:
-        'Perros callejeros rompen las bolsas cada noche en el mercado. Se necesitan contenedores con tapa segura.',
-      status: 'OPEN',
-      citizenIdx: 2,
-      daysAgo: 3,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'CONTAINER_DAMAGED',
-      description:
-        'Contenedor de orgánicos del parque tiene la base rota y derrama líquidos en toda la vereda.',
-      status: 'OPEN',
-      citizenIdx: 3,
-      daysAgo: 1,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'ILLEGAL_DUMPING',
-      description:
-        'Colchones y muebles viejos abandonados en la puerta del colegio San Francisco de Asís.',
-      status: 'OPEN',
-      citizenIdx: 0,
-      daysAgo: 0,
-    },
+      // Abiertas (OPEN)
+      {
+        zoneName: 'Wanchaq',
+        type: 'CONTAINER_DAMAGED',
+        description:
+          'Contenedor de la Plaza de Armas tiene la tapa rota y desprende mal olor. Urge reemplazo.',
+        status: 'OPEN',
+        citizenIdx: 0,
+        daysAgo: 1,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'ILLEGAL_DUMPING',
+        description:
+          'Escombros y restos de construcción abandonados en la esquina de Calle Suecia con Carmen Alto desde hace 3 días.',
+        status: 'OPEN',
+        citizenIdx: 1,
+        daysAgo: 2,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'MISSED_COLLECTION',
+        description:
+          'No pasó el camión de reciclables el miércoles en Av. Velasco Astete. Los vecinos acumulan bolsas en la vereda.',
+        status: 'OPEN',
+        citizenIdx: 4,
+        daysAgo: 1,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'OTHER',
+        description:
+          'Perros callejeros rompen las bolsas cada noche en el mercado. Se necesitan contenedores con tapa segura.',
+        status: 'OPEN',
+        citizenIdx: 2,
+        daysAgo: 3,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'CONTAINER_DAMAGED',
+        description:
+          'Contenedor de orgánicos del parque tiene la base rota y derrama líquidos en toda la vereda.',
+        status: 'OPEN',
+        citizenIdx: 3,
+        daysAgo: 1,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'ILLEGAL_DUMPING',
+        description:
+          'Colchones y muebles viejos abandonados en la puerta del colegio San Francisco de Asís.',
+        status: 'OPEN',
+        citizenIdx: 0,
+        daysAgo: 0,
+      },
 
-    // En progreso (IN_PROGRESS)
-    {
-      zoneName: 'Wanchaq',
-      type: 'CONTAINER_DAMAGED',
-      description:
-        'Contenedor de reciclables de la Plaza San Blas tiene la puerta trabada y no se puede usar.',
-      status: 'IN_PROGRESS',
-      citizenIdx: 1,
-      daysAgo: 5,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'ILLEGAL_DUMPING',
-      description:
-        'Punto crítico de arrojo de residuos en el parque bicentenario. Se ha programado limpieza.',
-      status: 'IN_PROGRESS',
-      citizenIdx: 4,
-      daysAgo: 4,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'MISSED_COLLECTION',
-      description:
-        'Segunda semana consecutiva que no recogen los residuos reciclables en la Av. de la Cultura.',
-      status: 'IN_PROGRESS',
-      citizenIdx: 2,
-      daysAgo: 6,
-    },
+      // En progreso (IN_PROGRESS)
+      {
+        zoneName: 'Wanchaq',
+        type: 'CONTAINER_DAMAGED',
+        description:
+          'Contenedor de reciclables de la Plaza San Blas tiene la puerta trabada y no se puede usar.',
+        status: 'IN_PROGRESS',
+        citizenIdx: 1,
+        daysAgo: 5,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'ILLEGAL_DUMPING',
+        description:
+          'Punto crítico de arrojo de residuos en el parque bicentenario. Se ha programado limpieza.',
+        status: 'IN_PROGRESS',
+        citizenIdx: 4,
+        daysAgo: 4,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'MISSED_COLLECTION',
+        description:
+          'Segunda semana consecutiva que no recogen los residuos reciclables en la Av. de la Cultura.',
+        status: 'IN_PROGRESS',
+        citizenIdx: 2,
+        daysAgo: 6,
+      },
 
-    // Resueltas (RESOLVED)
-    {
-      zoneName: 'Wanchaq',
-      type: 'CONTAINER_DAMAGED',
-      description:
-        'Contenedor de basura del mercado Santiago fue reemplazado por uno nuevo.',
-      status: 'RESOLVED',
-      citizenIdx: 3,
-      daysAgo: 10,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'MISSED_COLLECTION',
-      description:
-        'Recolección no realizada en la Calle Triunfo por avería del camión. Ya se reprogramó.',
-      status: 'RESOLVED',
-      citizenIdx: 0,
-      daysAgo: 12,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'OTHER',
-      description:
-        'Acumulación de hojas secas y ramas en la Calle Tandapata. Se realizó poda y limpieza.',
-      status: 'RESOLVED',
-      citizenIdx: 1,
-      daysAgo: 8,
-    },
+      // Resueltas (RESOLVED)
+      {
+        zoneName: 'Wanchaq',
+        type: 'CONTAINER_DAMAGED',
+        description:
+          'Contenedor de basura del mercado Santiago fue reemplazado por uno nuevo.',
+        status: 'RESOLVED',
+        citizenIdx: 3,
+        daysAgo: 10,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'MISSED_COLLECTION',
+        description:
+          'Recolección no realizada en la Calle Triunfo por avería del camión. Ya se reprogramó.',
+        status: 'RESOLVED',
+        citizenIdx: 0,
+        daysAgo: 12,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'OTHER',
+        description:
+          'Acumulación de hojas secas y ramas en la Calle Tandapata. Se realizó poda y limpieza.',
+        status: 'RESOLVED',
+        citizenIdx: 1,
+        daysAgo: 8,
+      },
 
-    // Cerradas (CLOSED)
-    {
-      zoneName: 'Wanchaq',
-      type: 'CONTAINER_DAMAGED',
-      description:
-        'Contenedor dañado en Real Plaza reemplazado. Todo en orden.',
-      status: 'CLOSED',
-      citizenIdx: 4,
-      daysAgo: 15,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'ILLEGAL_DUMPING',
-      description:
-        'Escombros retirados del Mercado San Sebastián. Se identificó al infractor.',
-      status: 'CLOSED',
-      citizenIdx: 2,
-      daysAgo: 14,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'MISSED_COLLECTION',
-      description: 'Recolección reprogramada y completada sin inconvenientes.',
-      status: 'CLOSED',
-      citizenIdx: 3,
-      daysAgo: 20,
-    },
-    {
-      zoneName: 'Wanchaq',
-      type: 'CONTAINER_DAMAGED',
-      description: 'Contenedor de la Av. El Sol reparado. Reporte cerrado.',
-      status: 'CLOSED',
-      citizenIdx: 0,
-      daysAgo: 18,
-    },
-  ];
+      // Cerradas (CLOSED)
+      {
+        zoneName: 'Wanchaq',
+        type: 'CONTAINER_DAMAGED',
+        description:
+          'Contenedor dañado en Real Plaza reemplazado. Todo en orden.',
+        status: 'CLOSED',
+        citizenIdx: 4,
+        daysAgo: 15,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'ILLEGAL_DUMPING',
+        description:
+          'Escombros retirados del Mercado San Sebastián. Se identificó al infractor.',
+        status: 'CLOSED',
+        citizenIdx: 2,
+        daysAgo: 14,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'MISSED_COLLECTION',
+        description: 'Recolección reprogramada y completada sin inconvenientes.',
+        status: 'CLOSED',
+        citizenIdx: 3,
+        daysAgo: 20,
+      },
+      {
+        zoneName: 'Wanchaq',
+        type: 'CONTAINER_DAMAGED',
+        description: 'Contenedor de la Av. El Sol reparado. Reporte cerrado.',
+        status: 'CLOSED',
+        citizenIdx: 0,
+        daysAgo: 18,
+      },
+    ];
 
   for (const inc of incidentsData) {
     await prisma.incident.create({
@@ -750,7 +750,7 @@ async function main() {
       },
     });
   }
-  console.log(`✅ Incidencias (${incidentsData.length} registros)`);
+  console.log(` Incidencias (${incidentsData.length} registros)`);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SUMMARY
@@ -769,7 +769,7 @@ async function main() {
   };
 
   console.log('\n═══════════════════════════════════════');
-  console.log('🎉 SEED COMPLETADO EXITOSAMENTE');
+  console.log(' SEED COMPLETADO EXITOSAMENTE');
   console.log('═══════════════════════════════════════');
   console.log(`   Usuarios:       ${counts.users} (9)`);
   console.log(`   Zonas:          ${counts.zones} (1: Wanchaq)`);
@@ -781,7 +781,7 @@ async function main() {
   console.log(`   Tipos Residuo:  ${counts.wasteTypes} (4)`);
   console.log(`   Frecuencias:    ${counts.frequencies} (LMV, MJS, DOM, DOM_LUN, TODOS)`);
   console.log('═══════════════════════════════════════');
-  console.log('\n📧 CREDENCIALES:');
+  console.log('\n CREDENCIALES:');
   console.log('   admin@ecotrack.pe          / 123456  (Administrador)');
   console.log('   carlos.conductor@ecotrack.pe / 123456  (Conductor)');
   console.log('   maria.conductora@ecotrack.pe  / 123456  (Conductor)');
@@ -795,7 +795,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error('❌ Error en seed:', e);
+    console.error(' Error en seed:', e);
     process.exit(1);
   })
   .finally(async () => {
