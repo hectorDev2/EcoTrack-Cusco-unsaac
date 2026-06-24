@@ -83,7 +83,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-3 pl-lg border-l border-outline-variant/30">
             <div className="text-right hidden xl:block">
               <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface leading-none">
-                Admin Cusco
+                Administrador Cusco
               </p>
               <p className="text-[14px] leading-[20px] text-on-surface-variant">
                 Gestión Municipal
@@ -103,7 +103,7 @@ export default function AdminDashboardPage() {
               Bienvenido, Eco Track Cusco
             </h3>
             <p className="text-[16px] leading-[24px] text-on-surface-variant mt-2">
-              Resumen operativo para el sector Cusco Metropolitano.
+              Resumen operativo para el distrito de Wanchaq.
             </p>
           </div>
           <button

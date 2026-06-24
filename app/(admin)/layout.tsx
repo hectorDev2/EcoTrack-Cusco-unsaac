@@ -46,9 +46,8 @@ export default function AdminLayout({
         )}
 
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col p-4 border-r border-outline-variant bg-surface-container shadow-lg shadow-primary/10 transition-transform duration-300 lg:translate-x-0 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+          className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col p-4 border-r border-outline-variant bg-surface-container shadow-lg shadow-primary/10 transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
         >
           <div className="flex items-center justify-between mb-6 px-2">
             <div className="flex items-center gap-3">
@@ -60,7 +59,7 @@ export default function AdminLayout({
                   Eco Track
                 </h1>
                 <p className="text-[9px] tracking-[0.08em] font-extrabold text-on-surface-variant/70 uppercase">
-                  Admin
+                  Administrador
                 </p>
               </div>
             </div>
@@ -80,11 +79,10 @@ export default function AdminLayout({
                   key={item.href}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 py-2.5 px-3 rounded-lg text-[14px] font-bold transition-colors ${
-                    active
+                  className={`flex items-center gap-3 py-2.5 px-3 rounded-lg text-[14px] font-bold transition-colors ${active
                       ? 'bg-primary/10 text-primary'
                       : 'text-on-surface-variant hover:bg-surface-variant/50'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   {item.label}
