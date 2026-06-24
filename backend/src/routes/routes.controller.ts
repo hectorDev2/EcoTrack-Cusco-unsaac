@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('Routes')
 @Controller('routes')
@@ -14,8 +15,16 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class RoutesController {
   constructor(private readonly routesService: RoutesService) {}
 
+  @ApiOperation({ summary: 'Get simplified list of routes for citizen' })
+  @Public()
+  @Get('public')
+  findPublic() {
+    return this.routesService.findPublic();
+  }
+
   @ApiOperation({ summary: 'Get fleet overview (admin)' })
   @ApiBearerAuth()
+
   @Get('fleet')
   @Roles('ADMIN')
   getFleet() {

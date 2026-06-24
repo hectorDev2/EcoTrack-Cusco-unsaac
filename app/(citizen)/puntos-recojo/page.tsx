@@ -8,11 +8,11 @@ import { useGeolocation } from '@/hooks/use-geolocation';
 import { formatDuration, formatDistance } from '@/lib/routing';
 
 export default function PuntosRecojoPage() {
-  const [selectedZone, setSelectedZone] = useState('');
+  const [selectedRoute, setSelectedRoute] = useState('');
   const geo = useGeolocation();
 
-  const { data: zones = [] } = useQuery(queries.zones.all());
-  const { data: points = [], isLoading } = useQuery(queries.pickupPoints.all(selectedZone || undefined));
+  const { data: routes = [] } = useQuery(queries.routes.public());
+  const { data: points = [], isLoading } = useQuery(queries.pickupPoints.all(undefined, selectedRoute || undefined));
 
   const [nearestInfo, setNearestInfo] = useState<{ id: string; duration: number; distance: number } | null>(null);
   const [ranking, setRanking] = useState<Map<string, { duration: number; distance: number }>>(new Map());
@@ -87,7 +87,7 @@ export default function PuntosRecojoPage() {
           </div>
         )}
 
-        {nearestInfo && !selectedZone && (
+        {nearestInfo && !selectedRoute && (
           <div className="mb-4 px-4 py-3 bg-primary-container/20 border border-primary/20 rounded-xl">
             <div className="flex items-center gap-2 text-primary">
               <span className="material-symbols-outlined">near_me</span>
@@ -103,17 +103,17 @@ export default function PuntosRecojoPage() {
 
         <div className="mb-6">
           <label className="text-[11px] leading-[14px] tracking-[0.08em] font-bold text-on-surface-variant uppercase block mb-2">
-            Filtrar por zona
+            Filtrar por ruta
           </label>
           <select
-            value={selectedZone}
-            onChange={(e) => setSelectedZone(e.target.value)}
+            value={selectedRoute}
+            onChange={(e) => setSelectedRoute(e.target.value)}
             className="w-full bg-surface-card border border-outline-variant rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none appearance-none"
           >
-            <option value="">Todas las zonas</option>
-            {zones.map((z) => (
-              <option key={z.id} value={z.id}>
-                {z.name}
+            <option value="">Todas las rutas</option>
+            {routes.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
               </option>
             ))}
           </select>
@@ -127,17 +127,17 @@ export default function PuntosRecojoPage() {
           <div className="text-center py-12">
             <span className="material-symbols-outlined text-3xl text-outline block mb-2">location_off</span>
             <p className="text-on-surface-variant text-sm font-bold">
-              No hay puntos de recojo disponibles
+              No hay puntos de recojo disponibles para esta ruta
             </p>
           </div>
         ) : (
           <div className="space-y-3">
             {points.map((p) => {
-              const info = selectedZone ? null : ranking.get(p.id);
+              const info = selectedRoute ? null : ranking.get(p.id);
               const isNearest = nearestInfo?.id === p.id;
               return (
                 <div key={p.id} className="relative">
-                  {isNearest && !selectedZone && (
+                  {isNearest && !selectedRoute && (
                     <div className="absolute -top-2 -right-2 z-10 px-2 py-0.5 bg-primary text-on-primary rounded-full text-[10px] font-bold flex items-center gap-1 shadow-md">
                       <span className="material-symbols-outlined text-[12px]">near_me</span>
                       Más cercano
@@ -165,3 +165,4 @@ export default function PuntosRecojoPage() {
     </div>
   );
 }
+
