@@ -594,7 +594,7 @@ export default function AdminRutasPage() {
           {routes.map((r) => {
             const cfg = statusStyles[r.status] ?? statusStyles.PENDING;
             return (
-              <div key={r.id} className="bg-surface-card rounded-xl border border-outline-variant/20 overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+              <div key={r.id} className="bg-surface-card rounded-xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-shadow group relative">
                 {/* Header */}
                 <div className="p-4 pb-3">
                   <div className="flex items-start justify-between mb-2">
@@ -639,8 +639,9 @@ export default function AdminRutasPage() {
                 </div>
 
                 {/* Footer actions */}
-                <div className="px-4 py-3 bg-surface-container/50 border-t border-outline-variant/10 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                <div className="px-4 py-3 bg-surface-container/50 border-t border-outline-variant/10 rounded-b-xl flex flex-col gap-2">
+                  {/* Fila 1: paradas + mapa + editar */}
+                  <div className="flex items-center gap-2 flex-wrap">
                     {r.stops.length > 0 && (
                       <div className="relative">
                         <button
@@ -651,7 +652,7 @@ export default function AdminRutasPage() {
                           {r.stops.length} paradas
                         </button>
                         {detalleRuta?.id === r.id && (
-                          <div className="absolute left-0 top-6 w-64 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-52 overflow-y-auto">
+                          <div className="absolute left-0 bottom-full mb-1 w-64 bg-surface-card rounded-xl shadow-2xl border border-outline-variant/20 p-3 z-50 max-h-52 overflow-y-auto">
                             <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Paradas</p>
                             {r.stops.sort((a, b) => a.orderIndex - b.orderIndex).map((s, i) => (
                               <div key={s.id} className="flex items-center gap-2 py-1">
@@ -672,24 +673,24 @@ export default function AdminRutasPage() {
                         {new Date(r.startedAt).toLocaleDateString('es-PE')}
                       </span>
                     )}
+                    <div className="ml-auto flex items-center gap-1">
+                      <button
+                        onClick={() => setRouteMapModal(r)}
+                        className="text-[11px] font-bold text-primary flex items-center gap-1 hover:underline px-2 py-1"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">map</span>
+                        Mapa
+                      </button>
+                      <button
+                        onClick={() => handleEditOpen(r)}
+                        className="text-[11px] font-bold text-on-surface-variant flex items-center gap-1 hover:text-primary hover:underline px-2 py-1"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">edit</span>
+                        Editar
+                      </button>
+                    </div>
                   </div>
-
-                  <button
-                    onClick={() => setRouteMapModal(r)}
-                    className="text-[11px] font-bold text-primary flex items-center gap-1 hover:underline px-2 py-1.5"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">map</span>
-                    Mapa
-                  </button>
-
-                  <button
-                    onClick={() => handleEditOpen(r)}
-                    className="text-[11px] font-bold text-on-surface-variant flex items-center gap-1 hover:text-primary hover:underline px-2 py-1.5"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">edit</span>
-                    Editar
-                  </button>
-
+                  {/* Fila 2: selector de acción (ancho completo) */}
                   <select
                     value=""
                     onChange={async (e) => {
@@ -710,10 +711,10 @@ export default function AdminRutasPage() {
                         handleStatusChange(r.id, val);
                       }
                     }}
-                    className="bg-surface border border-outline-variant rounded-lg px-2.5 py-1.5 text-[10px] font-bold outline-none cursor-pointer hover:border-primary/40 transition-colors"
+                    className="w-full bg-surface border border-outline-variant rounded-lg px-2.5 py-1.5 text-[10px] font-bold outline-none cursor-pointer hover:border-primary/40 transition-colors"
                     disabled={actionLoading === r.id}
                   >
-                    <option value="">Acción</option>
+                    <option value="">— Acción —</option>
                     {r.status === 'PENDING' && (
                       <>
                         <option value="IN_PROGRESS">Iniciar</option>

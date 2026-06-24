@@ -102,7 +102,7 @@ export default function AdminLayout({
           </div>
         </aside>
 
-        <main className="flex-1 min-h-screen lg:ml-64">
+        <main className="flex-1 lg:ml-64 overflow-y-auto">
           {children}
         </main>
       </div>
