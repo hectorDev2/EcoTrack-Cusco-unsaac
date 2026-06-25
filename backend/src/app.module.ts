@@ -30,6 +30,7 @@ import { CollectionsModule } from './collections/collections.module';
 import { WasteTypesModule } from './waste-types/waste-types.module';
 import { AdminModule } from './admin/admin.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
+import { UserAlarmsModule } from './user-alarms/user-alarms.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -49,6 +50,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     WasteTypesModule,
     AdminModule,
     VehiclesModule,
+    UserAlarmsModule,
   ],
   controllers: [HealthController],
   providers: [

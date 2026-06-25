@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, User, UserStats, FrequencyConfig } from './types';
+import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, User, UserStats, FrequencyConfig, UserAlarm } from './types';
 
 export const queryKeys = {
   incidents: {
@@ -23,6 +23,9 @@ export const queryKeys = {
   },
   wasteTypes: {
     all: () => ['waste-types'] as const,
+  },
+  userAlarms: {
+    my: () => ['user-alarms', 'my'] as const,
   },
   users: {
     all: (query?: string) => ['users', 'all', query] as const,
@@ -95,6 +98,12 @@ export const queries = {
     all: () => ({
       queryKey: queryKeys.wasteTypes.all(),
       queryFn: () => api.get<WasteType[]>('/waste-types'),
+    }),
+  },
+  userAlarms: {
+    my: () => ({
+      queryKey: queryKeys.userAlarms.my(),
+      queryFn: () => api.get<UserAlarm[]>('/user-alarms/my'),
     }),
   },
   admin: {
