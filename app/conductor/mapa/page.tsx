@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { calculateRoute } from '@/lib/routing';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
@@ -14,6 +14,9 @@ interface RouteStop {
 
 interface DriverRoute {
   id: string;
+  name: string | null;
+  shift: string | null;
+  frequency: string | null;
   zone: { id: string; name: string };
   status: string;
   totalStops: number;
@@ -25,24 +28,48 @@ interface DriverRoute {
 
 type GpsStatus = 'idle' | 'active' | 'error';
 
+const SHIFT_LABELS: Record<string, string> = {
+  MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
+};
+
 const STOP_ORDERED = '#154212';
 const STOP_PENDING = '#2563eb';
 const STOP_COMPLETED = '#16a34a';
-const GPS_INTERVAL_MS = 10_000;
+const NAV_ROUTE_COLOR = '#f59e0b';
+const MARKER_POLL_MS = 3_000;    // cada 3 s → marcador fluido
+const BACKEND_SEND_MS = 10_000;  // cada 10 s → envío al backend
+const ARRIVAL_THRESHOLD_M = 50;  // metros → nav desaparece al llegar aquí
+
+/** Distancia en metros entre dos coordenadas (fórmula de Haversine) */
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function DriverMap() {
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mapRoutes, setMapRoutes] = useState<MapRoute[]>([]);
+  const [mainRouteLines, setMainRouteLines] = useState<MapRoute[]>([]);
+  const [navRoute, setNavRoute] = useState<MapRoute | null>(null);
   const [gpsStatus, setGpsStatus] = useState<GpsStatus>('idle');
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [driverMarker, setDriverMarker] = useState<MapMarker | null>(null);
 
   const watchIdRef = useRef<number | null>(null);
-  const sendIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPositionRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const activeRouteIdRef = useRef<string | null>(null);
+
+  // Refs para la lógica de nav — accesibles dentro de watchPosition sin stale closures
+  const firstStopRef = useRef<RouteStop | null>(null);
+  const arrivedAtStartRef = useRef(false);
 
   useEffect(() => {
     api.get<DriverRoute[]>('/routes/my')
@@ -58,11 +85,20 @@ export default function DriverMap() {
     activeRouteIdRef.current = activeRoute?.id ?? null;
   }, [activeRoute]);
 
-  // Calculate route polyline
+  // Actualizar primera parada y resetear estado de llegada cuando cambia la ruta
+  useEffect(() => {
+    const sorted = activeRoute?.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex) ?? [];
+    firstStopRef.current = sorted[0] ?? null;
+    arrivedAtStartRef.current = false;
+    setNavRoute(null);
+  }, [activeRoute?.id]);
+
+  // Trazar la ruta principal (verde) entre las paradas
   useEffect(() => {
     if (!activeRoute || activeRoute.stops.length < 2) return;
 
     const waypoints = activeRoute.stops
+      .slice()
       .sort((a, b) => a.orderIndex - b.orderIndex)
       .map((s) => ({
         lng: s.pickupPoint.longitude,
@@ -72,43 +108,29 @@ export default function DriverMap() {
 
     calculateRoute(waypoints).then((result) => {
       if (result) {
-        setMapRoutes([{
-          id: activeRoute.id,
-          points: result.coordinates,
-          color: '#154212',
-        }]);
+        setMainRouteLines([{ id: activeRoute.id, points: result.coordinates, color: '#154212' }]);
       }
     });
   }, [activeRoute]);
 
-  // Send location to backend
-  const sendLocation = useCallback(async () => {
-    const pos = lastPositionRef.current;
-    const routeId = activeRouteIdRef.current;
-    if (!pos || !routeId) return;
-
-    try {
-      await api.post(`/routes/${routeId}/location`, {
-        latitude: pos.latitude,
-        longitude: pos.longitude,
-      });
-    } catch {
-      // Silent — GPS indicator stays active, don't interrupt driver
-    }
-  }, []);
-
-  // Start/stop GPS tracking based on active route status
+  // GPS: watchPosition para actualizar el marcador en tiempo real +
+  //      setInterval cada 10 s para enviar al backend y recalcular nav
   useEffect(() => {
-    if (!activeRoute || activeRoute.status !== 'IN_PROGRESS') {
-      // Stop tracking
+    const isActive = activeRoute?.status === 'IN_PROGRESS' || activeRoute?.status === 'PENDING';
+
+    const stop = () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
-      if (sendIntervalRef.current !== null) {
-        clearInterval(sendIntervalRef.current);
-        sendIntervalRef.current = null;
+      if (tickIntervalRef.current !== null) {
+        clearInterval(tickIntervalRef.current);
+        tickIntervalRef.current = null;
       }
+    };
+
+    if (!activeRoute || !isActive) {
+      stop();
       setGpsStatus('idle');
       setDriverMarker(null);
       return;
@@ -120,6 +142,12 @@ export default function DriverMap() {
       return;
     }
 
+    const onError = () => {
+      setGpsStatus('error');
+      setGpsError('No se pudo obtener la ubicación GPS');
+    };
+
+    // watchPosition → actualización fluida del marcador del conductor
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
@@ -134,34 +162,68 @@ export default function DriverMap() {
           icon: 'local_shipping',
           label: 'Mi posición',
         });
+
+        // Verificar llegada al punto inicial en cada update
+        const firstStop = firstStopRef.current;
+        if (firstStop && !arrivedAtStartRef.current) {
+          const dist = haversineDistance(
+            latitude, longitude,
+            firstStop.pickupPoint.latitude,
+            firstStop.pickupPoint.longitude,
+          );
+          if (dist <= ARRIVAL_THRESHOLD_M) {
+            arrivedAtStartRef.current = true;
+            setNavRoute(null);
+          }
+        }
       },
-      (_err) => {
-        setGpsStatus('error');
-        setGpsError('No se pudo obtener la ubicación GPS');
-      },
-      { enableHighAccuracy: true, maximumAge: 5_000 },
+      onError,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 },
     );
 
-    // Send position every GPS_INTERVAL_MS
-    sendIntervalRef.current = setInterval(() => {
-      void sendLocation();
-    }, GPS_INTERVAL_MS);
+    // Tick cada 10 s → enviar al backend + recalcular ruta de navegación
+    const tick = () => {
+      const pos = lastPositionRef.current;
+      if (!pos) return;
+      const { latitude, longitude } = pos;
 
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
+      // Enviar al backend solo si IN_PROGRESS
+      if (activeRouteIdRef.current && activeRoute.status === 'IN_PROGRESS') {
+        void api.post(`/routes/${activeRouteIdRef.current}/location`, {
+          latitude,
+          longitude,
+        }).catch(() => {});
       }
-      if (sendIntervalRef.current !== null) {
-        clearInterval(sendIntervalRef.current);
-        sendIntervalRef.current = null;
-      }
+
+      // Recalcular ruta de nav si aún no llegó al inicio
+      const firstStop = firstStopRef.current;
+      if (!firstStop || arrivedAtStartRef.current) return;
+
+      calculateRoute([
+        { lng: longitude, lat: latitude, label: 'Mi posición' },
+        {
+          lng: firstStop.pickupPoint.longitude,
+          lat: firstStop.pickupPoint.latitude,
+          label: firstStop.pickupPoint.name,
+        },
+      ]).then((result) => {
+        if (result && !arrivedAtStartRef.current) {
+          setNavRoute({ id: 'nav-to-start', points: result.coordinates, color: NAV_ROUTE_COLOR });
+        }
+      });
     };
-  }, [activeRoute, sendLocation]);
+
+    // Primera ejecución inmediata del tick
+    tick();
+    tickIntervalRef.current = setInterval(tick, GPS_INTERVAL_MS);
+
+    return stop;
+  }, [activeRoute]);
 
   const markers: MapMarker[] = [
     ...(activeRoute
       ? activeRoute.stops
+          .slice()
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((s) => {
             let color = STOP_ORDERED;
@@ -179,6 +241,11 @@ export default function DriverMap() {
           })
       : []),
     ...(driverMarker ? [driverMarker] : []),
+  ];
+
+  const allRoutes: MapRoute[] = [
+    ...mainRouteLines,
+    ...(navRoute ? [navRoute] : []),
   ];
 
   if (loading) {
@@ -216,14 +283,19 @@ export default function DriverMap() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-[20px] font-extrabold text-primary">
-            {activeRoute.zone?.name ?? 'Sin zona'}
+            {activeRoute.name ?? activeRoute.zone?.name ?? 'Sin zona'}
           </h2>
+          <p className="text-[12px] text-on-surface-variant">
+            {activeRoute.zone?.name}
+            {activeRoute.shift ? ` · ${SHIFT_LABELS[activeRoute.shift] ?? activeRoute.shift}` : ''}
+            {activeRoute.frequency ? ` · ${activeRoute.frequency}` : ''}
+          </p>
           <p className="text-[12px] text-on-surface-variant">
             {activeRoute.completedStops}/{activeRoute.totalStops} paradas completadas
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* GPS status indicator */}
+          {/* GPS status */}
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold ${
             gpsStatus === 'active'
               ? 'bg-waste-organic/10 text-waste-organic'
@@ -250,6 +322,16 @@ export default function DriverMap() {
         </div>
       </div>
 
+      {/* Aviso navegación al inicio */}
+      {navRoute && (
+        <div className="bg-[#f59e0b]/10 border border-[#f59e0b]/30 rounded-xl p-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#f59e0b] text-sm">navigation</span>
+          <p className="text-[12px] font-bold text-[#b45309]">
+            Dirígete al punto inicial de la ruta
+          </p>
+        </div>
+      )}
+
       {gpsError && (
         <div className="bg-status-alert/10 border border-status-alert/30 rounded-xl p-3 flex items-center gap-2">
           <span className="material-symbols-outlined text-status-alert text-sm">gps_off</span>
@@ -260,12 +342,14 @@ export default function DriverMap() {
       <div className="rounded-2xl overflow-hidden border border-outline-variant/20">
         <MapView
           markers={markers}
-          routes={mapRoutes}
+          routes={allRoutes}
           height="400px"
+          followMarkerId={driverMarker ? '__driver__' : undefined}
         />
       </div>
 
-      <div className="flex items-center gap-4 text-[12px] text-on-surface-variant">
+      {/* Leyenda */}
+      <div className="flex flex-wrap items-center gap-4 text-[12px] text-on-surface-variant">
         <div className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full bg-[#2563eb]" />
           Pendiente
@@ -286,6 +370,12 @@ export default function DriverMap() {
             Ruta
           </div>
         )}
+        {navRoute && (
+          <div className="flex items-center gap-1">
+            <span className="w-6 h-0.5 bg-[#f59e0b]" />
+            Ir al inicio
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -293,6 +383,7 @@ export default function DriverMap() {
           Paradas
         </h3>
         {activeRoute.stops
+          .slice()
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((stop) => (
             <div

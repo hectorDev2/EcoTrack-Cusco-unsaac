@@ -28,6 +28,8 @@ interface MapViewProps {
   routes?: MapRoute[];
   height?: string;
   interactive?: boolean;
+  /** ID del marker que la cámara debe seguir suavemente cuando se mueve */
+  followMarkerId?: string;
   onMarkerClick?: (marker: MapMarker) => void;
   onMapClick?: (lng: number, lat: number) => void;
 }
@@ -62,6 +64,7 @@ function syncMarkers(
   markersRef: React.MutableRefObject<maplibregl.Marker[]>,
   darkMode: boolean,
   onMarkerClick?: (marker: MapMarker) => void,
+  followMarkerId?: string,
 ) {
   markersRef.current.forEach((m) => m.remove());
   markersRef.current = [];
@@ -74,6 +77,9 @@ function syncMarkers(
       .addTo(map);
     markersRef.current.push(m);
   });
+
+  // Si hay un marker seguido, no hacer fitBounds — el efecto followMarkerId lo maneja
+  if (followMarkerId) return;
 
   if (markers.length >= 2) {
     const bounds = markers.reduce(
@@ -181,6 +187,7 @@ export default function MapView({
   routes = [],
   height = '100%',
   interactive = true,
+  followMarkerId,
   onMarkerClick,
   onMapClick,
 }: MapViewProps) {
@@ -213,12 +220,12 @@ export default function MapView({
   const _updateAll = useCallback(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick);
+    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId);
     if (pendingRoutes.current.length > 0) {
       syncRoutes(map, pendingRoutes.current, darkModeRef.current);
       pendingRoutes.current = [];
     }
-  }, [markers, onMarkerClick]);
+  }, [markers, onMarkerClick, followMarkerId]);
 
   // Init map
   useEffect(() => {
@@ -280,8 +287,8 @@ export default function MapView({
       pendingMarkers.current = markers;
       return;
     }
-    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick);
-  }, [markers, onMarkerClick]);
+    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId);
+  }, [markers, onMarkerClick, followMarkerId]);
 
   // Routes
   useEffect(() => {
@@ -292,6 +299,16 @@ export default function MapView({
     }
     syncRoutes(map, routes, darkModeRef.current);
   }, [routes]);
+
+  // Seguir un marker específico con animación suave
+  useEffect(() => {
+    if (!followMarkerId) return;
+    const map = mapRef.current;
+    if (!map || !loadedRef.current) return;
+    const target = markers.find((m) => m.id === followMarkerId);
+    if (!target) return;
+    map.easeTo({ center: [target.lng, target.lat], zoom: Math.max(map.getZoom(), 16), duration: 800 });
+  }, [followMarkerId, markers]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', height, minHeight: '200px' }} />
