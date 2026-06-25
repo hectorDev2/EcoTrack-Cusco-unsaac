@@ -3,6 +3,8 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  debug: true, // ← quitar después de verificar
+
   sendDefaultPii: true,
 
   // 100% en desarrollo, 10% en producción
