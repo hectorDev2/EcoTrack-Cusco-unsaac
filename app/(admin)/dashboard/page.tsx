@@ -198,7 +198,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[11px] font-bold">{data.usersStats.admins} admins</span>
+                  <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[11px] font-bold">{data.usersStats.admins} administradores</span>
                   <span className="px-3 py-1 bg-secondary/10 text-secondary rounded-full text-[11px] font-bold">{data.usersStats.drivers} conductores</span>
                   <span className="px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full text-[11px] font-bold">{data.usersStats.citizens} ciudadanos</span>
                 </div>
@@ -206,47 +206,7 @@ export default function AdminDashboardPage() {
             </section>
 
             <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-8 bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20">
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h5 className="text-[24px] leading-[32px] font-bold text-on-surface">Resumen por Zona</h5>
-                    <p className="text-[14px] leading-[20px] text-on-surface-variant">Distribución de cobertura por distrito</p>
-                  </div>
-                </div>
-                <div className="h-64 flex items-end justify-between gap-8 pt-6 relative">
-                  <div className="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none opacity-20">
-                    <div className="border-b border-on-surface" />
-                    <div className="border-b border-on-surface" />
-                    <div className="border-b border-on-surface" />
-                    <div className="border-b border-on-surface" />
-                  </div>
-                  <div className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="w-full bg-primary-container rounded-t-lg transition-all duration-500 group-hover:bg-primary" style={{ height: '85%' }} />
-                    <span className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant">C. Histórico</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="w-full bg-primary-container rounded-t-lg transition-all duration-500 group-hover:bg-primary" style={{ height: '60%' }} />
-                    <span className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant">San Blas</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="w-full bg-primary-container rounded-t-lg transition-all duration-500 group-hover:bg-primary" style={{ height: '95%' }} />
-                    <span className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant">San Sebas</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="w-full bg-primary-container rounded-t-lg transition-all duration-500 group-hover:bg-primary" style={{ height: '40%' }} />
-                    <span className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant">Santiago</span>
-                  </div>
-                  <div className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="w-full bg-primary-container rounded-t-lg transition-all duration-500 group-hover:bg-primary" style={{ height: '75%' }} />
-                    <span className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-on-surface-variant">Wanchaq</span>
-                  </div>
-                </div>
-                <p className="text-center text-[12px] text-on-surface-variant mt-4">
-                  {data.schedulesCount} horarios activos · {data.pickupPoints} puntos de recojo · {data.zones} zonas
-                </p>
-              </div>
-
-              <div className="lg:col-span-4 bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20 flex flex-col">
+              <div className="lg:col-span-12 bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20 flex flex-col">
                 <div className="mb-6">
                   <h5 className="text-[24px] leading-[32px] font-bold text-on-surface">Actividad Reciente</h5>
                   <p className="text-[14px] leading-[20px] text-on-surface-variant">Últimas incidencias reportadas</p>
