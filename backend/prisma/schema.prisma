@@ -178,7 +178,6 @@ model Route {
   stops     RouteStop[]
   locations RouteLocation[]
   incidents Incident[]
-  citizenAlarms CitizenAlarm[]
 
   @@map("routes")
 }
