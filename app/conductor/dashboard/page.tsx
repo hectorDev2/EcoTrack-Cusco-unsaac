@@ -14,7 +14,9 @@ interface RouteStop {
 
 interface DriverRoute {
   id: string;
+  name?: string;
   zone: { id: string; name: string };
+  driver?: { id: string; fullName: string; email: string };
   status: string;
   totalStops: number;
   completedStops: number;
@@ -131,9 +133,17 @@ export default function DriverDashboard() {
         <>
           <div className="bg-surface-card rounded-2xl p-6 border border-outline-variant/20">
             <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-[12px] tracking-[0.08em] font-bold text-on-surface-variant uppercase mb-1">Ruta activa</p>
-                <h2 className="text-[24px] font-extrabold text-primary">{todayRoute.zone?.name ?? 'Sin zona'}</h2>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-surface-container-high text-primary">
+                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>local_shipping</span>
+                </div>
+                <div>
+                  <p className="text-[12px] tracking-[0.08em] font-bold text-on-surface-variant uppercase mb-0.5">Ruta activa</p>
+                  <h3 className="text-[14px] leading-[18px] font-bold text-on-surface">{todayRoute.name ?? todayRoute.zone?.name ?? 'Sin zona'}</h3>
+                  {todayRoute.driver?.fullName && (
+                    <p className="text-[11px] text-on-surface-variant">{todayRoute.driver.fullName}</p>
+                  )}
+                </div>
               </div>
               <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
                 todayRoute.status === 'IN_PROGRESS'

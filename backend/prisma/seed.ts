@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
-// ⚠️  DEMO SEED ONLY — All users have password "123456"
+//   DEMO SEED ONLY — All users have password "123456"
 // For production deployment, rotate all passwords before going live
 
 config({ path: resolve(__dirname, '../.env') });
@@ -45,7 +45,7 @@ async function main() {
   await prisma.wasteType.deleteMany();
   await prisma.zone.deleteMany();
   await prisma.user.deleteMany();
-  console.log('✅ Base de datos limpia\n');
+  console.log(' Base de datos limpia\n');
 
   const passwordHash = await bcrypt.hash('123456', 10);
   const now = new Date();
@@ -121,7 +121,7 @@ async function main() {
       data: { ...u, passwordHash, createdAt: now },
     });
     users[u.email] = { id: created.id, email: u.email };
-    console.log(`✅ Usuario ${u.email} (${u.role})`);
+    console.log(` Usuario ${u.email} (${u.role})`);
   }
 
   const admin = users['admin@ecotrack.pe'];
@@ -171,7 +171,7 @@ async function main() {
       data: { ...wt, createdAt: now },
     });
     wasteTypes[wt.category] = created.id;
-    console.log(`✅ WasteType ${wt.name}`);
+    console.log(` WasteType ${wt.name}`);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -189,7 +189,7 @@ async function main() {
       createdAt: now,
     },
   });
-  console.log(`✅ Zona Wanchaq`);
+  console.log(` Zona Wanchaq`);
 
   // Todos los pickup points se asignan a Wanchaq.
   // La diferenciación por zona interna (1-5) se mantiene en el nombre del punto.
@@ -204,7 +204,7 @@ async function main() {
       data: { userId, zoneId: wanchaqZone.id, assignedAt: now },
     });
   }
-  console.log(`✅ Asignaciones usuario-zona (9 usuarios → Wanchaq)`);
+  console.log(` Asignaciones usuario-zona (9 usuarios → Wanchaq)`);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FRECUENCIAS (FrequencyConfig) - según rutero oficial
@@ -221,7 +221,7 @@ async function main() {
   for (const f of frequencyConfigs) {
     const created = await prisma.frequencyConfig.create({ data: f });
     frequencyIds[f.code] = created.id;
-    console.log(`✅ Frequency ${f.code}: ${f.label}`);
+    console.log(` Frequency ${f.code}: ${f.label}`);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -457,7 +457,7 @@ async function main() {
       orderIndex: globalOrder,
     });
   });
-  console.log(`📍 ${paradas.length} paradas parseadas del rutero`);
+  console.log(` ${paradas.length} paradas parseadas del rutero`);
 
   // Insertar en DB y agrupar IDs por (zoneName, shift, frequencyCode) para las rutas
   let pickupCount = 0;
