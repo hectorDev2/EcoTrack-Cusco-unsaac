@@ -14,6 +14,9 @@ interface RouteStop {
 
 interface DriverRoute {
   id: string;
+  name: string | null;
+  shift: string | null;
+  frequency: string | null;
   zone: { id: string; name: string };
   status: string;
   totalStops: number;
@@ -22,6 +25,10 @@ interface DriverRoute {
   createdAt: string;
   stops: RouteStop[];
 }
+
+const SHIFT_LABELS: Record<string, string> = {
+  MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
+};
 
 interface Schedule {
   id: string;
@@ -133,7 +140,14 @@ export default function DriverDashboard() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-[12px] tracking-[0.08em] font-bold text-on-surface-variant uppercase mb-1">Ruta activa</p>
-                <h2 className="text-[24px] font-extrabold text-primary">{todayRoute.zone?.name ?? 'Sin zona'}</h2>
+                <h2 className="text-[24px] font-extrabold text-primary">
+                  {todayRoute.name ?? todayRoute.zone?.name ?? 'Sin zona'}
+                </h2>
+                <p className="text-[13px] text-on-surface-variant mt-0.5">
+                  {todayRoute.zone?.name}
+                  {todayRoute.shift ? ` · ${SHIFT_LABELS[todayRoute.shift] ?? todayRoute.shift}` : ''}
+                  {todayRoute.frequency ? ` · ${todayRoute.frequency}` : ''}
+                </p>
               </div>
               <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
                 todayRoute.status === 'IN_PROGRESS'

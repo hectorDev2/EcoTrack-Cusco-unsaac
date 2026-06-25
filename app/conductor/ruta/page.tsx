@@ -13,12 +13,19 @@ interface RouteStop {
 
 interface DriverRoute {
   id: string;
+  name: string | null;
+  shift: string | null;
+  frequency: string | null;
   zone: { id: string; name: string };
   status: string;
   totalStops: number;
   completedStops: number;
   stops: RouteStop[];
 }
+
+const SHIFT_LABELS: Record<string, string> = {
+  MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
+};
 
 const wasteTypes = [
   { id: 'org', name: 'Orgánico', category: 'ORGANIC' },
@@ -146,7 +153,16 @@ export default function DriverRutaPage() {
 
       <div className="bg-surface-card rounded-2xl p-5 border border-outline-variant/20">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-[20px] font-extrabold text-primary">{activeRoute.zone?.name ?? 'Ruta'}</h2>
+          <div>
+            <h2 className="text-[20px] font-extrabold text-primary">
+              {activeRoute.name ?? activeRoute.zone?.name ?? 'Ruta'}
+            </h2>
+            <p className="text-[12px] text-on-surface-variant">
+              {activeRoute.zone?.name}
+              {activeRoute.shift ? ` · ${SHIFT_LABELS[activeRoute.shift] ?? activeRoute.shift}` : ''}
+              {activeRoute.frequency ? ` · ${activeRoute.frequency}` : ''}
+            </p>
+          </div>
           <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
             activeRoute.status === 'IN_PROGRESS'
               ? 'bg-primary/10 text-primary'
