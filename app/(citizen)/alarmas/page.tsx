@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Zone } from '@/lib/types';
+import type { Zone, PickupPoint } from '@/lib/types';
 
 interface CitizenAlarm {
   id: string;
@@ -13,6 +13,8 @@ interface CitizenAlarm {
   active: boolean;
   createdAt: string;
   zone: { id: string; name: string };
+  pickupPoint: { id: string; name: string; address: string } | null;
+  route: { id: string; name: string } | null;
 }
 
 const DAYS: { value: string; label: string; short: string }[] = [
@@ -31,12 +33,23 @@ const todayValue = DAYS.find((d) => today.startsWith(d.label.slice(0, 3).toUpper
 export default function AlarmasPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ zoneId: '', dayOfWeek: 'MONDAY', label: '' });
+  const [form, setForm] = useState({
+    zoneId: '',
+    dayOfWeek: 'MONDAY',
+    label: '',
+    pickupPointId: '',
+  });
   const [formError, setFormError] = useState<string | null>(null);
 
   const { data: zones = [] } = useQuery<Zone[]>({
     queryKey: ['zones'],
     queryFn: () => api.get<Zone[]>('/zones'),
+  });
+
+  const { data: pickupPoints = [] } = useQuery<PickupPoint[]>({
+    queryKey: ['pickup-points', form.zoneId],
+    queryFn: () => api.get<PickupPoint[]>(`/pickup-points?zoneId=${form.zoneId}`),
+    enabled: !!form.zoneId,
   });
 
   const { data: alarms = [], isLoading } = useQuery<CitizenAlarm[]>({
@@ -50,11 +63,12 @@ export default function AlarmasPage() {
         zoneId: data.zoneId,
         dayOfWeek: data.dayOfWeek,
         label: data.label || undefined,
+        pickupPointId: data.pickupPointId || undefined,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['citizen-alarms'] });
       setShowForm(false);
-      setForm({ zoneId: '', dayOfWeek: 'MONDAY', label: '' });
+      setForm({ zoneId: '', dayOfWeek: 'MONDAY', label: '', pickupPointId: '' });
       setFormError(null);
     },
     onError: (err: unknown) => {
@@ -69,11 +83,10 @@ export default function AlarmasPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.zoneId) { setFormError('Seleccioná una zona'); return; }
+    if (!form.zoneId) { setFormError('Selecciona una zona'); return; }
     createMutation.mutate(form);
   }
 
-  // Alarms for today highlighted at top
   const todayAlarms = alarms.filter((a) => a.dayOfWeek === todayValue);
   const otherAlarms = alarms.filter((a) => a.dayOfWeek !== todayValue);
 
@@ -90,10 +103,9 @@ export default function AlarmasPage() {
         </button>
       </div>
       <p className="text-[14px] text-on-surface-variant mb-6">
-        Recibí recordatorios sobre los días de recolección en tu zona.
+        Recibe recordatorios sobre los días de recolección en tu zona o en un punto específico.
       </p>
 
-      {/* Form modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
@@ -114,15 +126,33 @@ export default function AlarmasPage() {
                 </label>
                 <select
                   value={form.zoneId}
-                  onChange={(e) => setForm((f) => ({ ...f, zoneId: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, zoneId: e.target.value, pickupPointId: '' }))}
                   className="w-full bg-surface-card border border-outline-variant rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="">Seleccioná una zona</option>
+                  <option value="">Selecciona una zona</option>
                   {zones.map((z) => (
                     <option key={z.id} value={z.id}>{z.name}</option>
                   ))}
                 </select>
               </div>
+
+              {form.zoneId && pickupPoints.length > 0 && (
+                <div>
+                  <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">
+                    Punto de recojo <span className="normal-case font-normal">(opcional)</span>
+                  </label>
+                  <select
+                    value={form.pickupPointId}
+                    onChange={(e) => setForm((f) => ({ ...f, pickupPointId: e.target.value }))}
+                    className="w-full bg-surface-card border border-outline-variant rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Toda la zona</option>
+                    {pickupPoints.map((pp) => (
+                      <option key={pp.id} value={pp.id}>{pp.name} — {pp.address}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">
@@ -184,7 +214,7 @@ export default function AlarmasPage() {
           <span className="material-symbols-outlined text-5xl text-outline mb-4">add_alert</span>
           <h2 className="text-[18px] font-bold text-on-surface mb-2">Sin alarmas</h2>
           <p className="text-on-surface-variant text-sm">
-            Creá alarmas para recordar los días de recolección en tu zona.
+            Crea alarmas para recordar los días de recolección en tu zona o en un punto específico.
           </p>
         </div>
       ) : (
@@ -255,10 +285,13 @@ function AlarmCard({ alarm, isToday, onDelete, deleting }: AlarmCardProps) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-bold text-on-surface truncate">
-          {alarm.label ?? alarm.zone.name}
+          {alarm.label ?? alarm.pickupPoint?.name ?? alarm.zone.name}
         </p>
         <p className="text-[12px] text-on-surface-variant">
-          {alarm.zone.name} · {day?.label ?? alarm.dayOfWeek}
+          {alarm.zone.name}
+          {alarm.pickupPoint && <span> · {alarm.pickupPoint.address}</span>}
+          {alarm.route?.name && <span> · {alarm.route.name}</span>}
+          <span> · {day?.label ?? alarm.dayOfWeek}</span>
         </p>
       </div>
       <button
