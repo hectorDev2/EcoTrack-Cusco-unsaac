@@ -13,5 +13,5 @@ Sentry.init({
   environment: process.env.NODE_ENV ?? 'development',
 
   // No inicializar si no hay DSN configurado
-  enabled: !!process.env.SENTRY_DSN,
+  enabled: false,
 });
