@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { calculateRoute } from '@/lib/routing';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
@@ -23,26 +23,42 @@ interface DriverRoute {
   stops: RouteStop[];
 }
 
+type GpsStatus = 'idle' | 'active' | 'error';
+
 const STOP_ORDERED = '#154212';
 const STOP_PENDING = '#2563eb';
 const STOP_COMPLETED = '#16a34a';
+const GPS_INTERVAL_MS = 10_000;
 
 export default function DriverMap() {
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mapRoutes, setMapRoutes] = useState<MapRoute[]>([]);
+  const [gpsStatus, setGpsStatus] = useState<GpsStatus>('idle');
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [driverMarker, setDriverMarker] = useState<MapMarker | null>(null);
+
+  const watchIdRef = useRef<number | null>(null);
+  const sendIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastPositionRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const activeRouteIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     api.get<DriverRoute[]>('/routes/my')
       .then(setRoutes)
-      .catch((err) => setError(err.message ?? 'Error al cargar rutas'))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Error al cargar rutas'))
       .finally(() => setLoading(false));
   }, []);
 
   const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS')
     ?? routes.find((r) => r.status === 'PENDING');
 
+  useEffect(() => {
+    activeRouteIdRef.current = activeRoute?.id ?? null;
+  }, [activeRoute]);
+
+  // Calculate route polyline
   useEffect(() => {
     if (!activeRoute || activeRoute.stops.length < 2) return;
 
@@ -65,24 +81,105 @@ export default function DriverMap() {
     });
   }, [activeRoute]);
 
-  const markers: MapMarker[] = activeRoute
-    ? activeRoute.stops
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map((s) => {
-          let color = STOP_ORDERED;
-          if (s.status === 'PENDING') color = STOP_PENDING;
-          if (s.status === 'COMPLETED') color = STOP_COMPLETED;
-          return {
-            id: s.id,
-            lng: s.pickupPoint.longitude,
-            lat: s.pickupPoint.latitude,
-            color,
-            icon: s.status === 'COMPLETED' ? 'check_circle' : 'location_on',
-            label: `${s.pickupPoint.name} (#${s.orderIndex + 1})`,
-            description: s.pickupPoint.address,
-          };
-        })
-    : [];
+  // Send location to backend
+  const sendLocation = useCallback(async () => {
+    const pos = lastPositionRef.current;
+    const routeId = activeRouteIdRef.current;
+    if (!pos || !routeId) return;
+
+    try {
+      await api.post(`/routes/${routeId}/location`, {
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      });
+    } catch {
+      // Silent — GPS indicator stays active, don't interrupt driver
+    }
+  }, []);
+
+  // Start/stop GPS tracking based on active route status
+  useEffect(() => {
+    if (!activeRoute || activeRoute.status !== 'IN_PROGRESS') {
+      // Stop tracking
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (sendIntervalRef.current !== null) {
+        clearInterval(sendIntervalRef.current);
+        sendIntervalRef.current = null;
+      }
+      setGpsStatus('idle');
+      setDriverMarker(null);
+      return;
+    }
+
+    if (!('geolocation' in navigator)) {
+      setGpsStatus('error');
+      setGpsError('GPS no disponible en este dispositivo');
+      return;
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        lastPositionRef.current = { latitude, longitude };
+        setGpsStatus('active');
+        setGpsError(null);
+        setDriverMarker({
+          id: '__driver__',
+          lat: latitude,
+          lng: longitude,
+          color: '#f59e0b',
+          icon: 'local_shipping',
+          label: 'Mi posición',
+        });
+      },
+      (_err) => {
+        setGpsStatus('error');
+        setGpsError('No se pudo obtener la ubicación GPS');
+      },
+      { enableHighAccuracy: true, maximumAge: 5_000 },
+    );
+
+    // Send position every GPS_INTERVAL_MS
+    sendIntervalRef.current = setInterval(() => {
+      void sendLocation();
+    }, GPS_INTERVAL_MS);
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (sendIntervalRef.current !== null) {
+        clearInterval(sendIntervalRef.current);
+        sendIntervalRef.current = null;
+      }
+    };
+  }, [activeRoute, sendLocation]);
+
+  const markers: MapMarker[] = [
+    ...(activeRoute
+      ? activeRoute.stops
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+          .map((s) => {
+            let color = STOP_ORDERED;
+            if (s.status === 'PENDING') color = STOP_PENDING;
+            if (s.status === 'COMPLETED') color = STOP_COMPLETED;
+            return {
+              id: s.id,
+              lng: s.pickupPoint.longitude,
+              lat: s.pickupPoint.latitude,
+              color,
+              icon: s.status === 'COMPLETED' ? 'check_circle' : 'location_on',
+              label: `${s.pickupPoint.name} (#${s.orderIndex + 1})`,
+              description: s.pickupPoint.address,
+            };
+          })
+      : []),
+    ...(driverMarker ? [driverMarker] : []),
+  ];
 
   if (loading) {
     return (
@@ -125,14 +222,40 @@ export default function DriverMap() {
             {activeRoute.completedStops}/{activeRoute.totalStops} paradas completadas
           </p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
-          activeRoute.status === 'IN_PROGRESS'
-            ? 'bg-primary/10 text-primary'
-            : 'bg-surface-container-high text-on-surface-variant'
-        }`}>
-          {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : 'Pendiente'}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* GPS status indicator */}
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold ${
+            gpsStatus === 'active'
+              ? 'bg-waste-organic/10 text-waste-organic'
+              : gpsStatus === 'error'
+                ? 'bg-status-alert/10 text-status-alert'
+                : 'bg-surface-container-high text-on-surface-variant'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${
+              gpsStatus === 'active'
+                ? 'bg-waste-organic animate-pulse'
+                : gpsStatus === 'error'
+                  ? 'bg-status-alert'
+                  : 'bg-outline'
+            }`} />
+            {gpsStatus === 'active' ? 'GPS activo' : gpsStatus === 'error' ? 'Sin GPS' : 'GPS inactivo'}
+          </div>
+          <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
+            activeRoute.status === 'IN_PROGRESS'
+              ? 'bg-primary/10 text-primary'
+              : 'bg-surface-container-high text-on-surface-variant'
+          }`}>
+            {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : 'Pendiente'}
+          </span>
+        </div>
       </div>
+
+      {gpsError && (
+        <div className="bg-status-alert/10 border border-status-alert/30 rounded-xl p-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-status-alert text-sm">gps_off</span>
+          <p className="text-status-alert text-[12px]">{gpsError}</p>
+        </div>
+      )}
 
       <div className="rounded-2xl overflow-hidden border border-outline-variant/20">
         <MapView
@@ -151,6 +274,12 @@ export default function DriverMap() {
           <span className="w-3 h-3 rounded-full bg-[#16a34a]" />
           Completada
         </div>
+        {driverMarker && (
+          <div className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded-full bg-[#f59e0b]" />
+            Mi posición
+          </div>
+        )}
         {activeRoute.stops.length >= 2 && (
           <div className="flex items-center gap-1">
             <span className="w-6 h-0.5 bg-[#154212]" />
