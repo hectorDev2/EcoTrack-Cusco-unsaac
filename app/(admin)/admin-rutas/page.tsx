@@ -610,10 +610,10 @@ export default function AdminRutasPage() {
                       </div>
                       <div>
                         <h3 className="text-[14px] font-bold text-on-surface leading-tight">
-                          {r.zone?.name ?? 'Sin zona'}
+                          {r.name ?? r.zone?.name ?? 'Sin nombre'}
                         </h3>
                         <p className="text-[11px] text-on-surface-variant">
-                          {r.driver?.fullName ?? 'Sin conductor'}
+                          {r.zone?.name ?? 'Sin zona'} · {r.driver?.fullName ?? 'Sin conductor'}
                         </p>
                       </div>
                     </div>
