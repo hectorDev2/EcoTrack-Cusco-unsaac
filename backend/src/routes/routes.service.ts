@@ -120,6 +120,39 @@ export class RoutesService {
     return this.findOne(id);
   }
 
+  async findActive() {
+    return this.prisma.route
+      .findMany({
+        where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
+        include: {
+          zone: { select: { id: true, name: true } },
+          stops: {
+            include: {
+              pickupPoint: {
+                select: { id: true, name: true, address: true, latitude: true, longitude: true },
+              },
+            },
+            orderBy: { orderIndex: 'asc' as const },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+      .then((routes) =>
+        routes.map((r) => ({
+          id: r.id,
+          name: r.name,
+          zone: r.zone,
+          status: r.status,
+          totalStops: r.stops.length,
+          stops: r.stops.map((s) => ({
+            id: s.id,
+            pickupPoint: s.pickupPoint,
+            orderIndex: s.orderIndex,
+          })),
+        })),
+      );
+  }
+
   async findByZone(zoneId: string) {
     return this.prisma.route
       .findMany({

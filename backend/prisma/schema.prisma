@@ -38,7 +38,6 @@ model Zone {
   collectionSchedules CollectionSchedule[]
   routes             Route[]
   incidents          Incident[]
-  citizenAlarms       CitizenAlarm[]
 
   @@map("zones")
 }
@@ -262,23 +261,20 @@ model Incident {
 model CitizenAlarm {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  zoneId    String   @map("zone_id")
-  dayOfWeek String   @map("day_of_week")
+  routeId   String   @map("route_id")
+  pickupPointId String @map("pickup_point_id")
+  notifyBeforeMinutes Int @default(30) @map("notify_before_minutes")
   label     String?
   active    Boolean  @default(true)
-
-  pickupPointId String? @map("pickup_point_id")
-  routeId       String? @map("route_id")
 
   createdAt DateTime @default(now()) @map("created_at")
 
   user        User         @relation(fields: [userId], references: [id])
-  zone        Zone         @relation(fields: [zoneId], references: [id])
-  pickupPoint PickupPoint? @relation(fields: [pickupPointId], references: [id])
-  route       Route?       @relation(fields: [routeId], references: [id])
+  route       Route        @relation(fields: [routeId], references: [id])
+  pickupPoint PickupPoint  @relation(fields: [pickupPointId], references: [id])
 
   @@index([userId])
-  @@index([pickupPointId])
   @@index([routeId])
+  @@index([pickupPointId])
   @@map("citizen_alarms")
 }

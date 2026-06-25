@@ -7,38 +7,37 @@ export class CitizenAlarmsService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateCitizenAlarmDto) {
-    const data: Record<string, unknown> = {
-      userId,
-      zoneId: dto.zoneId,
-      dayOfWeek: dto.dayOfWeek,
-      label: dto.label ?? null,
-    };
+    const route = await this.prisma.route.findUnique({
+      where: { id: dto.routeId },
+      include: {
+        stops: {
+          where: { pickupPointId: dto.pickupPointId },
+          take: 1,
+        },
+      },
+    });
 
-    if (dto.pickupPointId) {
-      const pickupPoint = await this.prisma.pickupPoint.findUnique({
-        where: { id: dto.pickupPointId },
-      });
-      if (!pickupPoint) {
-        throw new NotFoundException('Punto de recojo no encontrado');
-      }
+    if (!route) {
+      throw new NotFoundException('Ruta no encontrada');
+    }
 
-      const routeStop = await this.prisma.routeStop.findFirst({
-        where: { pickupPointId: dto.pickupPointId },
-        include: { route: { select: { id: true, name: true } } },
-      });
-
-      data.pickupPointId = dto.pickupPointId;
-      if (routeStop) {
-        data.routeId = routeStop.route.id;
-      }
+    if (route.stops.length === 0) {
+      throw new BadRequestException(
+        'El punto de recojo no pertenece a esta ruta',
+      );
     }
 
     return this.prisma.citizenAlarm.create({
-      data: data as any,
+      data: {
+        userId,
+        routeId: dto.routeId,
+        pickupPointId: dto.pickupPointId,
+        notifyBeforeMinutes: dto.notifyBeforeMinutes ?? 30,
+        label: dto.label ?? null,
+      },
       include: {
-        zone: { select: { id: true, name: true } },
-        pickupPoint: { select: { id: true, name: true, address: true } },
         route: { select: { id: true, name: true } },
+        pickupPoint: { select: { id: true, name: true, address: true } },
       },
     });
   }
@@ -47,9 +46,8 @@ export class CitizenAlarmsService {
     return this.prisma.citizenAlarm.findMany({
       where: { userId, active: true },
       include: {
-        zone: { select: { id: true, name: true } },
-        pickupPoint: { select: { id: true, name: true, address: true } },
         route: { select: { id: true, name: true } },
+        pickupPoint: { select: { id: true, name: true, address: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

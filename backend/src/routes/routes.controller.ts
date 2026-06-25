@@ -38,6 +38,14 @@ export class RoutesController {
     return this.routesService.findByDriver(userId);
   }
 
+  @ApiOperation({ summary: 'Get active routes (citizen)' })
+  @ApiBearerAuth()
+  @Get('active')
+  @Roles('CITIZEN')
+  findActive() {
+    return this.routesService.findActive();
+  }
+
   @ApiOperation({ summary: 'Get routes by zone' })
   @ApiBearerAuth()
   @Get('zone/:zoneId')

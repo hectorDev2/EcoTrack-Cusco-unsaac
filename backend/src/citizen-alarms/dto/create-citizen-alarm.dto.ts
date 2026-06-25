@@ -1,26 +1,25 @@
-import { IsString, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, Max, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCitizenAlarmDto {
-  @ApiProperty({ description: 'ID de la zona', example: 'cuid-zona' })
+  @ApiProperty({ description: 'ID de la ruta', example: 'cuid-route' })
   @IsString()
-  zoneId: string;
+  routeId: string;
 
-  @ApiProperty({
-    description: 'Día de la semana',
-    example: 'MONDAY',
-    enum: [
-      'MONDAY',
-      'TUESDAY',
-      'WEDNESDAY',
-      'THURSDAY',
-      'FRIDAY',
-      'SATURDAY',
-      'SUNDAY',
-    ],
-  })
+  @ApiProperty({ description: 'ID del punto de recojo', example: 'cuid-pickup-point' })
   @IsString()
-  dayOfWeek: string;
+  pickupPointId: string;
+
+  @ApiPropertyOptional({
+    description: 'Minutos antes de la llegada para notificar',
+    example: 30,
+    default: 30,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(120)
+  notifyBeforeMinutes?: number;
 
   @ApiPropertyOptional({
     description: 'Etiqueta personalizada',
@@ -30,12 +29,4 @@ export class CreateCitizenAlarmDto {
   @IsString()
   @MinLength(1)
   label?: string;
-
-  @ApiPropertyOptional({
-    description: 'ID del punto de recojo (opcional — si se envía, se vincula también la ruta)',
-    example: 'cuid-pickup-point',
-  })
-  @IsOptional()
-  @IsString()
-  pickupPointId?: string;
 }
