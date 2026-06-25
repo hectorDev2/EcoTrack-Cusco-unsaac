@@ -760,24 +760,24 @@ export default function AdminRutasPage() {
 
             {/* Contenido: mapa + panel */}
             <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-5 min-h-0">
-              {/* Mapa */}
+              {/* Mapa — solo muestra las paradas de la ruta que se edita */}
               <div className="lg:col-span-3 h-[420px] lg:h-auto relative">
                 <MapView
-                  center={pickupPoints.length > 0 ? [pickupPoints[0].longitude, pickupPoints[0].latitude] : [-71.9675, -13.5320]}
-                  zoom={15}
-                  markers={pickupPoints.map((pp) => ({
-                    id: pp.id,
-                    lng: pp.longitude,
-                    lat: pp.latitude,
-                    color: waypoints.some((w) => w.pickupPointId === pp.id) ? '#2E7D32' : '#154212',
-                    icon: (waypoints.some((w) => w.pickupPointId === pp.id) ? 'check_circle' : 'location_on') as string,
-                    label: pp.address || pp.name,
+                  center={
+                    waypoints.length > 0
+                      ? [waypoints[Math.floor(waypoints.length / 2)].lng, waypoints[Math.floor(waypoints.length / 2)].lat]
+                      : [-71.9675, -13.5320]
+                  }
+                  zoom={14}
+                  markers={waypoints.map((wp, i) => ({
+                    id: wp.pickupPointId ?? `wp-${i}`,
+                    lng: wp.lng,
+                    lat: wp.lat,
+                    color: '#154212',
+                    icon: 'location_on' as string,
+                    label: `${i + 1}. ${wp.label ?? `Parada ${i + 1}`}`,
                   }))}
                   routes={calculatedRoute}
-                  onMarkerClick={(m) => {
-                    const pp = pickupPoints.find((p) => p.id === m.id);
-                    if (pp) togglePickupPoint(pp);
-                  }}
                 />
                 {routeInfo && (
                   <div className="absolute bottom-4 left-4 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-xl shadow-lg text-[12px] flex gap-4">
