@@ -25,7 +25,7 @@ export default function RecoleccionPage() {
 
   useEffect(() => {
     if (!selectedZone) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setSchedules([]);
       return;
     }

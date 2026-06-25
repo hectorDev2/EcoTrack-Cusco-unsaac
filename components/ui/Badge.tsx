@@ -23,7 +23,7 @@ const defaultStyles: Record<string, string> = {
   DRIVER: 'bg-tertiary-container/20 text-tertiary',
 };
 
-export function Badge({ variant = 'neutral', color, children, className = '' }: BadgeProps) {
+export function Badge({ variant: _variant = 'neutral', color, children, className = '' }: BadgeProps) {
   const colorClass = typeof children === 'string' && defaultStyles[children.toUpperCase()]
     ? defaultStyles[children.toUpperCase()]
     : color ?? 'bg-surface-container-high text-on-surface-variant';

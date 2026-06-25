@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { useToast } from '@/hooks/use-toast';
-import { WASTE_CATEGORY_COLORS, WASTE_CATEGORY_LABELS } from '@/lib/waste-colors';
+import { WASTE_CATEGORY_COLORS as _WASTE_CATEGORY_COLORS, WASTE_CATEGORY_LABELS } from '@/lib/waste-colors';
 import { STATUS_CONFIG, INCIDENT_TYPE_LABELS } from '@/lib/status';
 
 // Interactive Toast Demo component (must use hook inside to satisfy React rules)

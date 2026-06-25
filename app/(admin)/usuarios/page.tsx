@@ -79,7 +79,7 @@ export default function UsuariosPage() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     fetchData(1, '');
     api.get<{ id: string; name: string }[]>('/zones').then(setZones).catch(() => {});
   }, [fetchData]);

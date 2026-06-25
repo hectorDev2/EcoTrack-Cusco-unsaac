@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
 import { queries } from '@/lib/queries';
 import type { CollectionSchedule } from '@/lib/types';
 
@@ -23,7 +22,7 @@ const wasteColors: Record<string, string> = {
   HAZARDOUS: 'bg-status-alert text-white',
 };
 
-const wasteLabels: Record<string, string> = {
+const _wasteLabels: Record<string, string> = {
   ORGANIC: 'Orgánico', RECYCLABLE: 'Reciclable', NON_RECYCLABLE: 'No Reciclable', HAZARDOUS: 'Peligroso',
 };
 
@@ -104,7 +103,7 @@ export default function InicioPage() {
 
   const firstName = user?.fullName?.split(' ')[0] ?? 'Ciudadano';
   const zoneNames = user?.zones?.map((z) => z.name).join(', ') ?? '';
-  const showWarning = openCount > 0;
+  const _showWarning = openCount > 0;
 
   return (
     <>

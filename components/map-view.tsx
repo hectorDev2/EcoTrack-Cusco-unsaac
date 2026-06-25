@@ -86,10 +86,32 @@ function syncMarkers(
   }
 }
 
+function ensureArrowImage(map: maplibregl.Map) {
+  if (map.hasImage('route-direction-arrow')) return;
+  const size = 24;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  // Arrow pointing right (MapLibre rotates it to follow the line direction)
+  ctx.fillStyle = 'rgba(255,255,255,1)';
+  ctx.beginPath();
+  ctx.moveTo(5, 6);
+  ctx.lineTo(19, 12);
+  ctx.lineTo(5, 18);
+  ctx.lineTo(8, 12);
+  ctx.closePath();
+  ctx.fill();
+  const imageData = ctx.getImageData(0, 0, size, size);
+  map.addImage('route-direction-arrow', { width: size, height: size, data: imageData.data }, { sdf: true });
+}
+
 function syncRoutes(map: maplibregl.Map, routes: MapRoute[], darkMode: boolean) {
   const existingSources = map.getStyle()?.sources ?? {};
   Object.keys(existingSources).forEach((id) => {
     if (id.startsWith('route-')) {
+      if (map.getLayer(`${id}-arrows`)) map.removeLayer(`${id}-arrows`);
       if (map.getLayer(`${id}-outline`)) map.removeLayer(`${id}-outline`);
       if (map.getLayer(id)) map.removeLayer(id);
       if (map.getSource(id)) map.removeSource(id);
@@ -97,6 +119,8 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[], darkMode: boolean) 
   });
 
   const outlineColor = darkMode ? '#363635' : '#ffffff';
+
+  ensureArrowImage(map);
 
   routes.forEach((route) => {
     const id = `route-${route.id}`;
@@ -126,6 +150,26 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[], darkMode: boolean) 
       source: id,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': color, 'line-width': 6, 'line-opacity': 1 },
+    });
+
+    // Directional arrows along the route
+    map.addLayer({
+      id: `${id}-arrows`,
+      type: 'symbol',
+      source: id,
+      layout: {
+        'symbol-placement': 'line',
+        'symbol-spacing': 80,
+        'icon-image': 'route-direction-arrow',
+        'icon-size': 0.75,
+        'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: {
+        'icon-color': '#ffffff',
+        'icon-opacity': 0.95,
+      },
     });
   });
 }
@@ -166,7 +210,7 @@ export default function MapView({
     return () => observer.disconnect();
   }, []);
 
-  const updateAll = useCallback(() => {
+  const _updateAll = useCallback(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
     syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick);

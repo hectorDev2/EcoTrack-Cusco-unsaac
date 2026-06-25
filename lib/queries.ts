@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, User, UserStats, FrequencyConfig } from './types';
+import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, FrequencyConfig } from './types';
 
 export const queryKeys = {
   incidents: {

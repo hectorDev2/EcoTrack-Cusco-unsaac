@@ -14,7 +14,7 @@ export function ThemeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setDark(getStoredTheme());
   }, []);
 

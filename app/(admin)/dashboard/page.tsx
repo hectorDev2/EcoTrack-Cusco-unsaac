@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { queries, queryKeys } from '@/lib/queries';
+import { queryKeys } from '@/lib/queries';
 import type { Incident } from '@/lib/types';
 
 interface DashboardData {

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
