@@ -80,10 +80,6 @@ export default function FlotaPage() {
   const [allRoutes, setAllRoutes] = useState<FullRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
-  const [selectedMarkers, setSelectedMarkers] = useState<MapMarker[]>([]);
-  const [selectedRouteLine, setSelectedRouteLine] = useState<MapRoute[]>([]);
-  const [selectedInfo, setSelectedInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [livePositions, setLivePositions] = useState<Record<string, { lat: number; lng: number; driver: string }>>({});
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
@@ -155,14 +151,23 @@ export default function FlotaPage() {
     }
   };
 
-  const focusRoute = useCallback(async (routeId: string) => {
-    setSelectedRouteId(routeId);
+const [modalRouteId, setModalRouteId] = useState<string | null>(null);
+  const [modalMarkers, setModalMarkers] = useState<MapMarker[]>([]);
+  const [modalRouteLine, setModalRouteLine] = useState<MapRoute[]>([]);
+  const [modalInfo, setModalInfo] = useState<{ distance: number; duration: number } | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const openRouteModal = useCallback(async (routeId: string) => {
     const route = allRoutes.find((r) => r.id === routeId);
     if (!route) return;
+    setModalRouteId(routeId);
+    setModalMarkers([]);
+    setModalRouteLine([]);
+    setModalInfo(null);
+    setModalLoading(true);
 
     const stops = [...route.stops].sort((a, b) => a.orderIndex - b.orderIndex);
-
-    setSelectedMarkers(stops.map((s) => ({
+    setModalMarkers(stops.map((s) => ({
       id: s.id,
       lng: s.pickupPoint.longitude,
       lat: s.pickupPoint.latitude,
@@ -179,14 +184,19 @@ export default function FlotaPage() {
       }));
       const result = await calculateRoute(wps);
       if (result) {
-        setSelectedRouteLine([{ id: 'ruta', points: result.coordinates, color: '#154212' }]);
-        setSelectedInfo({ distance: result.distance, duration: result.duration });
-        return;
+        setModalRouteLine([{ id: 'modal-ruta', points: result.coordinates, color: '#154212' }]);
+        setModalInfo({ distance: result.distance, duration: result.duration });
       }
     }
-    setSelectedRouteLine([]);
-    setSelectedInfo(null);
+    setModalLoading(false);
   }, [allRoutes]);
+
+  const closeModal = () => {
+    setModalRouteId(null);
+    setModalMarkers([]);
+    setModalRouteLine([]);
+    setModalInfo(null);
+  };
 
   // Live position markers (drivers in transit)
   const liveMarkers: MapMarker[] = Object.entries(livePositions).map(([routeId, pos]) => ({
@@ -198,31 +208,25 @@ export default function FlotaPage() {
     label: pos.driver,
   }));
 
-  // Map markers: selected route's stops + other routes as single markers
-  const mapMarkers: MapMarker[] = selectedRouteId
-    ? [...selectedMarkers, ...liveMarkers]
-    : [
-        ...liveMarkers,
-        ...(data?.routes ?? [])
-          .filter((r) => !livePositions[r.id])
-          .map((r, i) => ({
-            id: r.id,
-            lng: [-71.9781, -71.9756, -71.9600, -71.9567, -71.9890][i % 5],
-            lat: [-13.5167, -13.5156, -13.5222, -13.5278, -13.5345][i % 5],
-            color: '#154212',
-            icon: 'local_shipping' as const,
-            label: r.name,
-          })),
-      ];
-
-  const mapRoutes: MapRoute[] = selectedRouteId ? selectedRouteLine : [];
-
-  const clearSelection = () => {
-    setSelectedRouteId(null);
-    setSelectedMarkers([]);
-    setSelectedRouteLine([]);
-    setSelectedInfo(null);
-  };
+  // Overview map markers: use first stop coordinates from allRoutes
+  const overviewMarkers: MapMarker[] = [
+    ...liveMarkers,
+    ...(data?.routes ?? [])
+      .filter((r) => !livePositions[r.id])
+      .flatMap((r) => {
+        const full = allRoutes.find((fr) => fr.id === r.id);
+        const firstStop = full?.stops?.[0];
+        if (!firstStop) return [];
+        return [{
+          id: r.id,
+          lng: firstStop.pickupPoint.longitude,
+          lat: firstStop.pickupPoint.latitude,
+          color: r.status === 'IN_PROGRESS' ? '#154212' : r.status === 'COMPLETED' ? '#2E7D32' : '#757575',
+          icon: 'local_shipping' as const,
+          label: r.name,
+        }];
+      }),
+  ];
 
   const inTransitCount = data?.routes.filter((r) => r.status === 'IN_PROGRESS').length ?? 0;
   const alertCount = data?.routes.filter((r) => r.status === 'CANCELLED').length ?? 0;
@@ -250,8 +254,8 @@ export default function FlotaPage() {
               <span className="material-symbols-outlined">person</span>
             </div>
             <div className="hidden lg:block">
-              <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface leading-tight">Panel de Administración</p>
-              <p className="text-[10px] text-on-surface-variant uppercase font-extrabold tracking-wider">Superusuario Municipal</p>
+              <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface leading-tight">Municipalidad de Wanchaq</p>
+              <p className="text-[10px] text-on-surface-variant uppercase font-extrabold tracking-wider">Panel de Flota</p>
             </div>
           </div>
         </div>
@@ -259,30 +263,13 @@ export default function FlotaPage() {
 
       <main className="h-[calc(100vh-64px)] relative">
         <MapView
-          markers={mapMarkers}
-          routes={mapRoutes}
+          markers={overviewMarkers}
+          routes={[]}
           height="100%"
           onMarkerClick={(m) => {
-            if (!selectedRouteId) focusRoute(m.id);
+            if (!m.id.startsWith('live-')) openRouteModal(m.id);
           }}
         />
-
-        {selectedRouteId && selectedInfo && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-full shadow-lg flex items-center gap-4 text-[12px]">
-            <span className="font-bold text-primary">{formatDistance(selectedInfo.distance)}</span>
-            <span className="text-on-surface-variant">·</span>
-            <span className="font-bold text-primary">{formatDuration(selectedInfo.duration)}</span>
-          </div>
-        )}
-
-        {selectedRouteId && (
-          <div className="absolute top-4 right-4 z-10">
-            <button onClick={clearSelection} className="bg-surface/90 backdrop-blur px-3 py-2 rounded-xl shadow-lg text-[12px] font-bold text-on-surface flex items-center gap-1 hover:bg-surface transition-colors">
-              <span className="material-symbols-outlined text-[16px]">close</span>
-              Vista general
-            </button>
-          </div>
-        )}
 
         <aside className="absolute left-6 top-6 bottom-6 w-80 glass-panel rounded-2xl shadow-2xl border border-white/40 flex flex-col z-30 overflow-hidden">
           {loading && (
@@ -348,14 +335,13 @@ export default function FlotaPage() {
                 )}
                 {data.routes.map((route) => {
                   const cfg = statusConfig[route.status] ?? statusConfig.PENDING;
-                  const isSelected = selectedRouteId === route.id;
                   const fullRoute = allRoutes.find((r) => r.id === route.id);
                   return (
                     <div
                       key={route.id}
-                      onClick={() => focusRoute(route.id)}
+                      onClick={() => openRouteModal(route.id)}
                       className={`p-4 rounded-xl border transition-all cursor-pointer shadow-sm group ${
-                        isSelected
+                        modalRouteId === route.id
                           ? 'bg-primary/5 border-primary/40 ring-1 ring-primary/30'
                           : route.status === 'CANCELLED'
                             ? 'bg-error-container/20 border-error/20 hover:border-error/40'
@@ -422,7 +408,7 @@ export default function FlotaPage() {
           )}
         </aside>
 
-        <div className="absolute top-6 right-6 glass-panel rounded-xl shadow-lg border border-white/40 p-3 z-30 flex gap-4" style={{ right: selectedRouteId ? '160px' : '24px' }}>
+        <div className="absolute top-6 right-6 glass-panel rounded-xl shadow-lg border border-white/40 p-3 z-30 flex gap-4">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-primary" />
             <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">En ruta</span>
@@ -525,6 +511,122 @@ export default function FlotaPage() {
             </div>
           </div>
         )}
+
+        {/* Route detail modal */}
+        {modalRouteId && (() => {
+          const fleetRoute = data?.routes.find((r) => r.id === modalRouteId);
+          const fullRoute = allRoutes.find((r) => r.id === modalRouteId);
+          if (!fleetRoute) return null;
+          const cfg = statusConfig[fleetRoute.status] ?? statusConfig.PENDING;
+          const stops = fullRoute ? [...fullRoute.stops].sort((a, b) => a.orderIndex - b.orderIndex) : [];
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={closeModal}>
+              <div
+                className="bg-surface rounded-2xl shadow-2xl border border-outline-variant/40 w-full max-w-2xl mx-4 flex flex-col overflow-hidden"
+                style={{ maxHeight: '90vh' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal header */}
+                <div className="flex items-start justify-between p-5 border-b border-outline-variant/30">
+                  <div>
+                    <h2 className="text-[20px] font-extrabold text-on-surface">{fleetRoute.name}</h2>
+                    <p className="text-[13px] text-on-surface-variant mt-0.5">{fleetRoute.zone} · {fleetRoute.driver}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-[12px] font-extrabold px-3 py-1 rounded-full bg-surface-container-high ${cfg.color}`}>
+                      {cfg.label}
+                    </span>
+                    <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant transition-colors">
+                      <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Map section */}
+                <div className="relative" style={{ height: 320 }}>
+                  {modalLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface/70">
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-[11px] text-on-surface-variant font-bold">Calculando ruta...</p>
+                      </div>
+                    </div>
+                  )}
+                  {stops.length === 0 ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-surface-container-low">
+                      <p className="text-[13px] text-on-surface-variant">Sin paradas registradas</p>
+                    </div>
+                  ) : (
+                    <MapView markers={modalMarkers} routes={modalRouteLine} height="100%" />
+                  )}
+                  {modalInfo && (
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-surface/90 backdrop-blur px-4 py-1.5 rounded-full shadow-lg flex items-center gap-3 text-[12px]">
+                      <span className="font-bold text-primary">{formatDistance(modalInfo.distance)}</span>
+                      <span className="text-on-surface-variant">·</span>
+                      <span className="font-bold text-primary">{formatDuration(modalInfo.duration)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                <div className="px-5 pt-4">
+                  <div className="flex items-center justify-between text-[12px] mb-1.5">
+                    <span className="font-bold text-on-surface-variant uppercase tracking-wide">Progreso</span>
+                    <span className={`font-extrabold ${cfg.color}`}>{fleetRoute.progress}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${cfg.barColor}`} style={{ width: `${Math.max(fleetRoute.progress, 2)}%` }} />
+                  </div>
+                </div>
+
+                {/* Stops list */}
+                <div className="flex-1 overflow-y-auto p-5">
+                  <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] mb-3">
+                    Paradas ({stops.length})
+                  </p>
+                  {stops.length === 0 ? (
+                    <p className="text-[13px] text-on-surface-variant text-center py-4">Sin paradas</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {stops.map((s, i) => (
+                        <div key={s.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] ${
+                          s.status === 'COMPLETED' ? 'bg-waste-organic/10' : 'bg-surface-container-low'
+                        }`}>
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold flex-shrink-0 ${
+                            s.status === 'COMPLETED' ? 'bg-waste-organic text-white' : 'bg-outline-variant text-on-surface-variant'
+                          }`}>{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-on-surface truncate">{s.pickupPoint.name}</p>
+                            <p className="text-[11px] text-on-surface-variant truncate">{s.pickupPoint.address}</p>
+                          </div>
+                          {s.status === 'COMPLETED' && (
+                            <span className="material-symbols-outlined text-waste-organic text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats footer */}
+                <div className="p-5 border-t border-outline-variant/30 grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-on-surface-variant mb-1">Paradas</p>
+                    <p className="text-[18px] font-extrabold text-on-surface">{fleetRoute.completedStops}/{fleetRoute.totalStops}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-on-surface-variant mb-1">Estado</p>
+                    <p className={`text-[14px] font-extrabold ${cfg.color}`}>{cfg.label}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-on-surface-variant mb-1">Zona</p>
+                    <p className="text-[14px] font-extrabold text-on-surface truncate">{fleetRoute.zone}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </main>
     </div>
   );
