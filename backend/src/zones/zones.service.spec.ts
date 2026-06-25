@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, type TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { jest } from '@jest/globals';
 import { ZonesService } from './zones.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateZoneDto } from './dto/create-zone.dto';

@@ -9,12 +9,23 @@ export class CreateCitizenAlarmDto {
   @ApiProperty({
     description: 'Día de la semana',
     example: 'MONDAY',
-    enum: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
+    enum: [
+      'MONDAY',
+      'TUESDAY',
+      'WEDNESDAY',
+      'THURSDAY',
+      'FRIDAY',
+      'SATURDAY',
+      'SUNDAY',
+    ],
   })
   @IsString()
   dayOfWeek: string;
 
-  @ApiPropertyOptional({ description: 'Etiqueta personalizada', example: 'Orgánicos' })
+  @ApiPropertyOptional({
+    description: 'Etiqueta personalizada',
+    example: 'Orgánicos',
+  })
   @IsOptional()
   @IsString()
   @MinLength(1)

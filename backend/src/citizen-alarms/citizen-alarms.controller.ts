@@ -42,10 +42,7 @@ export class CitizenAlarmsController {
   @ApiOperation({ summary: 'Delete alarm (citizen)' })
   @ApiBearerAuth()
   @Delete(':id')
-  remove(
-    @Param('id') id: string,
-    @CurrentUser('id') userId: string,
-  ) {
+  remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.alarmsService.remove(id, userId);
   }
 }
