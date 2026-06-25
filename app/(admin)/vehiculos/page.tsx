@@ -139,7 +139,8 @@ export default function VehiculosPage() {
 
   const { data: drivers = [] } = useQuery<Driver[]>({
     queryKey: ['drivers'],
-    queryFn: () => api.get<Driver[]>('/users?role=DRIVER'),
+    queryFn: () =>
+      api.get<{ data: Driver[] }>('/users?role=DRIVER&limit=100').then((r) => r.data),
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['vehicles'] });
@@ -172,6 +173,11 @@ export default function VehiculosPage() {
 
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/vehicles/${id}`),
+    onSuccess: () => void invalidate(),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: string) => api.patch(`/vehicles/${id}`, { status: 'ACTIVE' }),
     onSuccess: () => void invalidate(),
   });
 
@@ -311,7 +317,7 @@ export default function VehiculosPage() {
                 >
                   <span className="material-symbols-outlined text-sm">edit</span>
                 </button>
-                {v.status === 'ACTIVE' && (
+                {v.status === 'ACTIVE' ? (
                   <button
                     onClick={() => deactivateMutation.mutate(v.id)}
                     disabled={deactivateMutation.isPending}
@@ -319,6 +325,15 @@ export default function VehiculosPage() {
                     title="Desactivar"
                   >
                     <span className="material-symbols-outlined text-sm">block</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => reactivateMutation.mutate(v.id)}
+                    disabled={reactivateMutation.isPending}
+                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-waste-organic/10 text-on-surface-variant hover:text-waste-organic transition-colors disabled:opacity-40"
+                    title="Reactivar"
+                  >
+                    <span className="material-symbols-outlined text-sm">check_circle</span>
                   </button>
                 )}
               </div>

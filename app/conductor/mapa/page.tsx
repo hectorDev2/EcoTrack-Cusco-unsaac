@@ -215,7 +215,7 @@ export default function DriverMap() {
 
     // Primera ejecución inmediata del tick
     tick();
-    tickIntervalRef.current = setInterval(tick, GPS_INTERVAL_MS);
+    tickIntervalRef.current = setInterval(tick, BACKEND_SEND_MS);
 
     return stop;
   }, [activeRoute]);
