@@ -195,12 +195,14 @@ describe('RoutesService', () => {
 
   describe('update', () => {
     it('debe actualizar el estado a IN_PROGRESS con startedAt', async () => {
-      mockPrisma.route.findUnique.mockResolvedValue(mockRoute);
       const updatedRoute = {
         ...mockRoute,
         status: 'IN_PROGRESS',
         startedAt: new Date(),
       };
+      mockPrisma.route.findUnique
+        .mockResolvedValueOnce(mockRoute)
+        .mockResolvedValueOnce(updatedRoute);
       mockPrisma.route.update.mockResolvedValue(updatedRoute);
 
       const dto: UpdateRouteDto = { status: 'IN_PROGRESS' };
@@ -225,12 +227,14 @@ describe('RoutesService', () => {
         status: 'IN_PROGRESS',
         startedAt: mockDate,
       };
-      mockPrisma.route.findUnique.mockResolvedValue(inProgressRoute);
       const completedRoute = {
         ...inProgressRoute,
         status: 'COMPLETED',
         finishedAt: new Date(),
       };
+      mockPrisma.route.findUnique
+        .mockResolvedValueOnce(inProgressRoute)
+        .mockResolvedValueOnce(completedRoute);
       mockPrisma.route.update.mockResolvedValue(completedRoute);
 
       const dto: UpdateRouteDto = { status: 'COMPLETED' };
