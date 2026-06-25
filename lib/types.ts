@@ -121,6 +121,20 @@ export interface Vehicle {
   driver?: { id: string; fullName: string; email: string } | null;
 }
 
+export interface UserAlarm {
+  id: string;
+  userId: string;
+  pickupPointId: string;
+  routeId: string;
+  title: string;
+  notifyBeforeMinutes: number;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  pickupPoint?: { id: string; name: string; address: string };
+  route?: { id: string; name: string; zone?: { id: string; name: string } };
+}
+
 export interface ApiError {
   message: string;
   statusCode: number;

@@ -17,10 +17,11 @@ model User {
   status       String   @default("ACTIVE")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  zones     UserZone[]
-  routes    Route[]
-  incidents Incident[]
-  vehicles  Vehicle[]
+  zones      UserZone[]
+  routes     Route[]
+  incidents  Incident[]
+  vehicles   Vehicle[]
+  userAlarms UserAlarm[]
 
   @@map("users")
 }
@@ -121,6 +122,7 @@ model PickupPoint {
   zone          Zone              @relation(fields: [zoneId], references: [id])
   frequency     FrequencyConfig?  @relation(fields: [frequencyId], references: [id])
   routeStops    RouteStop[]
+  userAlarms    UserAlarm[]
 
   @@index([zoneId, shift, frequencyId])
   @@index([shift, stopType])
@@ -176,6 +178,7 @@ model Route {
   stops     RouteStop[]
   locations RouteLocation[]
   incidents Incident[]
+  userAlarms UserAlarm[]
 
   @@map("routes")
 }
@@ -233,6 +236,24 @@ model RouteLocation {
 
   @@index([routeId, recordedAt])
   @@map("route_locations")
+}
+
+model UserAlarm {
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  pickupPointId       String   @map("pickup_point_id")
+  routeId             String   @map("route_id")
+  title               String
+  notifyBeforeMinutes Int      @map("notify_before_minutes")
+  enabled             Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pickupPoint PickupPoint  @relation(fields: [pickupPointId], references: [id], onDelete: Cascade)
+  route       Route        @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@map("user_alarms")
 }
 
 model Incident {
