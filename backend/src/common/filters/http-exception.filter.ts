@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -36,6 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `Error no controlado: ${exception.message}`,
         exception.stack,
       );
+      Sentry.captureException(exception);
       message = 'Error interno del servidor';
     }
 

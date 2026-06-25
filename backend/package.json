@@ -41,6 +41,8 @@
     "@nestjs/throttler": "^6.5.0",
     "@prisma/adapter-libsql": "^6.5.0",
     "@prisma/client": "^6.5.0",
+    "@sentry/nestjs": "^10.60.0",
+    "@sentry/profiling-node": "^10.60.0",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

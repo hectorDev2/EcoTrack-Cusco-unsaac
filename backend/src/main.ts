@@ -1,3 +1,6 @@
+// ⚠️ Debe ser el primer import para que Sentry capture todos los errores
+import './instrument';
+
 import helmet from 'helmet';
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
