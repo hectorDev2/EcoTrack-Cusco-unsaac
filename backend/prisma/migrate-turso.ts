@@ -77,6 +77,30 @@ async function migrate() {
     await addColumn('routes', 'shift', 'TEXT');
     await addColumn('routes', 'frequency', 'TEXT');
 
+
+    // ── citizen_alarms: nueva tabla ──────────────────────────────────────────────
+    console.log('\n📦 citizen_alarms:');
+    try {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS citizen_alarms (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id),
+          zone_id TEXT NOT NULL REFERENCES zones(id),
+          day_of_week TEXT NOT NULL,
+          label TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+      await prisma.$executeRawUnsafe(
+        `CREATE INDEX IF NOT EXISTS idx_citizen_alarms_user_id ON citizen_alarms(user_id)`
+      );
+      console.log('  ✅ citizen_alarms creada (o ya existía)');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.log('  ⚠️  citizen_alarms:', msg);
+    }
+
     console.log('\n✅ Migración completada');
   } finally {
     await prisma.$disconnect();

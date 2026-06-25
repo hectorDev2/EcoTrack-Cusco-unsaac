@@ -20,6 +20,7 @@ model User {
   zones     UserZone[]
   routes    Route[]
   incidents Incident[]
+  citizenAlarms CitizenAlarm[]
   vehicles  Vehicle[]
 
   @@map("users")
@@ -37,6 +38,7 @@ model Zone {
   collectionSchedules CollectionSchedule[]
   routes             Route[]
   incidents          Incident[]
+  citizenAlarms       CitizenAlarm[]
 
   @@map("zones")
 }
@@ -176,6 +178,7 @@ model Route {
   stops     RouteStop[]
   locations RouteLocation[]
   incidents Incident[]
+  citizenAlarms CitizenAlarm[]
 
   @@map("routes")
 }
@@ -253,4 +256,20 @@ model Incident {
   route    Route? @relation(fields: [routeId], references: [id])
 
   @@map("incidents")
+}
+
+model CitizenAlarm {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  zoneId    String   @map("zone_id")
+  dayOfWeek String   @map("day_of_week")
+  label     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  zone Zone @relation(fields: [zoneId], references: [id])
+
+  @@index([userId])
+  @@map("citizen_alarms")
 }
