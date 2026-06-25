@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateScheduleDto {
@@ -6,7 +6,10 @@ export class CreateScheduleDto {
   @IsString()
   zoneId: string;
 
-  @ApiProperty({ description: 'ID del tipo de residuo', example: 'uuid-de-tipo-residuo' })
+  @ApiProperty({
+    description: 'ID del tipo de residuo',
+    example: 'uuid-de-tipo-residuo',
+  })
   @IsString()
   wasteTypeId: string;
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, type TestingModule } from '@nestjs/testing';
 import {
   NotFoundException,
@@ -14,7 +15,11 @@ type MockPrisma = Record<string, Record<string, jest.Mock>>;
 const mockDate = new Date('2025-01-01T00:00:00.000Z');
 
 const mockZone = { id: 'zone-1', name: 'Centro Histórico' };
-const mockDriver = { id: 'driver-1', fullName: 'Carlos Conductor', email: 'carlos@test.com' };
+const mockDriver = {
+  id: 'driver-1',
+  fullName: 'Carlos Conductor',
+  email: 'carlos@test.com',
+};
 const mockPickupPoint = {
   id: 'pp-1',
   name: 'Parque de la Madre',
@@ -63,7 +68,7 @@ const mockRoute = {
 
 describe('RoutesService', () => {
   let service: RoutesService;
-  let prisma: MockPrisma;
+  let _prisma: MockPrisma;
 
   const mockPrisma: MockPrisma = {
     route: {
@@ -96,7 +101,7 @@ describe('RoutesService', () => {
     }).compile();
 
     service = module.get<RoutesService>(RoutesService);
-    prisma = module.get(PrismaService);
+    _prisma = module.get(PrismaService);
     jest.clearAllMocks();
   });
 
@@ -129,13 +134,18 @@ describe('RoutesService', () => {
       expect(result.id).toBe('route-1');
       expect(result.totalStops).toBe(2);
       expect(result.completedStops).toBe(1);
-      expect(result.zone).toMatchObject({ id: 'zone-1', name: 'Centro Histórico' });
+      expect(result.zone).toMatchObject({
+        id: 'zone-1',
+        name: 'Centro Histórico',
+      });
     });
 
     it('debe lanzar NotFoundException si la ruta no existe', async () => {
       mockPrisma.route.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -332,9 +342,9 @@ describe('RoutesService', () => {
       const inProgressRoute = { ...mockRoute, status: 'IN_PROGRESS' };
       mockPrisma.route.findUnique.mockResolvedValue(inProgressRoute);
 
-      await expect(
-        service.startRoute('route-1', 'driver-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.startRoute('route-1', 'driver-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -425,9 +435,9 @@ describe('RoutesService', () => {
       const alreadyCompleted = { ...mockStopWithRoute, status: 'COMPLETED' };
       mockPrisma.routeStop.findUnique.mockResolvedValue(alreadyCompleted);
 
-      await expect(
-        service.completeStop('stop-1', 'driver-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.completeStop('stop-1', 'driver-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -443,7 +453,12 @@ describe('RoutesService', () => {
       };
       mockPrisma.routeLocation.create.mockResolvedValue(location);
 
-      const result = await service.sendLocation('route-1', 'driver-1', -13.517, -71.978);
+      const result = await service.sendLocation(
+        'route-1',
+        'driver-1',
+        -13.517,
+        -71.978,
+      );
 
       expect(result.latitude).toBe(-13.517);
       expect(result.longitude).toBe(-71.978);
@@ -472,8 +487,20 @@ describe('RoutesService', () => {
   describe('getLocations', () => {
     it('debe retornar las ubicaciones ordenadas por timestamp', async () => {
       const locations = [
-        { id: 'loc-1', routeId: 'route-1', latitude: -13.517, longitude: -71.978, recordedAt: new Date('2025-01-01T00:00:00Z') },
-        { id: 'loc-2', routeId: 'route-1', latitude: -13.518, longitude: -71.979, recordedAt: new Date('2025-01-01T00:05:00Z') },
+        {
+          id: 'loc-1',
+          routeId: 'route-1',
+          latitude: -13.517,
+          longitude: -71.978,
+          recordedAt: new Date('2025-01-01T00:00:00Z'),
+        },
+        {
+          id: 'loc-2',
+          routeId: 'route-1',
+          latitude: -13.518,
+          longitude: -71.979,
+          recordedAt: new Date('2025-01-01T00:05:00Z'),
+        },
       ];
       mockPrisma.routeLocation.findMany.mockResolvedValue(locations);
 
@@ -499,7 +526,10 @@ describe('RoutesService', () => {
         ...mockRoute,
         id: 'route-2',
       };
-      mockPrisma.route.findMany.mockResolvedValue([inProgressRoute, pendingRoute]);
+      mockPrisma.route.findMany.mockResolvedValue([
+        inProgressRoute,
+        pendingRoute,
+      ]);
 
       const result = await service.getFleetOverview();
 

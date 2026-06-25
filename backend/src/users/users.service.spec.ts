@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, type TestingModule } from '@nestjs/testing';
 import {
   NotFoundException,
@@ -30,7 +31,11 @@ const mockUserWithZones = {
   ...mockUser,
   zones: [
     {
-      zone: { id: 'zone-1', name: 'Centro Histórico', description: 'Descripción' },
+      zone: {
+        id: 'zone-1',
+        name: 'Centro Histórico',
+        description: 'Descripción',
+      },
     },
     {
       zone: { id: 'zone-2', name: 'San Blas', description: null },
@@ -40,7 +45,7 @@ const mockUserWithZones = {
 
 describe('UsersService', () => {
   let service: UsersService;
-  let prisma: MockPrisma;
+  let _prisma: MockPrisma;
 
   const mockPrisma: MockPrisma = {
     user: {
@@ -69,7 +74,7 @@ describe('UsersService', () => {
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    prisma = module.get(PrismaService);
+    _prisma = module.get(PrismaService);
     jest.clearAllMocks();
   });
 
@@ -157,8 +162,16 @@ describe('UsersService', () => {
 
       expect(result.data).toHaveLength(2);
       expect(result.data[0].zones).toHaveLength(2);
-      expect(result.data[0].zones[0]).toMatchObject({ id: 'zone-1', name: 'Centro Histórico' });
-      expect(result.meta).toEqual({ total: 2, page: 1, limit: 10, totalPages: 1 });
+      expect(result.data[0].zones[0]).toMatchObject({
+        id: 'zone-1',
+        name: 'Centro Histórico',
+      });
+      expect(result.meta).toEqual({
+        total: 2,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
       expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           skip: 0,
@@ -235,13 +248,19 @@ describe('UsersService', () => {
 
       expect(result.id).toBe('user-1');
       expect(result.zones).toHaveLength(2);
-      expect(result.zones[0]).toMatchObject({ id: 'zone-1', name: 'Centro Histórico', description: 'Descripción' });
+      expect(result.zones[0]).toMatchObject({
+        id: 'zone-1',
+        name: 'Centro Histórico',
+        description: 'Descripción',
+      });
     });
 
     it('debe lanzar NotFoundException si el usuario no existe', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -253,21 +272,34 @@ describe('UsersService', () => {
 
       expect(result.id).toBe('user-1');
       expect(result.zones).toHaveLength(2);
-      expect(result.zones[0]).toMatchObject({ id: 'zone-1', name: 'Centro Histórico', description: 'Descripción' });
+      expect(result.zones[0]).toMatchObject({
+        id: 'zone-1',
+        name: 'Centro Histórico',
+        description: 'Descripción',
+      });
     });
 
     it('debe lanzar NotFoundException si el usuario no existe', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.getMyProfile('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.getMyProfile('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
     it('debe actualizar los campos del usuario exitosamente', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
-      const dto: UpdateUserDto = { fullName: 'Juan Actualizado', role: 'DRIVER' };
-      const updatedUser = { ...mockUser, fullName: 'Juan Actualizado', role: 'DRIVER' };
+      const dto: UpdateUserDto = {
+        fullName: 'Juan Actualizado',
+        role: 'DRIVER',
+      };
+      const updatedUser = {
+        ...mockUser,
+        fullName: 'Juan Actualizado',
+        role: 'DRIVER',
+      };
       mockPrisma.user.update.mockResolvedValue(updatedUser);
 
       const result = await service.update('user-1', dto);
@@ -277,7 +309,10 @@ describe('UsersService', () => {
       expect(mockPrisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'user-1' },
-          data: expect.objectContaining({ fullName: 'Juan Actualizado', role: 'DRIVER' }),
+          data: expect.objectContaining({
+            fullName: 'Juan Actualizado',
+            role: 'DRIVER',
+          }),
         }),
       );
     });
@@ -285,9 +320,9 @@ describe('UsersService', () => {
     it('debe lanzar NotFoundException si el usuario no existe', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('non-existent', { fullName: 'Test' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('non-existent', { fullName: 'Test' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('debe hashear la contraseña si se proporciona', async () => {
@@ -309,7 +344,10 @@ describe('UsersService', () => {
     it('debe solo incluir campos definidos en los datos de actualización', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       const dto: UpdateUserDto = { status: 'INACTIVE' };
-      mockPrisma.user.update.mockResolvedValue({ ...mockUser, status: 'INACTIVE' });
+      mockPrisma.user.update.mockResolvedValue({
+        ...mockUser,
+        status: 'INACTIVE',
+      });
 
       const result = await service.update('user-1', dto);
 
@@ -336,14 +374,22 @@ describe('UsersService', () => {
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
         data: { status: 'INACTIVE' },
-        select: { id: true, email: true, fullName: true, role: true, status: true },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          status: true,
+        },
       });
     });
 
     it('debe lanzar NotFoundException si el usuario no existe', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.deactivate('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.deactivate('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -352,7 +398,13 @@ describe('UsersService', () => {
     const userWithAssignedZones = {
       ...mockUser,
       zones: [
-        { zone: { id: 'zone-1', name: 'Centro Histórico', description: 'Descripción' } },
+        {
+          zone: {
+            id: 'zone-1',
+            name: 'Centro Histórico',
+            description: 'Descripción',
+          },
+        },
         { zone: { id: 'zone-2', name: 'San Blas', description: null } },
       ],
     };
@@ -419,11 +471,11 @@ describe('UsersService', () => {
   describe('getStats', () => {
     it('debe retornar las estadísticas de usuarios', async () => {
       mockPrisma.user.count
-        .mockResolvedValueOnce(100)  // total
-        .mockResolvedValueOnce(80)   // active
-        .mockResolvedValueOnce(30)   // drivers (active)
-        .mockResolvedValueOnce(10)   // admins (active)
-        .mockResolvedValueOnce(40);  // citizens (active)
+        .mockResolvedValueOnce(100) // total
+        .mockResolvedValueOnce(80) // active
+        .mockResolvedValueOnce(30) // drivers (active)
+        .mockResolvedValueOnce(10) // admins (active)
+        .mockResolvedValueOnce(40); // citizens (active)
 
       const result = await service.getStats();
 

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, MinLength, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsNumber, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateVehicleDto {
@@ -17,12 +17,18 @@ export class CreateVehicleDto {
   @IsString()
   model?: string;
 
-  @ApiPropertyOptional({ description: 'Capacidad de carga en kg', example: 1500 })
+  @ApiPropertyOptional({
+    description: 'Capacidad de carga en kg',
+    example: 1500,
+  })
   @IsOptional()
   @IsNumber()
   capacity?: number;
 
-  @ApiPropertyOptional({ description: 'ID del conductor asignado', example: 'uuid-de-conductor' })
+  @ApiPropertyOptional({
+    description: 'ID del conductor asignado',
+    example: 'uuid-de-conductor',
+  })
   @IsOptional()
   @IsString()
   driverId?: string;

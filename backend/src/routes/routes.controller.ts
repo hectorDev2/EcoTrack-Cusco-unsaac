@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RoutesService } from './routes.service';
 import { CreateRouteDto } from './dto/create-route.dto';
@@ -86,7 +94,12 @@ export class RoutesController {
     @CurrentUser('id') userId: string,
     @Body() body: { latitude: number; longitude: number },
   ) {
-    return this.routesService.sendLocation(id, userId, body.latitude, body.longitude);
+    return this.routesService.sendLocation(
+      id,
+      userId,
+      body.latitude,
+      body.longitude,
+    );
   }
 
   @ApiOperation({ summary: 'Get route locations (admin)' })

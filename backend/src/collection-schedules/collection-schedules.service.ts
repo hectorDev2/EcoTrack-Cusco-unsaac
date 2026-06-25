@@ -8,7 +8,11 @@ export class CollectionSchedulesService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(zoneId?: string, wasteTypeId?: string, page = 1, limit = 10) {
-    const where: any = { status: 'ACTIVE' };
+    const where: {
+      status: string;
+      zoneId?: string;
+      wasteTypeId?: string;
+    } = { status: 'ACTIVE' };
     if (zoneId) where.zoneId = zoneId;
     if (wasteTypeId) where.wasteTypeId = wasteTypeId;
 

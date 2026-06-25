@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
@@ -8,7 +13,15 @@ const routeInclude = {
   driver: { select: { id: true, fullName: true, email: true } },
   stops: {
     include: {
-      pickupPoint: { select: { id: true, name: true, address: true, latitude: true, longitude: true } },
+      pickupPoint: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+        },
+      },
     },
     orderBy: { orderIndex: 'asc' as const },
   },
@@ -42,12 +55,14 @@ export class RoutesService {
     return {
       ...route,
       totalStops: route.stops.length,
-      completedStops: route.stops.filter((s) => s.status === 'COMPLETED').length,
+      completedStops: route.stops.filter((s) => s.status === 'COMPLETED')
+        .length,
     };
   }
 
   async create(dto: CreateRouteDto) {
     const route = await this.prisma.route.create({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data: {
         zoneId: dto.zoneId,
         driverId: dto.driverId ?? null,
@@ -76,14 +91,14 @@ export class RoutesService {
     await this.findOne(id);
 
     const data: Record<string, any> = {};
-    if (dto.name !== undefined)      data.name      = dto.name;
-    if (dto.shift !== undefined)     data.shift     = dto.shift;
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.shift !== undefined) data.shift = dto.shift;
     if (dto.frequency !== undefined) data.frequency = dto.frequency;
-    if (dto.driverId !== undefined)  data.driverId  = dto.driverId || null;
+    if (dto.driverId !== undefined) data.driverId = dto.driverId || null;
     if (dto.status) {
       data.status = dto.status;
       if (dto.status === 'IN_PROGRESS') data.startedAt = new Date();
-      if (dto.status === 'COMPLETED')   data.finishedAt = new Date();
+      if (dto.status === 'COMPLETED') data.finishedAt = new Date();
     }
 
     await this.prisma.route.update({ where: { id }, data });
@@ -106,40 +121,54 @@ export class RoutesService {
   }
 
   async findByZone(zoneId: string) {
-    return this.prisma.route.findMany({
-      where: { zoneId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
-      include: {
-        zone: { select: { id: true, name: true } },
-        driver: { select: { id: true, fullName: true } },
-        stops: {
-          include: {
-            pickupPoint: { select: { id: true, name: true, address: true, latitude: true, longitude: true } },
+    return this.prisma.route
+      .findMany({
+        where: { zoneId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+        include: {
+          zone: { select: { id: true, name: true } },
+          driver: { select: { id: true, fullName: true } },
+          stops: {
+            include: {
+              pickupPoint: {
+                select: {
+                  id: true,
+                  name: true,
+                  address: true,
+                  latitude: true,
+                  longitude: true,
+                },
+              },
+            },
+            orderBy: { orderIndex: 'asc' as const },
           },
-          orderBy: { orderIndex: 'asc' as const },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    }).then((routes) =>
-      routes.map((r) => ({
-        ...r,
-        totalStops: r.stops.length,
-        completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
-      })),
-    );
+        orderBy: { createdAt: 'desc' },
+      })
+      .then((routes) =>
+        routes.map((r) => ({
+          ...r,
+          totalStops: r.stops.length,
+          completedStops: r.stops.filter((s) => s.status === 'COMPLETED')
+            .length,
+        })),
+      );
   }
 
   async findByDriver(driverId: string) {
-    return this.prisma.route.findMany({
-      where: { driverId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
-      include: routeInclude,
-      orderBy: { createdAt: 'desc' },
-    }).then((routes) =>
-      routes.map((r) => ({
-        ...r,
-        totalStops: r.stops.length,
-        completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
-      })),
-    );
+    return this.prisma.route
+      .findMany({
+        where: { driverId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+        include: routeInclude,
+        orderBy: { createdAt: 'desc' },
+      })
+      .then((routes) =>
+        routes.map((r) => ({
+          ...r,
+          totalStops: r.stops.length,
+          completedStops: r.stops.filter((s) => s.status === 'COMPLETED')
+            .length,
+        })),
+      );
   }
 
   async startRoute(id: string, driverId: string) {
@@ -163,7 +192,9 @@ export class RoutesService {
       throw new ForbiddenException('Esta ruta no te pertenece');
     }
     if (route.status !== 'IN_PROGRESS') {
-      throw new BadRequestException('Solo se pueden completar rutas en progreso');
+      throw new BadRequestException(
+        'Solo se pueden completar rutas en progreso',
+      );
     }
     return this.prisma.route.update({
       where: { id },
@@ -190,8 +221,15 @@ export class RoutesService {
     });
   }
 
-  async sendLocation(routeId: string, driverId: string, latitude: number, longitude: number) {
-    const route = await this.prisma.route.findUnique({ where: { id: routeId } });
+  async sendLocation(
+    routeId: string,
+    driverId: string,
+    latitude: number,
+    longitude: number,
+  ) {
+    const route = await this.prisma.route.findUnique({
+      where: { id: routeId },
+    });
     if (!route) throw new NotFoundException('Ruta no encontrada');
     if (route.driverId !== driverId) {
       throw new ForbiddenException('Esta ruta no te pertenece');
@@ -224,11 +262,15 @@ export class RoutesService {
       alerts,
       routes: routes.map((r) => ({
         id: r.id,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         name: (r as any).name ?? `Ruta ${r.zone?.name ?? 'Sin zona'}`,
         zone: r.zone?.name ?? 'Sin zona',
         driver: r.driver?.fullName ?? 'Sin conductor',
         status: r.status,
-        progress: r.totalStops > 0 ? Math.round((r.completedStops / r.totalStops) * 100) : 0,
+        progress:
+          r.totalStops > 0
+            ? Math.round((r.completedStops / r.totalStops) * 100)
+            : 0,
         totalStops: r.totalStops,
         completedStops: r.completedStops,
         startedAt: r.startedAt,

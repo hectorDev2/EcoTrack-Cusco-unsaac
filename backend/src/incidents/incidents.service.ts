@@ -37,7 +37,7 @@ export class IncidentsService {
   }
 
   async findAll(status?: string, page = 1, limit = 10) {
-    const where: any = {};
+    const where: { status?: string } = {};
     if (status) where.status = status;
 
     const [data, total] = await Promise.all([

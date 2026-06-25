@@ -1,4 +1,8 @@
-import { createParamDecorator, ExecutionContext, BadRequestException } from '@nestjs/common';
+import {
+  createParamDecorator,
+  ExecutionContext,
+  BadRequestException,
+} from '@nestjs/common';
 
 export interface JwtUser {
   id: string;
@@ -10,8 +14,8 @@ const VALID_KEYS: (keyof JwtUser)[] = ['id', 'email', 'role'];
 
 export const CurrentUser = createParamDecorator(
   (data: keyof JwtUser | undefined, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
-    const user = request.user as JwtUser | undefined;
+    const request = ctx.switchToHttp().getRequest<{ user?: JwtUser }>();
+    const user = request.user;
 
     if (!user) return undefined;
 

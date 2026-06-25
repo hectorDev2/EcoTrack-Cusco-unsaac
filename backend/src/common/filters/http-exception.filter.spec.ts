@@ -1,8 +1,5 @@
-import {
-  HttpException,
-  HttpStatus,
-  BadRequestException,
-} from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
 import { AllExceptionsFilter } from './http-exception.filter';
 import type { ArgumentsHost } from '@nestjs/common';
 

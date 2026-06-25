@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import type { ExecutionContext } from '@nestjs/common';
 
 describe('JwtAuthGuard', () => {

@@ -18,7 +18,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Error interno del servidor';
-    let errors: any = undefined;
+    let errors: unknown = undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -27,12 +27,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof res === 'string') {
         message = res;
       } else if (typeof res === 'object') {
-        const r = res as any;
-        message = r.message || message;
+        const r = res as { message?: string; errors?: unknown };
+        message = r.message ?? message;
         errors = r.errors;
       }
     } else if (exception instanceof Error) {
-      this.logger.error(`Error no controlado: ${exception.message}`, exception.stack);
+      this.logger.error(
+        `Error no controlado: ${exception.message}`,
+        exception.stack,
+      );
       message = 'Error interno del servidor';
     }
 

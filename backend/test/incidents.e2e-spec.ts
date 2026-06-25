@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { bootstrapE2E, E2eContext, mockPrisma } from './app.e2e-helper';

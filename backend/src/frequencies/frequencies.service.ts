@@ -25,6 +25,7 @@ export class FrequenciesService {
 
   async findOne(code: string) {
     return this.prisma.frequencyConfig.findUnique({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       where: { code: code as any },
     });
   }

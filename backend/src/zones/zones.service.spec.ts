@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, type TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ZonesService } from './zones.service';
@@ -18,7 +19,7 @@ const mockZone = {
 
 describe('ZonesService', () => {
   let service: ZonesService;
-  let prisma: MockPrisma;
+  let _prisma: MockPrisma;
 
   const mockPrisma: MockPrisma = {
     zone: {
@@ -40,7 +41,7 @@ describe('ZonesService', () => {
     }).compile();
 
     service = module.get<ZonesService>(ZonesService);
-    prisma = module.get(PrismaService);
+    _prisma = module.get(PrismaService);
     jest.clearAllMocks();
   });
 
@@ -83,7 +84,9 @@ describe('ZonesService', () => {
     it('debe lanzar NotFoundException si la zona no existe', async () => {
       mockPrisma.zone.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -128,9 +131,9 @@ describe('ZonesService', () => {
     it('debe lanzar NotFoundException al actualizar una zona que no existe', async () => {
       mockPrisma.zone.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('non-existent', { name: 'Test' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('non-existent', { name: 'Test' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -154,7 +157,9 @@ describe('ZonesService', () => {
     it('debe lanzar NotFoundException al desactivar una zona que no existe', async () => {
       mockPrisma.zone.findUnique.mockResolvedValue(null);
 
-      await expect(service.deactivate('non-existent')).rejects.toThrow(NotFoundException);
+      await expect(service.deactivate('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

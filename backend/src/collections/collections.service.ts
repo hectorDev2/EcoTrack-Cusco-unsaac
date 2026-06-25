@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 
@@ -21,7 +25,9 @@ export class CollectionsService {
       where: { routeStopId: dto.routeStopId },
     });
     if (existing) {
-      throw new ConflictException('Esta parada ya tiene una recolección registrada');
+      throw new ConflictException(
+        'Esta parada ya tiene una recolección registrada',
+      );
     }
 
     return this.prisma.collection.create({

@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,7 +19,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
 
     if (existing) {
       throw new ConflictException('Ya existe un usuario con ese email');
@@ -30,7 +37,13 @@ export class AuthService {
         role: dto.role ?? 'CITIZEN',
         createdAt: new Date(),
       },
-      select: { id: true, email: true, fullName: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        createdAt: true,
+      },
     });
 
     const token = this.generateToken(user);
@@ -39,7 +52,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
 
     if (!user) {
       throw new UnauthorizedException('Email o contraseña incorrectos');
@@ -72,8 +87,17 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true, email: true, fullName: true, role: true, status: true, createdAt: true,
-        zones: { select: { zone: { select: { id: true, name: true, description: true } } } },
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        zones: {
+          select: {
+            zone: { select: { id: true, name: true, description: true } },
+          },
+        },
       },
     });
 
@@ -101,8 +125,12 @@ export class AuthService {
 
       if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
-      const isValid = await bcrypt.compare(dto.currentPassword!, user.passwordHash);
-      if (!isValid) throw new BadRequestException('Contraseña actual incorrecta');
+      const isValid = await bcrypt.compare(
+        dto.currentPassword!,
+        user.passwordHash,
+      );
+      if (!isValid)
+        throw new BadRequestException('Contraseña actual incorrecta');
 
       data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
     }

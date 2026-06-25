@@ -8,7 +8,7 @@ export class PickupPointsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(zoneId?: string) {
-    const where: any = { status: 'ACTIVE' };
+    const where: { status: string; zoneId?: string } = { status: 'ACTIVE' };
     if (zoneId) where.zoneId = zoneId;
 
     return this.prisma.pickupPoint.findMany({

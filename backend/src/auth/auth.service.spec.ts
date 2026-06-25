@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, type TestingModule } from '@nestjs/testing';
 import {
   ConflictException,
@@ -29,8 +30,8 @@ const mockUser = {
 
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: MockPrisma;
-  let jwtService: { sign: jest.Mock };
+  let _prisma: MockPrisma;
+  let _jwtService: { sign: jest.Mock };
 
   const mockPrisma: MockPrisma = {
     user: {
@@ -57,8 +58,8 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    prisma = module.get(PrismaService);
-    jwtService = module.get(JwtService);
+    _prisma = module.get(PrismaService);
+    _jwtService = module.get(JwtService);
 
     jest.clearAllMocks();
   });
@@ -182,7 +183,10 @@ describe('AuthService', () => {
 
       expect(result).toBeDefined();
       expect(result?.zones).toHaveLength(1);
-      expect(result?.zones[0]).toMatchObject({ id: 'zone-1', name: 'Centro Histórico' });
+      expect(result?.zones[0]).toMatchObject({
+        id: 'zone-1',
+        name: 'Centro Histórico',
+      });
     });
 
     it('debe retornar null si el usuario no existe', async () => {

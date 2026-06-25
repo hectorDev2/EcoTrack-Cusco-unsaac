@@ -17,13 +17,17 @@ export class VehiclesService {
         driverId: dto.driverId ?? null,
         createdAt: new Date(),
       },
-      include: { driver: { select: { id: true, fullName: true, email: true } } },
+      include: {
+        driver: { select: { id: true, fullName: true, email: true } },
+      },
     });
   }
 
   async findAll() {
     return this.prisma.vehicle.findMany({
-      include: { driver: { select: { id: true, fullName: true, email: true } } },
+      include: {
+        driver: { select: { id: true, fullName: true, email: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -31,7 +35,9 @@ export class VehiclesService {
   async findOne(id: string) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id },
-      include: { driver: { select: { id: true, fullName: true, email: true } } },
+      include: {
+        driver: { select: { id: true, fullName: true, email: true } },
+      },
     });
     if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
     return vehicle;
@@ -42,7 +48,9 @@ export class VehiclesService {
     return this.prisma.vehicle.update({
       where: { id },
       data: dto,
-      include: { driver: { select: { id: true, fullName: true, email: true } } },
+      include: {
+        driver: { select: { id: true, fullName: true, email: true } },
+      },
     });
   }
 
@@ -51,7 +59,9 @@ export class VehiclesService {
     return this.prisma.vehicle.update({
       where: { id },
       data: { status: 'INACTIVE' },
-      include: { driver: { select: { id: true, fullName: true, email: true } } },
+      include: {
+        driver: { select: { id: true, fullName: true, email: true } },
+      },
     });
   }
 }

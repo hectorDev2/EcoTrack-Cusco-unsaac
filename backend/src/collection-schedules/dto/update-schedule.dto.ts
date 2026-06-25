@@ -7,7 +7,10 @@ export class UpdateScheduleDto {
   @IsString()
   dayOfWeek?: string;
 
-  @ApiPropertyOptional({ description: 'Hora de inicio (HH:mm)', example: '08:00' })
+  @ApiPropertyOptional({
+    description: 'Hora de inicio (HH:mm)',
+    example: '08:00',
+  })
   @IsOptional()
   @IsString()
   startTime?: string;

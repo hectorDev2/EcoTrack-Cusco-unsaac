@@ -1,16 +1,25 @@
-import { IsString, IsNumber, Min, IsOptional } from 'class-validator';
+import { IsString, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreatePickupPointDto {
-  @ApiProperty({ description: 'ID de la zona a la que pertenece', example: 'uuid-de-zona' })
+  @ApiProperty({
+    description: 'ID de la zona a la que pertenece',
+    example: 'uuid-de-zona',
+  })
   @IsString()
   zoneId: string;
 
-  @ApiProperty({ description: 'Nombre del punto de recolección', example: 'Parque San Francisco' })
+  @ApiProperty({
+    description: 'Nombre del punto de recolección',
+    example: 'Parque San Francisco',
+  })
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Dirección del punto de recolección', example: 'Plaza San Francisco s/n, Cusco' })
+  @ApiProperty({
+    description: 'Dirección del punto de recolección',
+    example: 'Plaza San Francisco s/n, Cusco',
+  })
   @IsString()
   address: string;
 

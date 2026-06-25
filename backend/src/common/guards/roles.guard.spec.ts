@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { ForbiddenException } from '@nestjs/common';
 import { RolesGuard } from './roles.guard';
-import { ROLES_KEY } from '../decorators/roles.decorator';
 import type { ExecutionContext } from '@nestjs/common';
 
 describe('RolesGuard', () => {
@@ -50,11 +50,15 @@ describe('RolesGuard', () => {
     it('debe lanzar ForbiddenException si el usuario no tiene el rol requerido', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['ADMIN']);
 
-      expect(() => guard.canActivate(mockContext('CITIZEN'))).toThrow(ForbiddenException);
+      expect(() => guard.canActivate(mockContext('CITIZEN'))).toThrow(
+        ForbiddenException,
+      );
     });
 
     it('debe permitir si el rol está entre los requeridos', () => {
-      jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['ADMIN', 'DRIVER']);
+      jest
+        .spyOn(reflector, 'getAllAndOverride')
+        .mockReturnValue(['ADMIN', 'DRIVER']);
 
       expect(guard.canActivate(mockContext('DRIVER'))).toBe(true);
     });
