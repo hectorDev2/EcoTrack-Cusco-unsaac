@@ -1,25 +1,23 @@
-import type { NextConfig } from 'next';
-import { withSentryConfig } from '@sentry/nextjs';
+import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   /* config options here */
 };
 
 export default withSentryConfig(nextConfig, {
-  // DSN para subir source maps a Sentry (solo en build)
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
+  org: "unsaac",
+  project: "javascript-nextjs",
 
-  // Sube source maps en silencio
+  // Token para subir source maps — leer de .env.sentry-build-plugin
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Sube más archivos del cliente para mejor resolución de stack traces
+  widenClientFileUpload: true,
+
+  // Proxy para evitar que ad-blockers bloqueen eventos de Sentry
+  tunnelRoute: "/monitoring",
+
+  // Suprime output en no-CI
   silent: !process.env.CI,
-
-  // Oculta source maps del bundle público
-  hideSourceMaps: true,
-
-  // Reduce el tamaño del bundle de Sentry en el cliente
-  disableLogger: true,
-
-  // Permite compilar aunque no haya SENTRY_AUTH_TOKEN
-  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
-  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
 });

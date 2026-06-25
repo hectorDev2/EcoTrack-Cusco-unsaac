@@ -26,6 +26,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# sentry auth token (source maps upload)
+.env.sentry-build-plugin
+
 # vercel
 .vercel
 
