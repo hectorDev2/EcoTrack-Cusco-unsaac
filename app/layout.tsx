@@ -11,7 +11,7 @@ const nunitoSans = Nunito_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Eco Track Cusco - UNSAAC",
+  title: "Eco Track Wanchaq - UNSAAC",
   description:
     "Sistema inteligente de recolección de residuos para Cusco, con monitoreo en tiempo real y participación ciudadana.",
   manifest: "/manifest.json",

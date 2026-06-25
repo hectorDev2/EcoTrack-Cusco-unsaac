@@ -112,7 +112,7 @@ export default function InicioPage() {
           <button className="text-primary hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 transition-transform duration-200">
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <h1 className="text-[20px] leading-[28px] font-black text-primary">Eco Track Cusco</h1>
+          <h1 className="text-[20px] leading-[28px] font-black text-primary">Eco Track Wanchaq</h1>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface-variant hidden md:block">

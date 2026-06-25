@@ -60,7 +60,7 @@ export default function ConductorLayout({ children }: { children: React.ReactNod
               <span className="material-symbols-outlined text-sm">local_shipping</span>
             </div>
             <div>
-              <h1 className="text-[18px] leading-[24px] font-extrabold text-primary">Eco Track</h1>
+              <h1 className="text-[18px] leading-[24px] font-extrabold text-primary">Eco Track Wanchaq</h1>
               <p className="text-[10px] tracking-[0.08em] font-bold text-on-surface-variant/70 uppercase">Conductor</p>
             </div>
           </div>

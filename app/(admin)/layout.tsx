@@ -12,7 +12,6 @@ const navItems = [
   { href: '/admin-incidencias', icon: 'report_problem', label: 'Incidencias' },
   { href: '/flota', icon: 'local_shipping', label: 'Flota' },
   { href: '/vehiculos', icon: 'directions_bus', label: 'Vehículos' },
-  { href: '/admin-zonas', icon: 'map', label: 'Zonas' },
   { href: '/admin-rutas', icon: 'route', label: 'Rutas' },
   { href: '/analisis', icon: 'bar_chart', label: 'Analíticas' },
   { href: '/usuarios', icon: 'group', label: 'Usuarios' },
@@ -58,7 +57,7 @@ export default function AdminLayout({
               </div>
               <div>
                 <h1 className="text-[18px] leading-[24px] font-extrabold text-primary">
-                  Eco Track
+                  Eco Track Wanchaq
                 </h1>
                 <p className="text-[9px] tracking-[0.08em] font-extrabold text-on-surface-variant/70 uppercase">
                   Admin

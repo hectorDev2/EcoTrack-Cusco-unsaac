@@ -201,7 +201,7 @@ export default function UsuariosPage() {
       <header className="bg-surface border-b border-outline-variant shadow-sm flex justify-between items-center w-full px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-6 flex-1">
           <h2 className="text-[24px] leading-[32px] font-extrabold text-primary">
-            Eco Track Cusco
+            Eco Track Wanchaq
           </h2>
           <div className="max-w-md w-full relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">
@@ -614,7 +614,7 @@ export default function UsuariosPage() {
       )}
 
       <footer className="w-full py-6 px-xl flex justify-between items-center max-w-[1440px] mx-auto bg-surface-container border-t border-outline-variant">
-        <p className="text-[14px] leading-[20px] text-on-surface-variant">© 2024 Municipalidad del Cusco - Gestión de Residuos</p>
+        <p className="text-[14px] leading-[20px] text-on-surface-variant">© 2025 Municipalidad de Wanchaq - Gestión de Residuos</p>
         <div className="flex gap-6">
           <a className="text-[14px] leading-[20px] text-on-surface-variant hover:text-primary transition-colors" href="#">Política de Privacidad</a>
           <a className="text-[14px] leading-[20px] text-on-surface-variant hover:text-primary transition-colors" href="#">Soporte</a>

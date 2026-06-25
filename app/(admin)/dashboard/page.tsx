@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
       <header className="flex justify-between items-center w-full px-6 py-2 sticky top-0 z-10 bg-surface border-b border-outline-variant/30 shadow-sm">
         <div className="flex items-center gap-8 flex-1">
           <h2 className="text-[24px] leading-[32px] font-bold text-primary">
-            Panel de Administración
+            Wanchaq — Panel de Administración
           </h2>
           <div className="relative w-full max-w-md">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">
@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
         <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
             <h3 className="text-[32px] leading-[40px] tracking-[-0.02em] font-extrabold text-on-surface">
-              Bienvenido, Eco Track Cusco
+              Bienvenido, Municipalidad de Wanchaq
             </h3>
             <p className="text-[16px] leading-[24px] text-on-surface-variant mt-2">
               Resumen operativo para el sector Cusco Metropolitano.

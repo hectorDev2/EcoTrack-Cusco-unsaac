@@ -165,7 +165,7 @@ export default function MapaPage() {
             <span className="material-symbols-outlined">menu</span>
           </button>
           <h1 className="text-[20px] leading-[28px] font-black text-primary">
-            Eco Track Cusco
+            Eco Track Wanchaq
           </h1>
         </div>
         <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center border-2 border-surface-container-high overflow-hidden shadow-sm text-on-primary-container font-bold">

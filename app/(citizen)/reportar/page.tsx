@@ -114,7 +114,7 @@ export default function ReportarPage() {
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <h1 className="text-[20px] leading-[28px] font-black text-primary">
-            Eco Track Cusco
+            Eco Track Wanchaq
           </h1>
         </div>
         <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-primary-container bg-primary-container flex items-center justify-center text-on-primary-container font-bold">

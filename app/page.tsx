@@ -15,7 +15,7 @@ export default function OnboardingPage() {
           </span>
         </div>
         <h1 className="text-[32px] leading-[40px] font-extrabold text-primary mb-3">
-          Eco Track Cusco
+          Eco Track Wanchaq
         </h1>
         <p className="text-[16px] leading-[24px] text-on-surface-variant max-w-sm mx-auto">
           Únete a la red ciudadana para mantener la pureza de nuestra ciudad imperial.
@@ -42,7 +42,7 @@ export default function OnboardingPage() {
 
       <footer className="relative w-full py-6 text-center mt-12">
         <span className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-outline uppercase">
-          Municipalidad del Cusco • 2025
+          Municipalidad de Wanchaq • 2025
         </span>
       </footer>
     </main>
