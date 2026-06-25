@@ -123,6 +123,7 @@ model PickupPoint {
   zone          Zone              @relation(fields: [zoneId], references: [id])
   frequency     FrequencyConfig?  @relation(fields: [frequencyId], references: [id])
   routeStops    RouteStop[]
+  citizenAlarms CitizenAlarm[]
 
   @@index([zoneId, shift, frequencyId])
   @@index([shift, stopType])
@@ -178,6 +179,7 @@ model Route {
   stops     RouteStop[]
   locations RouteLocation[]
   incidents Incident[]
+  citizenAlarms CitizenAlarm[]
 
   @@map("routes")
 }
@@ -264,11 +266,19 @@ model CitizenAlarm {
   dayOfWeek String   @map("day_of_week")
   label     String?
   active    Boolean  @default(true)
+
+  pickupPointId String? @map("pickup_point_id")
+  routeId       String? @map("route_id")
+
   createdAt DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
-  zone Zone @relation(fields: [zoneId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  zone        Zone         @relation(fields: [zoneId], references: [id])
+  pickupPoint PickupPoint? @relation(fields: [pickupPointId], references: [id])
+  route       Route?       @relation(fields: [routeId], references: [id])
 
   @@index([userId])
+  @@index([pickupPointId])
+  @@index([routeId])
   @@map("citizen_alarms")
 }

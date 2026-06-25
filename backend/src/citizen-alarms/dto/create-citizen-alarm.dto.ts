@@ -30,4 +30,12 @@ export class CreateCitizenAlarmDto {
   @IsString()
   @MinLength(1)
   label?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID del punto de recojo (opcional — si se envía, se vincula también la ruta)',
+    example: 'cuid-pickup-point',
+  })
+  @IsOptional()
+  @IsString()
+  pickupPointId?: string;
 }

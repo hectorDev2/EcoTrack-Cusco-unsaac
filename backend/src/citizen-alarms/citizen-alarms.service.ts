@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCitizenAlarmDto } from './dto/create-citizen-alarm.dto';
 
@@ -7,15 +7,38 @@ export class CitizenAlarmsService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateCitizenAlarmDto) {
+    const data: Record<string, unknown> = {
+      userId,
+      zoneId: dto.zoneId,
+      dayOfWeek: dto.dayOfWeek,
+      label: dto.label ?? null,
+    };
+
+    if (dto.pickupPointId) {
+      const pickupPoint = await this.prisma.pickupPoint.findUnique({
+        where: { id: dto.pickupPointId },
+      });
+      if (!pickupPoint) {
+        throw new NotFoundException('Punto de recojo no encontrado');
+      }
+
+      const routeStop = await this.prisma.routeStop.findFirst({
+        where: { pickupPointId: dto.pickupPointId },
+        include: { route: { select: { id: true, name: true } } },
+      });
+
+      data.pickupPointId = dto.pickupPointId;
+      if (routeStop) {
+        data.routeId = routeStop.route.id;
+      }
+    }
+
     return this.prisma.citizenAlarm.create({
-      data: {
-        userId,
-        zoneId: dto.zoneId,
-        dayOfWeek: dto.dayOfWeek,
-        label: dto.label ?? null,
-      },
+      data: data as any,
       include: {
         zone: { select: { id: true, name: true } },
+        pickupPoint: { select: { id: true, name: true, address: true } },
+        route: { select: { id: true, name: true } },
       },
     });
   }
@@ -25,6 +48,8 @@ export class CitizenAlarmsService {
       where: { userId, active: true },
       include: {
         zone: { select: { id: true, name: true } },
+        pickupPoint: { select: { id: true, name: true, address: true } },
+        route: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
