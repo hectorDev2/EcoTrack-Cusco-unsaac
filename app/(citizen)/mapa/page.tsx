@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { queries } from '@/lib/queries';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import type { PickupPoint, Incident } from '@/lib/types';
 import { useGeolocation } from '@/hooks/use-geolocation';
@@ -35,6 +37,23 @@ export default function MapaPage() {
 
   const geo = useGeolocation();
   const hasLocation = geo.latitude != null && geo.longitude != null;
+
+  const { data: activeRoutes = [] } = useQuery({
+    ...queries.routes.active(),
+    refetchInterval: 15000,
+  });
+
+  const truckMarkers: MapMarker[] = activeRoutes
+    .filter((r) => r.status === 'IN_PROGRESS' && r.currentLocation)
+    .map((r) => ({
+      id: `truck-${r.id}`,
+      lng: r.currentLocation!.longitude,
+      lat: r.currentLocation!.latitude,
+      color: '#C62828',
+      icon: 'local_shipping' as const,
+      label: `${r.name ?? r.zone.name} · ${r.zone.name}`,
+      description: 'Camión en ruta',
+    }));
 
   useEffect(() => {
     api.get<PickupPoint[]>('/pickup-points')
@@ -137,14 +156,7 @@ export default function MapaPage() {
       icon: 'home' as const,
       label: 'Cusco (ubicación aproximada)',
     }]),
-    {
-      id: 'truck',
-      lng: -71.9744,
-      lat: -13.5210,
-      color: '#C62828',
-      icon: 'local_shipping' as const,
-      label: 'Camión en ruta',
-    },
+    ...truckMarkers,
     ...pickupPoints.map((pp) => ({
       id: pp.id,
       lng: pp.longitude,
@@ -332,6 +344,12 @@ export default function MapaPage() {
               <div className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded-full bg-[#E8A317]" />
                 <span>Seleccionado</span>
+              </div>
+            )}
+            {truckMarkers.length > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-[#C62828]" />
+                <span>Camión en ruta</span>
               </div>
             )}
             <div className="flex items-center gap-1">

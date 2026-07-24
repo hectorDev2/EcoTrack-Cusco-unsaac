@@ -137,8 +137,33 @@ export class RoutesService {
         },
         orderBy: { createdAt: 'desc' },
       })
-      .then((routes) =>
-        routes.map((r) => ({
+      .then(async (routes) => {
+        const inProgressIds = routes
+          .filter((r) => r.status === 'IN_PROGRESS')
+          .map((r) => r.id);
+
+        const latestByRoute = new Map<
+          string,
+          { latitude: number; longitude: number; recordedAt: Date }
+        >();
+
+        if (inProgressIds.length > 0) {
+          const locations = await this.prisma.routeLocation.findMany({
+            where: { routeId: { in: inProgressIds } },
+            orderBy: { recordedAt: 'desc' },
+          });
+          for (const loc of locations) {
+            if (!latestByRoute.has(loc.routeId)) {
+              latestByRoute.set(loc.routeId, {
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                recordedAt: loc.recordedAt,
+              });
+            }
+          }
+        }
+
+        return routes.map((r) => ({
           id: r.id,
           name: r.name,
           zone: r.zone,
@@ -149,8 +174,9 @@ export class RoutesService {
             pickupPoint: s.pickupPoint,
             orderIndex: s.orderIndex,
           })),
-        })),
-      );
+          currentLocation: latestByRoute.get(r.id) ?? null,
+        }));
+      });
   }
 
   async findByZone(zoneId: string) {

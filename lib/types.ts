@@ -121,6 +121,22 @@ export interface Vehicle {
   driver?: { id: string; fullName: string; email: string } | null;
 }
 
+export interface RouteStop {
+  id: string;
+  orderIndex: number;
+  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
+}
+
+export interface ActiveRoute {
+  id: string;
+  name: string | null;
+  zone: { id: string; name: string };
+  status: string;
+  totalStops: number;
+  stops: RouteStop[];
+  currentLocation: { latitude: number; longitude: number; recordedAt: string } | null;
+}
+
 export interface ApiError {
   message: string;
   statusCode: number;
