@@ -3,21 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-
-interface RouteStop {
-  id: string;
-  orderIndex: number;
-  pickupPoint: { id: string; name: string; address: string };
-}
-
-interface ActiveRoute {
-  id: string;
-  name: string | null;
-  zone: { id: string; name: string };
-  status: string;
-  totalStops: number;
-  stops: RouteStop[];
-}
+import { queries } from '@/lib/queries';
+import { useAuth } from '@/lib/auth-context';
 
 interface CitizenAlarm {
   id: string;
@@ -40,6 +27,7 @@ const TIME_OPTIONS = [
 
 export default function AlarmasPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     routeId: '',
@@ -49,10 +37,12 @@ export default function AlarmasPage() {
   });
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: routes = [] } = useQuery<ActiveRoute[]>({
-    queryKey: ['routes', 'active'],
-    queryFn: () => api.get<ActiveRoute[]>('/routes/active'),
-  });
+  const { data: allRoutes = [] } = useQuery(queries.routes.active());
+
+  const myZoneIds = new Set(user?.zones?.map((z) => z.id) ?? []);
+  const routes = myZoneIds.size > 0
+    ? allRoutes.filter((r) => myZoneIds.has(r.zone.id))
+    : allRoutes;
 
   const selectedRoute = routes.find((r) => r.id === form.routeId);
 
