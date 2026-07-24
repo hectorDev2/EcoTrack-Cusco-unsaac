@@ -113,6 +113,18 @@ export default function RegisterPage() {
                   disabled={isSubmitting}
                 />
               </div>
+              <p className="text-[11px] leading-[16px] text-on-surface-variant text-center">
+                Al crear una cuenta aceptas nuestra{' '}
+                <a
+                  href="/privacidad"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-bold"
+                >
+                  Política de Privacidad
+                </a>
+                .
+              </p>
               <div className="pt-2">
                 <button
                   className="w-full bg-primary text-on-primary p-4 rounded-lg shadow-md hover:bg-primary-container hover:text-on-primary-container active:scale-95 transition-all flex items-center justify-center gap-2 text-[16px] leading-[24px] font-bold disabled:opacity-50"
