@@ -2,6 +2,7 @@
   "name": "eco-track-cusco-unsaac",
   "version": "0.2.0",
   "private": true,
+  "packageManager": "pnpm@11.10.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

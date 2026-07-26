@@ -7,7 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
 
-type MockPrisma = Record<string, Record<string, jest.Mock>>;
+type MockPrisma = Record<string, Record<string, jest.Mock<any>>>;
 
 const mockDate = new Date('2025-01-01T00:00:00.000Z');
 const mockZone = {
