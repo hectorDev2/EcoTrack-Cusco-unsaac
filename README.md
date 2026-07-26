@@ -96,22 +96,32 @@ cd backend && pnpm prisma:seed
 
 ## Deploy
 
-### Frontend → [Vercel](https://vercel.com)
+Servidor propio con Ubuntu · Nginx (reverse proxy) · PM2 · pnpm
 
-| Variable | Valor |
-|----------|-------|
-| `NEXT_PUBLIC_API_URL` | `https://tu-backend.onrender.com` |
+### Frontend
 
-### Backend → [Render](https://render.com)
+| URL | Proxy |
+|-----|-------|
+| `https://ecotrack.157.230.83.213.nip.io` | Nginx → `localhost:3000` |
 
-| Campo | Valor |
-|-------|-------|
-| Root Directory | `backend` |
-| Build Command | `pnpm install && pnpm build` |
-| Start Command | `pnpm start:prod` |
-| Port | `3001` |
+### Backend
 
-**Variables de entorno:**
+| URL | Proxy |
+|-----|-------|
+| `https://api-ecotrack.157.230.83.213.nip.io` | Nginx → `localhost:3001` |
+
+### Script de deploy
+
+```bash
+# ~/deploy-ecotrack.sh
+git pull origin hector-2
+pnpm install
+pnpm build                 # frontend
+cd backend && pnpm build   # backend
+pm2 restart ecotrack-frontend ecotrack-backend
+```
+
+**Variables de entorno (`.env.local` en raíz y `backend/.env`):**
 
 | Variable | Descripción |
 |----------|-------------|
@@ -120,13 +130,14 @@ cd backend && pnpm prisma:seed
 | `JWT_SECRET` | Secreto JWT — usar `openssl rand -base64 32` |
 | `JWT_EXPIRATION` | `7d` |
 | `CORS_ORIGINS` | Orígenes CORS separados por coma |
+| `NEXT_PUBLIC_API_URL` | `https://api-ecotrack.157.230.83.213.nip.io` |
 
 ### Troubleshooting
 
 | Problema | Solución |
 |----------|----------|
-| Backend crashea con "JWT_SECRET is required" | Configurar variable en Render → Environment |
-| Frontend en blanco | Verificar `NEXT_PUBLIC_API_URL` en Vercel, redeploy |
+| Backend crashea con "JWT_SECRET is required" | Configurar variable en `backend/.env` |
+| Frontend en blanco | Verificar `NEXT_PUBLIC_API_URL` en `.env.local` |
 | 401 en todos los requests | `JWT_SECRET` regenerado — usuarios deben reloguear |
 | 429 Too Many Requests en login | Esperar 60s, o ajustar límites en `app.module.ts` |
 | `no such table: main.routes_old` | Ejecutar `npx ts-node prisma/recover-db.ts` desde `backend/` |
