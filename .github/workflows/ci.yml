@@ -55,6 +55,9 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          SENTRY_AUTH_TOKEN: ''
 
   lint-backend:
     runs-on: ubuntu-latest
