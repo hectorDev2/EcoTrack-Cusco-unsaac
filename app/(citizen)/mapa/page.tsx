@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queries } from '@/lib/queries';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
-import type { PickupPoint, Incident } from '@/lib/types';
+import type { PickupPoint, Incident, CollectionSchedule } from '@/lib/types';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { calculateRoute, formatDuration } from '@/lib/routing';
 
@@ -19,6 +19,90 @@ function haversineKm(lng1: number, lat1: number, lng2: number, lat2: number): nu
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const DAY_LABELS: Record<string, string> = {
+  MON: 'Lunes', TUE: 'Martes', WED: 'Miércoles', THU: 'Jueves',
+  FRI: 'Viernes', SAT: 'Sábado', SUN: 'Domingo',
+};
+
+const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+const WASTE_COLORS: Record<string, string> = {
+  ORGANICO: 'bg-waste-organic/10 text-waste-organic border-waste-organic/20',
+  RECICLABLE: 'bg-waste-recyclable/10 text-waste-recyclable border-waste-recyclable/20',
+  NO_RECICLABLE: 'bg-surface-container-high text-on-surface-variant border-outline-variant/30',
+  PELIGROSO: 'bg-status-alert/10 text-status-alert border-status-alert/20',
+};
+
+function SchedulesCard({ point, onClose }: { point: PickupPoint; onClose: () => void }) {
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules', point.zoneId],
+    queryFn: () => api.get<CollectionSchedule[]>(`/schedules?zoneId=${point.zoneId}`),
+  });
+
+  const grouped = schedules.reduce<Record<string, CollectionSchedule[]>>((acc, s) => {
+    if (!acc[s.dayOfWeek]) acc[s.dayOfWeek] = [];
+    acc[s.dayOfWeek].push(s);
+    return acc;
+  }, {});
+
+  return (
+    <div className="bg-surface-card rounded-xl shadow-2xl shadow-primary/20 border border-outline-variant/20 max-h-[60vh] overflow-y-auto">
+      <div className="p-4 border-b border-outline-variant/20">
+        <div className="flex justify-between items-start">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-[16px] leading-[24px] font-bold text-on-surface">{point.name}</h3>
+            <p className="text-[14px] leading-[20px] text-on-surface-variant truncate">{point.address}</p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {point.zone && (
+                <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold uppercase">
+                  {point.zone.name}
+                </span>
+              )}
+              {point.scheduledTime && (
+                <span className="px-2 py-0.5 rounded-md bg-primary-container/30 text-primary text-[10px] font-bold">
+                  {point.scheduledTime}
+                </span>
+              )}
+              {point.frequency && (
+                <span className="px-2 py-0.5 rounded-md bg-primary/5 text-primary text-[10px] font-bold uppercase">
+                  {point.frequency.code}
+                </span>
+              )}
+            </div>
+          </div>
+          <button className="text-on-surface-variant hover:text-primary ml-2" onClick={onClose}>
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      {Object.keys(grouped).length > 0 && (
+        <div className="p-4 space-y-3">
+          <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Horarios de recolección</p>
+          {DAY_ORDER.filter((d) => grouped[d]).map((day) => (
+            <div key={day}>
+              <p className="text-[12px] font-bold text-on-surface mb-1">{DAY_LABELS[day] ?? day}</p>
+              <div className="space-y-1.5">
+                {grouped[day].map((s) => {
+                  const colorClass = WASTE_COLORS[s.wasteType?.category ?? ''] ?? 'bg-surface-container-high text-on-surface-variant';
+                  return (
+                    <div key={s.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${colorClass}`}>
+                      <span className="material-symbols-outlined text-[14px]">delete</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-bold truncate">{s.wasteType?.name ?? 'Residuo'}</p>
+                        <p className="text-[10px] opacity-70">{s.startTime} - {s.endTime}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -223,29 +307,7 @@ export default function MapaPage() {
 
       {selectedPoint && (
         <div className="absolute bottom-24 left-5 right-5 z-20">
-          <div className="bg-surface-card rounded-xl p-4 shadow-2xl shadow-primary/20 border border-outline-variant/20">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-[16px] leading-[24px] font-bold text-on-surface">
-                  {selectedPoint.name}
-                </h3>
-                <p className="text-[14px] leading-[20px] text-on-surface-variant">
-                  {selectedPoint.address}
-                </p>
-                {selectedPoint.zone && (
-                  <span className="inline-block mt-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[11px] font-bold">
-                    {selectedPoint.zone.name}
-                  </span>
-                )}
-              </div>
-              <button
-                className="text-on-surface-variant hover:text-primary"
-                onClick={() => setSelectedPoint(null)}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-          </div>
+          <SchedulesCard point={selectedPoint} onClose={() => setSelectedPoint(null)} />
         </div>
       )}
 
