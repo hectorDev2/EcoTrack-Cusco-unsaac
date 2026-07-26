@@ -71,19 +71,22 @@ erDiagram
 ## Desarrollo
 
 ```bash
+# Instalar dependencias (pnpm workspace — raíz + backend)
+pnpm install
+
 # Frontend (raíz del proyecto)
-npm run dev
+pnpm dev
 # http://localhost:3000
 
 # Backend (directorio backend/)
-cd backend && npm run start:dev
+cd backend && pnpm start:dev
 # http://localhost:3001
 
 # Reparar FKs en Turso (solo si hay migración rota)
 cd backend && npx ts-node prisma/recover-db.ts
 
 # Seed (recrea datos de prueba — requiere Turso activo)
-cd backend && npm run prisma:seed
+cd backend && pnpm prisma:seed
 
 # Documentación Swagger
 # http://localhost:3001/docs
@@ -104,8 +107,8 @@ cd backend && npm run prisma:seed
 | Campo | Valor |
 |-------|-------|
 | Root Directory | `backend` |
-| Build Command | `npm install && npm run build` |
-| Start Command | `npm run start:prod` |
+| Build Command | `pnpm install && pnpm build` |
+| Start Command | `pnpm start:prod` |
 | Port | `3001` |
 
 **Variables de entorno:**
@@ -139,10 +142,10 @@ cd backend && npm run prisma:seed
 | `Auth` | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PATCH /auth/me` | ✅ |
 | `Users` | CRUD + stats + zone assignment | ✅ |
 | `Zones` | CRUD (GET público, resto ADMIN) | ✅ |
-| `PickupPoints` | CRUD con filtro `?zoneId=` | ✅ |
+| `PickupPoints` | CRUD con filtros `?zoneId=` y `?routeId=` | ✅ |
 | `Schedules` | CRUD con filtros `?zoneId=&wasteTypeId=` | ✅ |
 | `Incidents` | `POST /incidents`, `GET /incidents/my`, CRUD admin | ✅ |
-| `Routes` | CRUD + fleet + start/complete + stops + locations | ✅ |
+| `Routes` | CRUD + fleet + start/complete + stops + locations + `GET /routes/public` | ✅ |
 | `WasteType` | CRUD (GET público, ADMIN write) | ✅ |
 | `Vehicles` | CRUD (ADMIN) | ✅ |
 | `Collections` | `POST /collections` (conductor) | ✅ |
@@ -156,7 +159,7 @@ cd backend && npm run prisma:seed
 | Login | `/auth/login` | Público |
 | Inicio ciudadano | `/inicio` | CITIZEN |
 | Horarios de recolección | `/recoleccion` | CITIZEN |
-| Puntos de recojo | `/puntos-recojo` | CITIZEN |
+| Puntos de recojo (filtro por ruta) | `/puntos-recojo` | CITIZEN |
 | Reportar incidencia | `/reportar` | CITIZEN |
 | Mis incidencias | `/incidencias` | CITIZEN |
 | Mapa | `/mapa` | CITIZEN |
@@ -189,6 +192,9 @@ cd backend && npm run prisma:seed
 | Dark mode en mapa | MapLibre cambia a dark-matter-gl-style automáticamente |
 | JWT httpOnly | Login/register via API route proxy |
 | Helmet + Throttler | Headers de seguridad + rate limiting |
+| Filtro de puntos por ruta | `/puntos-recojo` filma por ruta en vez de zona |
+| Endpoint público de rutas | `GET /routes/public` sin autenticación |
+| pnpm workspace | Monorepo con dependencias compartidas entre frontend y backend |
 | Tests backend | 89 tests unitarios + 9 e2e |
 | CI/CD | GitHub Actions en push/PR |
 
