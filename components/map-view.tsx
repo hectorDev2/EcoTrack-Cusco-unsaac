@@ -12,6 +12,7 @@ export interface MapMarker {
   icon?: string;
   label?: string;
   description?: string;
+  hideLabel?: boolean;
 }
 
 export interface MapRoute {
@@ -52,7 +53,7 @@ function createMarkerEl(marker: MapMarker, darkMode: boolean, onClick?: () => vo
     <div style="background:${marker.color ?? '#154212'}; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:2px solid ${darkMode ? '#363635' : 'white'};">
       <span class="material-symbols-outlined" style="font-size:20px;">${marker.icon ?? 'location_on'}</span>
     </div>
-    ${marker.label ? `<span style="background:${labelBg}; color:${labelText}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.2); white-space:nowrap;">${marker.label}</span>` : ''}
+    ${!marker.hideLabel && marker.label ? `<span style="background:${labelBg}; color:${labelText}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.2); white-space:nowrap;">${marker.label}</span>` : ''}
   `;
   if (onClick) el.addEventListener('click', onClick);
   return el;

@@ -10,6 +10,16 @@ import { useGeolocation } from '@/hooks/use-geolocation';
 import { calculateRoute, formatDuration } from '@/lib/routing';
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
+const MAX_PICKUP_RADIUS_KM = 3;
+const MAX_PICKUP_MARKERS = 10;
+
+function haversineKm(lng1: number, lat1: number, lng2: number, lat2: number): number {
+  const R = 6371;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 const TYPE_LABELS: Record<string, string> = {
   CONTAINER_DAMAGED: 'Contenedor dañado',
@@ -157,15 +167,25 @@ export default function MapaPage() {
       label: 'Cusco (ubicación aproximada)',
     }]),
     ...truckMarkers,
-    ...pickupPoints.map((pp) => ({
-      id: pp.id,
-      lng: pp.longitude,
-      lat: pp.latitude,
-      color: nearestPoint?.id === pp.id ? '#E8A317' : '#2d5a27',
-      icon: nearestPoint?.id === pp.id ? 'near_me' as const : 'delete' as const,
-      label: pp.name + (nearestPoint?.id === pp.id ? ' 🏆 Más cercano' : ''),
-      description: pp.address,
-    })),
+    ...(() => {
+      const origin = hasLocation ? { lng: geo.longitude!, lat: geo.latitude! } : null;
+      if (!origin || pickupPoints.length === 0) return [];
+      const sorted = pickupPoints
+        .map((pp) => ({ ...pp, dist: haversineKm(origin.lng, origin.lat, pp.longitude, pp.latitude) }))
+        .filter((pp) => pp.dist <= MAX_PICKUP_RADIUS_KM)
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, MAX_PICKUP_MARKERS);
+      return sorted.map((pp) => ({
+        id: pp.id,
+        lng: pp.longitude,
+        lat: pp.latitude,
+        color: nearestPoint?.id === pp.id ? '#E8A317' : '#2d5a27',
+        icon: nearestPoint?.id === pp.id ? 'near_me' as const : 'delete' as const,
+        label: pp.name + (nearestPoint?.id === pp.id ? ' 🏆 Más cercano' : ''),
+        description: pp.address,
+        hideLabel: true,
+      }));
+    })(),
     ...incidentMarkers,
   ];
 
