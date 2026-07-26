@@ -42,6 +42,7 @@ async function request<T>(
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
     });
   } catch {
     throw new ApiClientError(0, 'Network error');

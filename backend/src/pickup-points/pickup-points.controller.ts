@@ -25,8 +25,11 @@ export class PickupPointsController {
   @ApiOperation({ summary: 'Get all pickup points' })
   @Public()
   @Get()
-  findAll(@Query('zoneId') zoneId?: string) {
-    return this.pickupPointsService.findAll(zoneId);
+  findAll(
+    @Query('zoneId') zoneId?: string,
+    @Query('routeId') routeId?: string,
+  ) {
+    return this.pickupPointsService.findAll(zoneId, routeId);
   }
 
   @ApiOperation({ summary: 'Get pickup point by ID' })

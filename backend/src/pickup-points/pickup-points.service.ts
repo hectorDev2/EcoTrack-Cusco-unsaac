@@ -7,9 +7,16 @@ import { UpdatePickupPointDto } from './dto/update-pickup-point.dto';
 export class PickupPointsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(zoneId?: string) {
-    const where: { status: string; zoneId?: string } = { status: 'ACTIVE' };
+  async findAll(zoneId?: string, routeId?: string) {
+    const where: { status: string; zoneId?: string; routeStops?: any } = { status: 'ACTIVE' };
     if (zoneId) where.zoneId = zoneId;
+    if (routeId) {
+      where.routeStops = {
+        some: {
+          routeId: routeId,
+        },
+      };
+    }
 
     return this.prisma.pickupPoint.findMany({
       where,

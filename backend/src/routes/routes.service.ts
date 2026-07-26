@@ -305,6 +305,31 @@ export class RoutesService {
     });
   }
 
+  async findPublic() {
+    const routes = await this.prisma.route.findMany({
+      select: {
+        id: true,
+        name: true,
+        shift: true,
+        frequency: true,
+        zone: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return routes.map((r) => ({
+      id: r.id,
+      name: r.name ?? `Ruta ${r.zone?.name ?? 'Sin zona'} - ${r.shift || ''} (${r.frequency || ''})`,
+      zoneId: r.zone?.id,
+      zoneName: r.zone?.name,
+    }));
+  }
+
   async getFleetOverview() {
     const routes = await this.findAll();
     const totalRoutes = routes.length;

@@ -10,16 +10,17 @@ export const queryKeys = {
     all: (zoneId?: string, wasteTypeId?: string) => ['schedules', zoneId, wasteTypeId] as const,
   },
   pickupPoints: {
-    all: (zoneId?: string) => ['pickup-points', zoneId] as const,
+    all: (zoneId?: string, routeId?: string) => ['pickup-points', zoneId, routeId] as const,
+  },
+  routes: {
+    public: () => ['routes', 'public'] as const,
+    active: () => ['routes', 'active'] as const,
   },
   frequencies: {
     all: () => ['frequencies'] as const,
   },
   zones: {
     all: () => ['zones'] as const,
-  },
-  routes: {
-    active: () => ['routes', 'active'] as const,
   },
   wasteTypes: {
     all: () => ['waste-types'] as const,
@@ -62,11 +63,14 @@ export const queries = {
     }),
   },
   pickupPoints: {
-    all: (zoneId?: string) => ({
-      queryKey: queryKeys.pickupPoints.all(zoneId),
+    all: (zoneId?: string, routeId?: string) => ({
+      queryKey: queryKeys.pickupPoints.all(zoneId, routeId),
       queryFn: () => {
-        const params = zoneId ? `?zoneId=${zoneId}` : '';
-        return api.get<PickupPoint[]>(`/pickup-points${params}`);
+        const params = new URLSearchParams();
+        if (zoneId) params.set('zoneId', zoneId);
+        if (routeId) params.set('routeId', routeId);
+        const qs = params.toString();
+        return api.get<PickupPoint[]>(`/pickup-points${qs ? `?${qs}` : ''}`);
       },
     }),
   },
@@ -77,6 +81,10 @@ export const queries = {
     }),
   },
   routes: {
+    public: () => ({
+      queryKey: queryKeys.routes.public(),
+      queryFn: () => api.get<Array<{ id: string; name: string; zoneId?: string; zoneName?: string }>>('/routes/public'),
+    }),
     active: () => ({
       queryKey: queryKeys.routes.active(),
       queryFn: () => api.get<ActiveRoute[]>('/routes/active'),
