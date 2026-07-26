@@ -90,6 +90,7 @@ export class AuthService {
         id: true,
         email: true,
         fullName: true,
+        phone: true,
         role: true,
         status: true,
         createdAt: true,
@@ -114,8 +115,9 @@ export class AuthService {
       throw new BadRequestException('Debes proporcionar tu contraseña actual');
     }
 
-    const data: Record<string, string> = {};
+    const data: Record<string, string | null> = {};
     if (dto.fullName) data.fullName = dto.fullName;
+    if (dto.phone !== undefined) data.phone = dto.phone || null;
 
     if (dto.newPassword) {
       const user = await this.prisma.user.findUnique({

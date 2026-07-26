@@ -1,6 +1,7 @@
 import { Module, Controller, Get } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { Public } from './common/decorators/public.decorator';
 
@@ -31,11 +32,13 @@ import { WasteTypesModule } from './waste-types/waste-types.module';
 import { AdminModule } from './admin/admin.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { CitizenAlarmsModule } from './citizen-alarms/citizen-alarms.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     PrismaModule,
     AuthModule,
@@ -51,6 +54,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AdminModule,
     VehiclesModule,
     CitizenAlarmsModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -56,6 +56,7 @@ export default function PerfilPage() {
   const { user, refreshProfile } = useAuth();
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -74,8 +75,8 @@ export default function PerfilPage() {
 
     const fetchSchedules = Promise.all(
       zoneIds.map((id) =>
-        api.get<CollectionSchedule[]>(`/schedules?zoneId=${id}`)
-          .then((data) => ({ zoneId: id, data }))
+        api.get<{ data: CollectionSchedule[] }>(`/schedules?zoneId=${id}&limit=50`)
+          .then((res) => ({ zoneId: id, data: res.data }))
           .catch(() => ({ zoneId: id, data: [] })),
       ),
     );
@@ -112,6 +113,7 @@ export default function PerfilPage() {
 
   const startEditing = () => {
     setFullName(user.fullName);
+    setPhone(user.phone ?? '');
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
@@ -145,9 +147,14 @@ export default function PerfilPage() {
       return;
     }
 
+    if (phone.trim() && !/^\+\d{8,15}$/.test(phone.trim())) {
+      setError('El teléfono debe incluir código de país, ej. +51987654321');
+      return;
+    }
+
     setSaving(true);
     try {
-      const body: Record<string, string> = { fullName: fullName.trim() };
+      const body: Record<string, string> = { fullName: fullName.trim(), phone: phone.trim() };
       if (newPassword) {
         body.currentPassword = currentPassword;
         body.newPassword = newPassword;
@@ -214,6 +221,28 @@ export default function PerfilPage() {
                 Email
               </label>
               <p className="text-[16px] leading-[24px] text-on-surface">{user.email}</p>
+            </div>
+
+            <div>
+              <label className="text-[11px] leading-[14px] tracking-[0.08em] font-bold text-on-surface-variant uppercase block mb-1">
+                Teléfono (WhatsApp)
+              </label>
+              {editing ? (
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+51987654321"
+                  className="w-full bg-surface rounded-xl px-4 py-3 text-[14px] text-on-surface border border-outline-variant/30 outline-none focus:border-primary placeholder:text-outline"
+                />
+              ) : (
+                <p className="text-[16px] leading-[24px] text-on-surface">
+                  {user.phone || 'No configurado'}
+                </p>
+              )}
+              <p className="text-[11px] text-on-surface-variant mt-1">
+                Se usa para avisarte por WhatsApp cuando el camión esté por pasar.
+              </p>
             </div>
 
             {editing && (

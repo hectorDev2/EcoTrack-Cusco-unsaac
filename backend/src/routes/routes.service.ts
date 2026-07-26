@@ -129,7 +129,14 @@ export class RoutesService {
           stops: {
             include: {
               pickupPoint: {
-                select: { id: true, name: true, address: true, latitude: true, longitude: true },
+                select: {
+                  id: true,
+                  name: true,
+                  address: true,
+                  latitude: true,
+                  longitude: true,
+                  scheduledTime: true,
+                },
               },
             },
             orderBy: { orderIndex: 'asc' as const },
@@ -168,6 +175,8 @@ export class RoutesService {
           name: r.name,
           zone: r.zone,
           status: r.status,
+          frequency: r.frequency,
+          shift: r.shift,
           totalStops: r.stops.length,
           stops: r.stops.map((s) => ({
             id: s.id,

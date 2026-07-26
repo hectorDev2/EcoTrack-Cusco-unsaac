@@ -36,8 +36,10 @@ export class CitizenAlarmsService {
         label: dto.label ?? null,
       },
       include: {
-        route: { select: { id: true, name: true } },
-        pickupPoint: { select: { id: true, name: true, address: true } },
+        route: { select: { id: true, name: true, status: true, frequency: true } },
+        pickupPoint: {
+          select: { id: true, name: true, address: true, scheduledTime: true },
+        },
       },
     });
   }
@@ -46,8 +48,10 @@ export class CitizenAlarmsService {
     return this.prisma.citizenAlarm.findMany({
       where: { userId, active: true },
       include: {
-        route: { select: { id: true, name: true } },
-        pickupPoint: { select: { id: true, name: true, address: true } },
+        route: { select: { id: true, name: true, status: true, frequency: true } },
+        pickupPoint: {
+          select: { id: true, name: true, address: true, scheduledTime: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });

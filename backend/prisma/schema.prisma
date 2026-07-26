@@ -13,6 +13,7 @@ model User {
   email        String   @unique
   passwordHash String   @map("password_hash")
   fullName     String   @map("full_name")
+  phone        String?  // Número de WhatsApp para notificaciones (ej. "+51987654321")
   role         String   @default("CITIZEN")
   status       String   @default("ACTIVE")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -266,6 +267,8 @@ model CitizenAlarm {
   notifyBeforeMinutes Int @default(30) @map("notify_before_minutes")
   label     String?
   active    Boolean  @default(true)
+  // Última fecha ("YYYY-MM-DD") en que se envió el aviso, para no repetirlo el mismo día
+  lastNotifiedDate String? @map("last_notified_date")
 
   createdAt DateTime @default(now()) @map("created_at")
 

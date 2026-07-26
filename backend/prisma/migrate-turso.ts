@@ -77,28 +77,49 @@ async function migrate() {
     await addColumn('routes', 'shift', 'TEXT');
     await addColumn('routes', 'frequency', 'TEXT');
 
+    // ── users: teléfono para notificaciones WhatsApp ──────────────────────────
+    console.log('\n📦 users:');
+    await addColumn('users', 'phone', 'TEXT');
 
-    // ── citizen_alarms: nueva tabla ──────────────────────────────────────────────
+    // ── citizen_alarms: la tabla existente quedó con el esquema viejo
+    // (zone_id/day_of_week NOT NULL) de una iteración de producto anterior
+    // que nunca se reflejó aquí. El modelo actual usa route_id/pickup_point_id.
+    // Como la tabla está vacía, se reconstruye limpia con el esquema correcto
+    // en vez de seguir apilando ALTER TABLE sobre columnas NOT NULL viejas.
     console.log('\n📦 citizen_alarms:');
-    try {
+    const [{ c: alarmCount }] = await prisma.$queryRawUnsafe<{ c: number }[]>(
+      `SELECT COUNT(*) as c FROM citizen_alarms`,
+    ).catch(() => [{ c: -1 }]); // -1 si la tabla no existe todavía
+
+    if (alarmCount > 0) {
+      console.log(
+        `  ⚠️  citizen_alarms tiene ${alarmCount} fila(s) — no se reconstruye automáticamente. Migra manualmente si es necesario.`,
+      );
+    } else {
+      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS citizen_alarms`);
       await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS citizen_alarms (
+        CREATE TABLE citizen_alarms (
           id TEXT PRIMARY KEY,
           user_id TEXT NOT NULL REFERENCES users(id),
-          zone_id TEXT NOT NULL REFERENCES zones(id),
-          day_of_week TEXT NOT NULL,
+          route_id TEXT NOT NULL REFERENCES routes(id),
+          pickup_point_id TEXT NOT NULL REFERENCES pickup_points(id),
+          notify_before_minutes INTEGER NOT NULL DEFAULT 30,
           label TEXT,
           active INTEGER NOT NULL DEFAULT 1,
+          last_notified_date TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
       await prisma.$executeRawUnsafe(
-        `CREATE INDEX IF NOT EXISTS idx_citizen_alarms_user_id ON citizen_alarms(user_id)`
+        `CREATE INDEX idx_citizen_alarms_user_id ON citizen_alarms(user_id)`,
       );
-      console.log('  ✅ citizen_alarms creada (o ya existía)');
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.log('  ⚠️  citizen_alarms:', msg);
+      await prisma.$executeRawUnsafe(
+        `CREATE INDEX idx_citizen_alarms_route_id ON citizen_alarms(route_id)`,
+      );
+      await prisma.$executeRawUnsafe(
+        `CREATE INDEX idx_citizen_alarms_pickup_point_id ON citizen_alarms(pickup_point_id)`,
+      );
+      console.log('  ✅ citizen_alarms reconstruida con el esquema correcto');
     }
 
     console.log('\n✅ Migración completada');
