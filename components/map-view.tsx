@@ -201,10 +201,11 @@ export default function MapView({
   const darkModeRef = useRef(isDarkMode());
   const onMapClickRef = useRef(onMapClick);
   const onMarkerClickRef = useRef(onMarkerClick);
-  // eslint-disable-next-line react-hooks/refs
-  onMapClickRef.current = onMapClick;
-  // eslint-disable-next-line react-hooks/refs
-  onMarkerClickRef.current = onMarkerClick;
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMapClick, onMarkerClick]);
 
   // Track dark mode changes
   useEffect(() => {
@@ -246,11 +247,10 @@ export default function MapView({
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    map.on('click', (e) => {
+    const onClick = (e: maplibregl.MapMouseEvent) => {
       onMapClickRef.current?.(e.lngLat.lng, e.lngLat.lat);
-    });
-
-    map.on('load', () => {
+    };
+    const onLoad = () => {
       loadedRef.current = true;
       if (pendingMarkers.current.length > 0) {
         syncMarkers(map, pendingMarkers.current, markersRef, darkModeRef.current, onMarkerClickRef.current);
@@ -260,11 +260,16 @@ export default function MapView({
         syncRoutes(map, pendingRoutes.current, darkModeRef.current);
         pendingRoutes.current = [];
       }
-    });
+    };
+
+    map.on('click', onClick);
+    map.on('load', onLoad);
 
     mapRef.current = map;
 
     return () => {
+      map.off('click', onClick);
+      map.off('load', onLoad);
       map.remove();
       mapRef.current = null;
       loadedRef.current = false;
