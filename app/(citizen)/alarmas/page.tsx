@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queries } from '@/lib/queries';
 import { useAuth } from '@/lib/auth-context';
+import MapView, { type MapMarker } from '@/components/map-view';
 import type { PickupPoint, ActiveRoute, CitizenAlarm } from '@/lib/types';
 
 const DAY_LABELS: Record<string, string> = {
@@ -28,6 +29,14 @@ function routeRunsOnDay(frequency: string | null | undefined, day: string): bool
   if (!frequency) return true;
   const days = FREQUENCY_DAYS[frequency];
   return days ? days.includes(day) : true;
+}
+
+function haversineKm(lng1: number, lat1: number, lng2: number, lat2: number): number {
+  const R = 6371;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 const JS_DAY_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -82,11 +91,11 @@ interface RouteCandidate {
   scheduledTime: string | null;
 }
 
-function findCandidates(routes: ActiveRoute[], location: LocationOption, day: string): RouteCandidate[] {
+function findCandidates(routes: ActiveRoute[], location: LocationOption, days: string[]): RouteCandidate[] {
   const idSet = new Set(location.pointIds);
   const results: RouteCandidate[] = [];
   for (const route of routes) {
-    if (!routeRunsOnDay(route.frequency, day)) continue;
+    if (!days.some((d) => routeRunsOnDay(route.frequency, d))) continue;
     for (const stop of route.stops) {
       if (!idSet.has(stop.pickupPoint.id)) continue;
       results.push({
@@ -163,9 +172,10 @@ export default function AlarmasPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
-  const [day, setDay] = useState<string | null>(null);
+  const [days, setDays] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [locationKey, setLocationKey] = useState<string | null>(null);
+  const [clickedPoint, setClickedPoint] = useState<{ lng: number; lat: number } | null>(null);
   const [candidate, setCandidate] = useState<RouteCandidate | null>(null);
   const [notifyBeforeMinutes, setNotifyBeforeMinutes] = useState(30);
   const [label, setLabel] = useState('');
@@ -189,10 +199,22 @@ export default function AlarmasPage() {
 
   const selectedLocation = locations.find((l) => l.key === locationKey) ?? null;
 
+  // Los 4 vertederos más cercanos al punto que el usuario tocó en el mapa
+  // (mismo comportamiento que en /mapa).
+  const nearestKeys = useMemo(() => {
+    if (!clickedPoint) return new Set<string>();
+    const withDist = locations.map((l) => ({
+      key: l.key,
+      dist: haversineKm(clickedPoint.lng, clickedPoint.lat, l.longitude, l.latitude),
+    }));
+    withDist.sort((a, b) => a.dist - b.dist);
+    return new Set(withDist.slice(0, 4).map((x) => x.key));
+  }, [locations, clickedPoint]);
+
   const candidates = useMemo(() => {
-    if (!day || !selectedLocation) return [];
-    return findCandidates(routes, selectedLocation, day);
-  }, [routes, day, selectedLocation]);
+    if (days.length === 0 || !selectedLocation) return [];
+    return findCandidates(routes, selectedLocation, days);
+  }, [routes, days, selectedLocation]);
 
   const { data: alarms = [], isLoading } = useQuery({
     ...queries.citizenAlarms.mine(),
@@ -223,11 +245,44 @@ export default function AlarmasPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: queries.citizenAlarms.mine().queryKey }),
   });
 
+  const [editingAlarm, setEditingAlarm] = useState<CitizenAlarm | null>(null);
+  const [editMinutes, setEditMinutes] = useState(30);
+  const [editLabel, setEditLabel] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function openEdit(alarm: CitizenAlarm) {
+    setEditingAlarm(alarm);
+    setEditMinutes(alarm.notifyBeforeMinutes);
+    setEditLabel(alarm.label ?? '');
+    setEditError(null);
+  }
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      api.patch<CitizenAlarm>(`/citizen-alarms/${editingAlarm!.id}`, {
+        notifyBeforeMinutes: editMinutes,
+        label: editLabel || undefined,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queries.citizenAlarms.mine().queryKey });
+      setEditingAlarm(null);
+    },
+    onError: (err: unknown) => {
+      setEditError(err instanceof Error ? err.message : 'Error al actualizar');
+    },
+  });
+
+  function toggleDay(d: string) {
+    setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+    setCandidate(null);
+  }
+
   function resetForm() {
     setShowForm(false);
-    setDay(null);
+    setDays([]);
     setSearch('');
     setLocationKey(null);
+    setClickedPoint(null);
     setCandidate(null);
     setNotifyBeforeMinutes(30);
     setLabel('');
@@ -293,16 +348,16 @@ export default function AlarmasPage() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1.5">
-                  1. Día
+                  1. Día(s) <span className="normal-case font-normal">(puedes elegir varios)</span>
                 </label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {DAY_ORDER.map((d) => (
                     <button
                       key={d}
                       type="button"
-                      onClick={() => { setDay(d); setCandidate(null); }}
+                      onClick={() => toggleDay(d)}
                       className={`py-2 rounded-lg text-[11px] font-bold transition-colors ${
-                        day === d
+                        days.includes(d)
                           ? 'bg-primary text-on-primary'
                           : 'bg-surface-container-high text-on-surface-variant hover:bg-primary/10'
                       }`}
@@ -313,10 +368,10 @@ export default function AlarmasPage() {
                 </div>
               </div>
 
-              {day && (
+              {days.length > 0 && (
                 <div>
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1.5">
-                    2. Punto de recojo
+                    2. Punto de recojo <span className="normal-case font-normal">(toca un tacho en el mapa)</span>
                   </label>
                   <input
                     type="text"
@@ -325,37 +380,64 @@ export default function AlarmasPage() {
                     placeholder="Buscar por nombre o dirección..."
                     className="w-full bg-surface-card border border-outline-variant rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary mb-2"
                   />
-                  <div className="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-outline-variant/20">
-                    {filteredLocations.slice(0, 30).map((loc) => (
-                      <button
-                        key={loc.key}
-                        type="button"
-                        onClick={() => { setLocationKey(loc.key); setCandidate(null); }}
-                        className={`w-full text-left px-3 py-2 text-[12px] transition-colors ${
-                          locationKey === loc.key
-                            ? 'bg-primary/15 text-primary font-bold'
-                            : 'hover:bg-surface-container-high text-on-surface'
-                        }`}
-                      >
-                        <p className="truncate font-bold">{loc.name}</p>
-                        <p className="truncate text-on-surface-variant text-[11px]">{loc.address}</p>
-                      </button>
-                    ))}
-                    {filteredLocations.length === 0 && (
-                      <p className="px-3 py-3 text-[12px] text-on-surface-variant">Sin resultados</p>
-                    )}
+                  <div className="rounded-xl border border-outline-variant/20 overflow-hidden">
+                    <MapView
+                      height="220px"
+                      markers={[
+                        ...filteredLocations.map((loc): MapMarker => ({
+                          id: loc.key,
+                          lng: loc.longitude,
+                          lat: loc.latitude,
+                          color: locationKey === loc.key
+                            ? '#E8A317'
+                            : nearestKeys.has(loc.key)
+                              ? '#8BC34A'
+                              : '#2d5a27',
+                          icon: 'delete',
+                          hideLabel: true,
+                        })),
+                        ...(clickedPoint ? [{
+                          id: 'clicked-origin',
+                          lng: clickedPoint.lng,
+                          lat: clickedPoint.lat,
+                          color: '#154212',
+                          icon: 'location_on',
+                          label: 'Punto elegido',
+                        } as MapMarker] : []),
+                      ]}
+                      onMarkerClick={(m) => {
+                        if (m.id === 'clicked-origin') return;
+                        setLocationKey(m.id);
+                        setCandidate(null);
+                      }}
+                      onMapClick={(lng, lat) => setClickedPoint({ lng, lat })}
+                    />
                   </div>
+                  {clickedPoint && (
+                    <p className="text-[11px] text-on-surface-variant mt-1.5">
+                      Vertederos en verde claro = los 4 más cercanos al punto que tocaste.
+                    </p>
+                  )}
+                  {filteredLocations.length === 0 && (
+                    <p className="text-[12px] text-on-surface-variant mt-2">Sin resultados para esa búsqueda</p>
+                  )}
+                  {selectedLocation && (
+                    <div className="mt-2 px-3 py-2 rounded-lg bg-primary/10 text-[12px]">
+                      <p className="font-bold text-primary truncate">{selectedLocation.name}</p>
+                      <p className="text-on-surface-variant truncate">{selectedLocation.address}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {day && selectedLocation && (
+              {days.length > 0 && selectedLocation && (
                 <div>
                   <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1.5">
-                    3. Ruta ({DAY_LABELS[day]})
+                    3. Ruta ({days.map((d) => DAY_LABELS[d]).join(', ')})
                   </label>
                   {candidates.length === 0 ? (
                     <p className="text-[12px] text-on-surface-variant bg-surface-container-high rounded-xl p-3">
-                      No hay rutas registradas que pasen por este punto el día {DAY_LABELS[day].toLowerCase()}.
+                      No hay rutas registradas que pasen por este punto los días seleccionados.
                     </p>
                   ) : (
                     <div className="space-y-1.5">
@@ -484,6 +566,12 @@ export default function AlarmasPage() {
                   </p>
                 </div>
                 <button
+                  onClick={() => openEdit(alarm)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/10 text-on-surface-variant hover:text-primary transition-colors flex-shrink-0"
+                >
+                  <span className="material-symbols-outlined text-sm">edit</span>
+                </button>
+                <button
                   onClick={() => deleteMutation.mutate(alarm.id)}
                   disabled={deleteMutation.isPending}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-status-alert/10 text-on-surface-variant hover:text-status-alert transition-colors disabled:opacity-40 flex-shrink-0"
@@ -493,6 +581,75 @@ export default function AlarmasPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {editingAlarm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm mx-auto p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[18px] font-bold text-on-surface">Editar alarma</h3>
+              <button
+                onClick={() => setEditingAlarm(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant">close</span>
+              </button>
+            </div>
+
+            <div className="px-3 py-2 rounded-lg bg-surface-container-high text-[12px]">
+              <p className="font-bold text-on-surface">{editingAlarm.pickupPoint.name}</p>
+              <p className="text-on-surface-variant">
+                {editingAlarm.pickupPoint.address}
+                {editingAlarm.route.name && <span> · {editingAlarm.route.name}</span>}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">
+                Notificar
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {TIME_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setEditMinutes(opt.value)}
+                    className={`py-3 rounded-xl text-[12px] font-bold transition-colors ${
+                      editMinutes === opt.value
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container-high text-on-surface-variant hover:bg-primary/10'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-[0.08em] block mb-1">
+                Etiqueta <span className="normal-case font-normal">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                placeholder="Ej: Casa, Trabajo..."
+                className="w-full bg-surface-card border border-outline-variant rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            {editError && <p className="text-status-alert text-[12px]">{editError}</p>}
+
+            <button
+              onClick={() => updateMutation.mutate()}
+              disabled={updateMutation.isPending}
+              className="bg-primary text-on-primary px-4 py-3 rounded-xl text-[13px] font-bold disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            >
+              {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
         </div>
       )}
     </div>
