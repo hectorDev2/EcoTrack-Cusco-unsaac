@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiClientError } from '@/lib/api';
+import DemoControls from '@/components/demo-controls';
 
 interface RouteStop {
   id: string;
@@ -174,6 +175,10 @@ export default function DriverRutaPage() {
         <p className="text-[13px] text-on-surface-variant">
           {activeRoute.completedStops}/{activeRoute.totalStops} paradas completadas
         </p>
+
+        {activeRoute.status === 'IN_PROGRESS' && (
+          <DemoControls routeId={activeRoute.id} />
+        )}
       </div>
 
       {activeRoute.status === 'PENDING' && (

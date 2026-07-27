@@ -33,6 +33,7 @@ import { AdminModule } from './admin/admin.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { CitizenAlarmsModule } from './citizen-alarms/citizen-alarms.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { DemoModule } from './demo/demo.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -55,6 +56,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     VehiclesModule,
     CitizenAlarmsModule,
     NotificationsModule,
+    DemoModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -232,6 +232,7 @@ model RouteLocation {
   latitude  Float
   longitude Float
   recordedAt DateTime @default(now()) @map("recorded_at")
+  simulated  Boolean  @default(false) @map("simulated") // true si viene del modo demo, no de GPS real
 
   route Route @relation(fields: [routeId], references: [id])
 

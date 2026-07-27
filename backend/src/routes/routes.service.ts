@@ -182,6 +182,7 @@ export class RoutesService {
             id: s.id,
             pickupPoint: s.pickupPoint,
             orderIndex: s.orderIndex,
+            status: s.status,
           })),
           currentLocation: latestByRoute.get(r.id) ?? null,
         }));

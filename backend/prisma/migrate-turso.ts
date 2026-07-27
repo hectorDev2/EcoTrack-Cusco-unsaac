@@ -122,6 +122,10 @@ async function migrate() {
       console.log('  ✅ citizen_alarms reconstruida con el esquema correcto');
     }
 
+    // ── route_locations: modo demo ────────────────────────────────────────────
+    console.log('\n📦 route_locations:');
+    await addColumn('route_locations', 'simulated', 'BOOLEAN DEFAULT 0');
+
     console.log('\n✅ Migración completada');
   } finally {
     await prisma.$disconnect();

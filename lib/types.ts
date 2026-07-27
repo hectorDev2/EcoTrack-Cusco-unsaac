@@ -125,6 +125,7 @@ export interface Vehicle {
 export interface RouteStop {
   id: string;
   orderIndex: number;
+  status: string;
   pickupPoint: {
     id: string;
     name: string;

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiClientError } from '@/lib/api';
+import DemoControls from '@/components/demo-controls';
 
 interface RouteStop {
   id: string;
@@ -207,6 +208,10 @@ export default function DriverDashboard() {
                   Ver mapa
                 </button>
               </div>
+            )}
+
+            {todayRoute.status === 'IN_PROGRESS' && (
+              <DemoControls routeId={todayRoute.id} />
             )}
           </div>
 

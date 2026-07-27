@@ -35,6 +35,23 @@ export async function calculateRoute(waypoints: RouteWaypoint[]): Promise<Calcul
   }
 }
 
+/** Índice del punto de `coordinates` (formato [lng,lat]) más cercano a `target`. */
+export function nearestPointIndex(
+  coordinates: [number, number][],
+  target: { lng: number; lat: number },
+): number {
+  let bestIndex = 0;
+  let bestDist = Infinity;
+  coordinates.forEach(([lng, lat], i) => {
+    const d = (lng - target.lng) ** 2 + (lat - target.lat) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      bestIndex = i;
+    }
+  });
+  return bestIndex;
+}
+
 export function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(1)} km`;

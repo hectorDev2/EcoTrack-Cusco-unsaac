@@ -7,7 +7,8 @@ import { queries } from '@/lib/queries';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import type { PickupPoint, Incident, CollectionSchedule } from '@/lib/types';
 import { useGeolocation } from '@/hooks/use-geolocation';
-import { calculateRoute, formatDuration } from '@/lib/routing';
+import { calculateRoute, formatDuration, nearestPointIndex } from '@/lib/routing';
+import type { ActiveRoute } from '@/lib/types';
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
 const MAX_PICKUP_MARKERS = 4;
@@ -172,6 +173,68 @@ export default function MapaPage() {
       description: 'Camión en ruta',
     }));
 
+  // Trayecto (calles reales) de cada ruta en curso, calculado una sola vez
+  // por ruta — se usa para "ocultar" el tramo ya recorrido a medida que se
+  // van completando paradas, sin recalcular OSRM en cada poll.
+  const [routePaths, setRoutePaths] = useState<
+    Record<string, { coords: [number, number][]; stopIndices: number[] }>
+  >({});
+
+  useEffect(() => {
+    const inProgress = activeRoutes.filter(
+      (r): r is ActiveRoute => r.status === 'IN_PROGRESS' && r.stops.length >= 2,
+    );
+    for (const route of inProgress) {
+      if (routePaths[route.id]) continue;
+      const sorted = route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
+      const waypoints = sorted.map((s) => ({ lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }));
+      calculateRoute(waypoints).then((result) => {
+        if (!result) return;
+        const stopIndices = sorted.map((s) =>
+          nearestPointIndex(result.coordinates, { lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }),
+        );
+        setRoutePaths((prev) => ({ ...prev, [route.id]: { coords: result.coordinates, stopIndices } }));
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recalcular cuando cambian las rutas activas, no en cada render por routePaths
+  }, [activeRoutes]);
+
+  // Tramos restantes (se oculta el tramo hacia cualquier parada ya
+  // COMPLETED) y markers de las paradas propias de cada ruta en curso.
+  const truckRouteLines: MapRoute[] = [];
+  const truckStopMarkers: MapMarker[] = [];
+  for (const route of activeRoutes) {
+    if (route.status !== 'IN_PROGRESS' || !route.currentLocation) continue;
+    const sorted = route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
+    const path = routePaths[route.id];
+
+    if (path) {
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const destStop = sorted[i + 1];
+        if (destStop.status === 'COMPLETED') continue;
+        const start = path.stopIndices[i];
+        const end = path.stopIndices[i + 1];
+        truckRouteLines.push({
+          id: `truck-route-${route.id}-${i}`,
+          points: path.coords.slice(start, end + 1),
+          color: '#C62828',
+        });
+      }
+    }
+
+    sorted.forEach((s) => {
+      const completed = s.status === 'COMPLETED';
+      truckStopMarkers.push({
+        id: `route-stop-${s.id}`,
+        lng: s.pickupPoint.longitude,
+        lat: s.pickupPoint.latitude,
+        color: completed ? '#16a34a' : '#2563eb',
+        icon: completed ? 'check_circle' : 'location_on',
+        hideLabel: true,
+      });
+    });
+  }
+
   useEffect(() => {
     api.get<PickupPoint[]>('/pickup-points')
       .then(setPickupPoints)
@@ -281,6 +344,7 @@ export default function MapaPage() {
   const markers: MapMarker[] = [
     originMarker,
     ...truckMarkers,
+    ...truckStopMarkers,
     ...nearestPickupPoints.map((pp) => ({
       id: pp.id,
       lng: pp.longitude,
@@ -313,7 +377,7 @@ export default function MapaPage() {
       <main className="flex-grow relative w-full min-h-[400px]">
         <MapView
           markers={markers}
-          routes={nearestRoute ? [nearestRoute] : undefined}
+          routes={[...truckRouteLines, ...(nearestRoute ? [nearestRoute] : [])]}
           height="calc(100vh - 140px)"
           activeMarkerId={selectedPoint?.id}
           tooltipContent={
