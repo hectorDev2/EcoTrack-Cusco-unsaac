@@ -12,6 +12,7 @@ export interface MapMarker {
   icon?: string;
   label?: string;
   description?: string;
+  hideLabel?: boolean;
 }
 
 export interface MapRoute {
@@ -52,7 +53,7 @@ function createMarkerEl(marker: MapMarker, darkMode: boolean, onClick?: () => vo
     <div style="background:${marker.color ?? '#154212'}; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:2px solid ${darkMode ? '#363635' : 'white'};">
       <span class="material-symbols-outlined" style="font-size:20px;">${marker.icon ?? 'location_on'}</span>
     </div>
-    ${marker.label ? `<span style="background:${labelBg}; color:${labelText}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.2); white-space:nowrap;">${marker.label}</span>` : ''}
+    ${!marker.hideLabel && marker.label ? `<span style="background:${labelBg}; color:${labelText}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.2); white-space:nowrap;">${marker.label}</span>` : ''}
   `;
   if (onClick) el.addEventListener('click', onClick);
   return el;
@@ -200,10 +201,11 @@ export default function MapView({
   const darkModeRef = useRef(isDarkMode());
   const onMapClickRef = useRef(onMapClick);
   const onMarkerClickRef = useRef(onMarkerClick);
-  // eslint-disable-next-line react-hooks/refs
-  onMapClickRef.current = onMapClick;
-  // eslint-disable-next-line react-hooks/refs
-  onMarkerClickRef.current = onMarkerClick;
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+    onMarkerClickRef.current = onMarkerClick;
+  }, [onMapClick, onMarkerClick]);
 
   // Track dark mode changes
   useEffect(() => {
@@ -245,11 +247,10 @@ export default function MapView({
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    map.on('click', (e) => {
+    const onClick = (e: maplibregl.MapMouseEvent) => {
       onMapClickRef.current?.(e.lngLat.lng, e.lngLat.lat);
-    });
-
-    map.on('load', () => {
+    };
+    const onLoad = () => {
       loadedRef.current = true;
       if (pendingMarkers.current.length > 0) {
         syncMarkers(map, pendingMarkers.current, markersRef, darkModeRef.current, onMarkerClickRef.current);
@@ -259,11 +260,16 @@ export default function MapView({
         syncRoutes(map, pendingRoutes.current, darkModeRef.current);
         pendingRoutes.current = [];
       }
-    });
+    };
+
+    map.on('click', onClick);
+    map.on('load', onLoad);
 
     mapRef.current = map;
 
     return () => {
+      map.off('click', onClick);
+      map.off('load', onLoad);
       map.remove();
       mapRef.current = null;
       loadedRef.current = false;

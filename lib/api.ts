@@ -38,12 +38,16 @@ async function request<T>(
 
   let response: Response;
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     response = await fetch(`${API_URL}${path}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
       credentials: 'include',
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
   } catch {
     throw new ApiClientError(0, 'Network error');
   }
