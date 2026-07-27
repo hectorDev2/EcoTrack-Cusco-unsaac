@@ -69,6 +69,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  phone?: string | null;
   role: 'CITIZEN' | 'DRIVER' | 'ADMIN';
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
@@ -124,7 +125,15 @@ export interface Vehicle {
 export interface RouteStop {
   id: string;
   orderIndex: number;
-  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
+  status: string;
+  pickupPoint: {
+    id: string;
+    name: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    scheduledTime?: string | null;
+  };
 }
 
 export interface ActiveRoute {
@@ -132,9 +141,24 @@ export interface ActiveRoute {
   name: string | null;
   zone: { id: string; name: string };
   status: string;
+  frequency?: FrequencyCode | null;
+  shift?: Shift | null;
   totalStops: number;
   stops: RouteStop[];
   currentLocation: { latitude: number; longitude: number; recordedAt: string } | null;
+}
+
+export interface CitizenAlarm {
+  id: string;
+  userId: string;
+  routeId: string;
+  pickupPointId: string;
+  notifyBeforeMinutes: number;
+  label: string | null;
+  active: boolean;
+  createdAt: string;
+  route: { id: string; name: string | null; status: string; frequency: FrequencyCode | null };
+  pickupPoint: { id: string; name: string; address: string; scheduledTime?: string | null };
 }
 
 export interface ApiError {

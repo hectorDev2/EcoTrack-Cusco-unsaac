@@ -6,6 +6,7 @@ Sistema de monitoreo de recolección de residuos sólidos para el distrito de Wa
 **Backend:** NestJS 11 · TypeScript · Prisma · Turso (libSQL) · Swagger · Helmet · Throttler \
 **Auth:** JWT + Passport · middleware edge · guards por rol · httpOnly cookies · rate limiting \
 **Mapa:** MapLibre GL · OSRM (cálculo de rutas) · Nominatim (geocoding) · dark mode adaptativo \
+**Notificaciones:** Cron (`@nestjs/schedule`) · Twilio WhatsApp API · Notification API del navegador \
 **DB:** Turso (libSQL cloud) — exclusivo, sin SQLite local
 
 ---
@@ -131,6 +132,9 @@ pm2 restart ecotrack-frontend ecotrack-backend
 | `JWT_EXPIRATION` | `7d` |
 | `CORS_ORIGINS` | Orígenes CORS separados por coma |
 | `NEXT_PUBLIC_API_URL` | `https://api-ecotrack.157.230.83.213.nip.io` |
+| `TWILIO_ACCOUNT_SID` | Opcional — sin ella, las alarmas WhatsApp solo se registran en el log (modo simulado) |
+| `TWILIO_AUTH_TOKEN` | Opcional — junto con `TWILIO_ACCOUNT_SID` habilita el envío real |
+| `TWILIO_WHATSAPP_FROM` | Número de WhatsApp habilitado en Twilio (sandbox: `+14155238886`) |
 
 ### Troubleshooting
 
@@ -140,6 +144,9 @@ pm2 restart ecotrack-frontend ecotrack-backend
 | Frontend en blanco | Verificar `NEXT_PUBLIC_API_URL` en `.env.local` |
 | 401 en todos los requests | `JWT_SECRET` regenerado — usuarios deben reloguear |
 | 429 Too Many Requests en login | Esperar 60s, o ajustar límites en `app.module.ts` |
+| WhatsApp no llega, log dice "simulado" | Faltan `TWILIO_*` en `backend/.env` — reiniciar backend tras agregarlas |
+| Twilio: "not connected to a Sandbox" | El número destino debe enviar `join <código>` por WhatsApp al número del sandbox primero |
+| Twilio: "could not find a Channel with the specified From address" | `TWILIO_WHATSAPP_FROM` no tiene canal de WhatsApp habilitado — usar el número del sandbox o un Sender de WhatsApp verificado |
 | `no such table: main.routes_old` | Ejecutar `npx ts-node prisma/recover-db.ts` desde `backend/` |
 
 ---
@@ -161,6 +168,7 @@ pm2 restart ecotrack-frontend ecotrack-backend
 | `Vehicles` | CRUD (ADMIN) | ✅ |
 | `Collections` | `POST /collections` (conductor) | ✅ |
 | `Admin` | `GET /admin/dashboard`, `GET /admin/analytics` | ✅ |
+| `CitizenAlarms` | `POST/GET /citizen-alarms`, `DELETE /citizen-alarms/:id` + cron de notificación WhatsApp cada minuto | ✅ |
 
 ### Frontend — Páginas
 
@@ -174,6 +182,7 @@ pm2 restart ecotrack-frontend ecotrack-backend
 | Reportar incidencia | `/reportar` | CITIZEN |
 | Mis incidencias | `/incidencias` | CITIZEN |
 | Mapa | `/mapa` | CITIZEN |
+| Alarmas (día → punto → ruta, WhatsApp) | `/alarmas` | CITIZEN |
 | Perfil | `/perfil` | Todos |
 | Dashboard admin | `/dashboard` | ADMIN |
 | Flota en tiempo real | `/flota` | ADMIN |
@@ -207,6 +216,12 @@ pm2 restart ecotrack-frontend ecotrack-backend
 | Endpoint público de rutas | `GET /routes/public` sin autenticación |
 | pnpm workspace | Monorepo con dependencias compartidas entre frontend y backend |
 | Tests backend | 89 tests unitarios + 9 e2e |
+| Origen de ruta arrastrable en mapa | Un solo marker (origen/mi ubicación) draggable; recalcula 4 vertederos + ruta más cercana al soltar |
+| Tooltip flotante en mapa | Info del vertedero (horarios) anclada sobre su marker, en vez de panel fijo |
+| Alarmas ciudadanas | Flujo Día → Punto de recojo → rutas que pasan ese día con su hora → elegir una |
+| Notificación WhatsApp | Cron cada minuto compara `scheduledTime - notifyBeforeMinutes` y envía por Twilio (una vez por día) |
+| Notificación del navegador | Notification API con permiso + polling cliente, dedupe en localStorage |
+| Teléfono en perfil | Campo WhatsApp (`+51...`) en `/perfil`, editable vía `PATCH /auth/me` |
 | CI/CD | GitHub Actions en push/PR |
 
 ---
@@ -247,6 +262,7 @@ app/
 │   ├── reportar/
 │   ├── incidencias/
 │   ├── mapa/
+│   ├── alarmas/              ← Día → punto → ruta, WhatsApp + notificación navegador
 │   └── perfil/
 └── (admin)/                 ← Layout con sidebar
     ├── dashboard/
@@ -287,12 +303,14 @@ backend/
 │   ├── vehicles/
 │   ├── waste-types/
 │   ├── admin/
+│   ├── citizen-alarms/      ← CRUD + CitizenAlarmsScheduler (cron cada minuto)
+│   ├── notifications/       ← NotificationsService (Twilio WhatsApp)
 │   ├── prisma/              ← PrismaService Turso-only
 │   └── common/              ← Guards, decorators, filters
 └── prisma/
-    ├── schema.prisma        ← 12 modelos
+    ├── schema.prisma        ← 14 modelos
     ├── seed.ts              ← 287 paradas · 19 rutas del rutero oficial
-    ├── migrate-turso.ts     ← ALTER TABLE ADD COLUMN incremental
+    ├── migrate-turso.ts     ← ALTER TABLE ADD COLUMN incremental (idempotente)
     └── recover-db.ts        ← Reparación de FKs con batch() de libSQL
 ```
 

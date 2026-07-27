@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -13,6 +13,8 @@ export interface MapMarker {
   label?: string;
   description?: string;
   hideLabel?: boolean;
+  /** Si es true, el usuario puede arrastrar el marker a otra posición */
+  draggable?: boolean;
 }
 
 export interface MapRoute {
@@ -31,8 +33,24 @@ interface MapViewProps {
   interactive?: boolean;
   /** ID del marker que la cámara debe seguir suavemente cuando se mueve */
   followMarkerId?: string;
+  /** ID del marker sobre el que se debe anclar el tooltip flotante */
+  activeMarkerId?: string;
+  /** Contenido del tooltip, mostrado encima del marker activo */
+  tooltipContent?: React.ReactNode;
   onMarkerClick?: (marker: MapMarker) => void;
   onMapClick?: (lng: number, lat: number) => void;
+  /** Se dispara al soltar un marker arrastrable, con su nueva posición */
+  onMarkerDragEnd?: (markerId: string, lng: number, lat: number) => void;
+  /**
+   * Cambiar este valor (p. ej. un contador) fuerza un fitBounds explícito
+   * alrededor de `fitBoundsMarkerIds` (y `fitBoundsRoutePoints`, si se pasa),
+   * sin depender de que cambie el conjunto de markers.
+   */
+  fitBoundsSignal?: number;
+  /** IDs de markers a incluir en el fitBounds disparado por fitBoundsSignal */
+  fitBoundsMarkerIds?: string[];
+  /** Puntos de ruta a incluir también en ese fitBounds */
+  fitBoundsRoutePoints?: [number, number][];
 }
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
@@ -46,7 +64,7 @@ function isDarkMode(): boolean {
 
 function createMarkerEl(marker: MapMarker, darkMode: boolean, onClick?: () => void): HTMLDivElement {
   const el = document.createElement('div');
-  el.className = 'flex flex-col items-center cursor-pointer';
+  el.className = `flex flex-col items-center ${marker.draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`;
   const labelBg = darkMode ? '#212120' : '#ffffff';
   const labelText = darkMode ? '#e5e2df' : '#1c1c1a';
   el.innerHTML = `
@@ -55,8 +73,41 @@ function createMarkerEl(marker: MapMarker, darkMode: boolean, onClick?: () => vo
     </div>
     ${!marker.hideLabel && marker.label ? `<span style="background:${labelBg}; color:${labelText}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.2); white-space:nowrap;">${marker.label}</span>` : ''}
   `;
-  if (onClick) el.addEventListener('click', onClick);
+  if (onClick) {
+    // Sin stopPropagation, el click burbujea hasta el contenedor del mapa
+    // y también dispara onMapClick (p. ej. moviendo el origen de ruta a la
+    // posición del marker en el que se hizo click).
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+  }
   return el;
+}
+
+// Categoría usada para decidir si hay que recentrar el mapa. Se agrupa por
+// tipo (no por id exacto) para que, por ejemplo, cambiar CUÁLES son los 4
+// vertederos más cercanos (mismo conteo, ids distintos) no dispare este
+// fitBounds genérico — eso ya lo maneja fitBoundsSignal de forma explícita,
+// y disparar ambos a la vez se sentía como "dos saltos" de cámara.
+function fitTriggerCategory(id: string): string | null {
+  if (id === 'origin') return null;
+  if (id.startsWith('truck-')) return 'truck';
+  if (id.startsWith('inc-')) return 'inc';
+  return 'pickup';
+}
+
+function fitTriggerKey(markers: MapMarker[]): string {
+  const counts: Record<string, number> = {};
+  markers.forEach((m) => {
+    const cat = fitTriggerCategory(m.id);
+    if (!cat) return;
+    counts[cat] = (counts[cat] ?? 0) + 1;
+  });
+  return Object.keys(counts)
+    .sort()
+    .map((k) => `${k}:${counts[k]}`)
+    .join('|');
 }
 
 function syncMarkers(
@@ -66,6 +117,8 @@ function syncMarkers(
   darkMode: boolean,
   onMarkerClick?: (marker: MapMarker) => void,
   followMarkerId?: string,
+  shouldFit = true,
+  onMarkerDragEnd?: (markerId: string, lng: number, lat: number) => void,
 ) {
   markersRef.current.forEach((m) => m.remove());
   markersRef.current = [];
@@ -73,14 +126,23 @@ function syncMarkers(
   markers.forEach((marker) => {
     const m = new maplibregl.Marker({
       element: createMarkerEl(marker, darkMode, onMarkerClick ? () => onMarkerClick(marker) : undefined),
+      draggable: marker.draggable ?? false,
     })
       .setLngLat([marker.lng, marker.lat])
       .addTo(map);
+    if (marker.draggable && onMarkerDragEnd) {
+      m.on('dragend', () => {
+        const lngLat = m.getLngLat();
+        onMarkerDragEnd(marker.id, lngLat.lng, lngLat.lat);
+      });
+    }
     markersRef.current.push(m);
   });
 
   // Si hay un marker seguido, no hacer fitBounds — el efecto followMarkerId lo maneja
   if (followMarkerId) return;
+  // Solo recentrar cuando cambia el conjunto de markers (no en cada acción del usuario)
+  if (!shouldFit) return;
 
   if (markers.length >= 2) {
     const bounds = markers.reduce(
@@ -189,28 +251,41 @@ export default function MapView({
   height = '100%',
   interactive = true,
   followMarkerId,
+  activeMarkerId,
+  tooltipContent,
   onMarkerClick,
   onMapClick,
+  onMarkerDragEnd,
+  fitBoundsSignal,
+  fitBoundsMarkerIds,
+  fitBoundsRoutePoints,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [darkMode, setDarkMode] = useState(() => isDarkMode());
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const loadedRef = useRef(false);
   const pendingMarkers = useRef<MapMarker[]>([]);
   const pendingRoutes = useRef<MapRoute[]>([]);
   const darkModeRef = useRef(isDarkMode());
+  const prevFitIdsRef = useRef<string | null>(null);
   const onMapClickRef = useRef(onMapClick);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const onMarkerDragEndRef = useRef(onMarkerDragEnd);
 
   useEffect(() => {
     onMapClickRef.current = onMapClick;
     onMarkerClickRef.current = onMarkerClick;
-  }, [onMapClick, onMarkerClick]);
+    onMarkerDragEndRef.current = onMarkerDragEnd;
+  }, [onMapClick, onMarkerClick, onMarkerDragEnd]);
 
   // Track dark mode changes
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      darkModeRef.current = isDarkMode();
+      const dark = isDarkMode();
+      darkModeRef.current = dark;
+      setDarkMode(dark);
     });
     observer.observe(document.documentElement, {
       attributes: true,
@@ -222,23 +297,23 @@ export default function MapView({
   const _updateAll = useCallback(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId);
+    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId, true, onMarkerDragEnd);
     if (pendingRoutes.current.length > 0) {
       syncRoutes(map, pendingRoutes.current, darkModeRef.current);
       pendingRoutes.current = [];
     }
-  }, [markers, onMarkerClick, followMarkerId]);
+  }, [markers, onMarkerClick, followMarkerId, onMarkerDragEnd]);
 
   // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const darkMode = isDarkMode();
-    darkModeRef.current = darkMode;
+    const dark = isDarkMode();
+    darkModeRef.current = dark;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: darkMode ? DARK_MAP_STYLE : LIGHT_MAP_STYLE,
+      style: dark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE,
       center,
       zoom,
       attributionControl: false,
@@ -253,7 +328,8 @@ export default function MapView({
     const onLoad = () => {
       loadedRef.current = true;
       if (pendingMarkers.current.length > 0) {
-        syncMarkers(map, pendingMarkers.current, markersRef, darkModeRef.current, onMarkerClickRef.current);
+        prevFitIdsRef.current = fitTriggerKey(pendingMarkers.current);
+        syncMarkers(map, pendingMarkers.current, markersRef, darkModeRef.current, onMarkerClickRef.current, undefined, true, onMarkerDragEndRef.current);
         pendingMarkers.current = [];
       }
       if (pendingRoutes.current.length > 0) {
@@ -293,8 +369,14 @@ export default function MapView({
       pendingMarkers.current = markers;
       return;
     }
-    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId);
-  }, [markers, onMarkerClick, followMarkerId]);
+    // Solo recentrar el mapa cuando cambia el conjunto de markers (ids),
+    // no cuando solo cambia su color/label por una acción del usuario
+    // (p. ej. seleccionar un punto o calcular el más cercano).
+    const idsKey = fitTriggerKey(markers);
+    const shouldFit = idsKey !== prevFitIdsRef.current;
+    prevFitIdsRef.current = idsKey;
+    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId, shouldFit, onMarkerDragEnd);
+  }, [markers, onMarkerClick, followMarkerId, onMarkerDragEnd]);
 
   // Routes
   useEffect(() => {
@@ -316,7 +398,83 @@ export default function MapView({
     map.easeTo({ center: [target.lng, target.lat], zoom: Math.max(map.getZoom(), 16), duration: 800 });
   }, [followMarkerId, markers]);
 
+  // Fit explícito (p. ej. centrar entre el origen, los vertederos cercanos
+  // y la ruta trazada). Se dispara únicamente cuando cambia fitBoundsSignal,
+  // no en cada render, para no pelear con la navegación libre del usuario.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current || fitBoundsSignal == null) return;
+
+    const idsSet = fitBoundsMarkerIds ? new Set(fitBoundsMarkerIds) : null;
+    const points: [number, number][] = [];
+    markers.forEach((m) => {
+      if (!idsSet || idsSet.has(m.id)) points.push([m.lng, m.lat]);
+    });
+    if (fitBoundsRoutePoints) points.push(...fitBoundsRoutePoints);
+    if (points.length === 0) return;
+
+    const bounds = points.reduce(
+      (b, p) => b.extend(p),
+      new maplibregl.LngLatBounds(points[0], points[0]),
+    );
+    map.fitBounds(bounds, { padding: 70, maxZoom: 16, duration: 800 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- se dispara a propósito solo con fitBoundsSignal
+  }, [fitBoundsSignal]);
+
+  // Posición en pantalla del marker activo, para anclar el tooltip
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !loadedRef.current || !activeMarkerId) {
+      setTooltipPos(null);
+      return;
+    }
+    const target = markers.find((m) => m.id === activeMarkerId);
+    if (!target) {
+      setTooltipPos(null);
+      return;
+    }
+
+    const update = () => {
+      const point = map.project([target.lng, target.lat]);
+      setTooltipPos({ x: point.x, y: point.y });
+    };
+    update();
+    map.on('move', update);
+    return () => {
+      map.off('move', update);
+    };
+  }, [activeMarkerId, markers]);
+
   return (
-    <div ref={containerRef} style={{ width: '100%', height, minHeight: '200px' }} />
+    <div style={{ position: 'relative', width: '100%', height, minHeight: '200px' }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      {tooltipPos && tooltipContent && (
+        <div
+          style={{
+            position: 'absolute',
+            left: tooltipPos.x,
+            top: tooltipPos.y,
+            transform: 'translate(-50%, -100%) translateY(-16px)',
+            zIndex: 30,
+            pointerEvents: 'auto',
+          }}
+        >
+          {tooltipContent}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              bottom: -6,
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: `6px solid ${darkMode ? '#212120' : '#ffffff'}`,
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 }

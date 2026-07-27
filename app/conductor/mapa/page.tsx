@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
-import { calculateRoute } from '@/lib/routing';
+import { calculateRoute, nearestPointIndex } from '@/lib/routing';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 
 interface RouteStop {
@@ -56,7 +56,7 @@ export default function DriverMap() {
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mainRouteLines, setMainRouteLines] = useState<MapRoute[]>([]);
+  const [routePath, setRoutePath] = useState<{ coords: [number, number][]; stopIndices: number[] } | null>(null);
   const [navRoute, setNavRoute] = useState<MapRoute | null>(null);
   const [gpsStatus, setGpsStatus] = useState<GpsStatus>('idle');
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -72,10 +72,16 @@ export default function DriverMap() {
   const arrivedAtStartRef = useRef(false);
 
   useEffect(() => {
-    api.get<DriverRoute[]>('/routes/my')
-      .then(setRoutes)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Error al cargar rutas'))
-      .finally(() => setLoading(false));
+    const fetchRoutes = () =>
+      api.get<DriverRoute[]>('/routes/my')
+        .then(setRoutes)
+        .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Error al cargar rutas'))
+        .finally(() => setLoading(false));
+
+    fetchRoutes();
+    // Poll para reflejar en vivo paradas completadas (p. ej. durante una demo).
+    const interval = setInterval(fetchRoutes, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS')
@@ -93,25 +99,27 @@ export default function DriverMap() {
     setNavRoute(null);
   }, [activeRoute?.id]);
 
-  // Trazar la ruta principal (verde) entre las paradas
+  // Trazar el trayecto (calles reales) entre las paradas — una sola vez por
+  // ruta, no en cada poll, para no recalcular OSRM de más.
   useEffect(() => {
-    if (!activeRoute || activeRoute.stops.length < 2) return;
+    if (!activeRoute || activeRoute.stops.length < 2) { setRoutePath(null); return; }
 
-    const waypoints = activeRoute.stops
-      .slice()
-      .sort((a, b) => a.orderIndex - b.orderIndex)
-      .map((s) => ({
-        lng: s.pickupPoint.longitude,
-        lat: s.pickupPoint.latitude,
-        label: s.pickupPoint.name,
-      }));
+    const sorted = activeRoute.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
+    const waypoints = sorted.map((s) => ({
+      lng: s.pickupPoint.longitude,
+      lat: s.pickupPoint.latitude,
+      label: s.pickupPoint.name,
+    }));
 
     calculateRoute(waypoints).then((result) => {
-      if (result) {
-        setMainRouteLines([{ id: activeRoute.id, points: result.coordinates, color: '#154212' }]);
-      }
+      if (!result) return;
+      const stopIndices = sorted.map((s) =>
+        nearestPointIndex(result.coordinates, { lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }),
+      );
+      setRoutePath({ coords: result.coordinates, stopIndices });
     });
-  }, [activeRoute]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recalcular al cambiar de ruta, no en cada poll
+  }, [activeRoute?.id]);
 
   // GPS: watchPosition para actualizar el marcador en tiempo real +
   //      setInterval cada 10 s para enviar al backend y recalcular nav
@@ -219,6 +227,24 @@ export default function DriverMap() {
 
     return stop;
   }, [activeRoute]);
+
+  // Tramos restantes del trayecto: se oculta el segmento hacia cualquier
+  // parada ya COMPLETED, para que la ruta se vaya "acortando" en el mapa.
+  const sortedStops = activeRoute?.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex) ?? [];
+  const mainRouteLines: MapRoute[] = [];
+  if (activeRoute && routePath) {
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const destStop = sortedStops[i + 1];
+      if (destStop.status === 'COMPLETED') continue;
+      const start = routePath.stopIndices[i];
+      const end = routePath.stopIndices[i + 1];
+      mainRouteLines.push({
+        id: `${activeRoute.id}-seg-${i}`,
+        points: routePath.coords.slice(start, end + 1),
+        color: '#154212',
+      });
+    }
+  }
 
   const markers: MapMarker[] = [
     ...(activeRoute

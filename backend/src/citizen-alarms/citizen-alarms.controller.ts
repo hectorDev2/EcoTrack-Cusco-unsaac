@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Body,
@@ -10,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CitizenAlarmsService } from './citizen-alarms.service';
 import { CreateCitizenAlarmDto } from './dto/create-citizen-alarm.dto';
+import { UpdateCitizenAlarmDto } from './dto/update-citizen-alarm.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -37,6 +39,17 @@ export class CitizenAlarmsController {
   @Get()
   findMine(@CurrentUser('id') userId: string) {
     return this.alarmsService.findByUser(userId);
+  }
+
+  @ApiOperation({ summary: 'Update alarm (citizen)' })
+  @ApiBearerAuth()
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateCitizenAlarmDto,
+  ) {
+    return this.alarmsService.update(id, userId, dto);
   }
 
   @ApiOperation({ summary: 'Delete alarm (citizen)' })

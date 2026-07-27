@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, FrequencyConfig, ActiveRoute } from './types';
+import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, FrequencyConfig, ActiveRoute, CitizenAlarm } from './types';
 
 export const queryKeys = {
   incidents: {
@@ -18,6 +18,9 @@ export const queryKeys = {
   },
   frequencies: {
     all: () => ['frequencies'] as const,
+  },
+  citizenAlarms: {
+    mine: () => ['citizen-alarms', 'mine'] as const,
   },
   zones: {
     all: () => ['zones'] as const,
@@ -88,6 +91,12 @@ export const queries = {
     active: () => ({
       queryKey: queryKeys.routes.active(),
       queryFn: () => api.get<ActiveRoute[]>('/routes/active'),
+    }),
+  },
+  citizenAlarms: {
+    mine: () => ({
+      queryKey: queryKeys.citizenAlarms.mine(),
+      queryFn: () => api.get<CitizenAlarm[]>('/citizen-alarms'),
     }),
   },
   frequencies: {
