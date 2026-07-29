@@ -70,6 +70,8 @@ interface MapViewProps {
   fitBoundsMarkerIds?: string[];
   /** Puntos de ruta a incluir también en ese fitBounds */
   fitBoundsRoutePoints?: [number, number][];
+  /** Cuando es true, el auto-fitBounds/flyTo al cambiar markers se salta */
+  disableAutoFit?: boolean;
 }
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
@@ -86,16 +88,26 @@ function createMarkerEl(marker: MapMarker, darkMode: boolean, onClick?: () => vo
   el.className = `flex flex-col items-center ${marker.draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`;
   const labelBg = darkMode ? '#212120' : '#ffffff';
   const labelText = darkMode ? '#e5e2df' : '#1c1c1a';
-  el.innerHTML = `
-    <div style="background:${marker.color ?? '#154212'}; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:2px solid ${darkMode ? '#363635' : 'white'};">
-      <span class="material-symbols-outlined" style="font-size:20px;">${marker.icon ?? 'location_on'}</span>
-    </div>
-    ${!marker.hideLabel && marker.label ? `<span style="background:${labelBg}; color:${labelText}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.2); white-space:nowrap;">${marker.label}</span>` : ''}
-  `;
+  const borderColor = darkMode ? '#363635' : 'white';
+
+  const icon = document.createElement('div');
+  icon.style.cssText = `background:${marker.color ?? '#154212'}; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.3); border:2px solid ${borderColor};`;
+  icon.innerHTML = `<span class="material-symbols-outlined" style="font-size:20px;">${marker.icon ?? 'location_on'}</span>`;
+  el.appendChild(icon);
+
+  if (marker.label) {
+    const label = document.createElement('span');
+    label.textContent = marker.label;
+    label.style.cssText = `background:${labelBg}; color:${labelText}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; margin-top:4px; box-shadow:0 1px 4px rgba(0,0,0,0.2); white-space:nowrap;`;
+    if (marker.hideLabel) {
+      label.style.display = 'none';
+      el.addEventListener('mouseenter', () => { label.style.display = ''; });
+      el.addEventListener('mouseleave', () => { label.style.display = 'none'; });
+    }
+    el.appendChild(label);
+  }
+
   if (onClick) {
-    // Sin stopPropagation, el click burbujea hasta el contenedor del mapa
-    // y también dispara onMapClick (p. ej. moviendo el origen de ruta a la
-    // posición del marker en el que se hizo click).
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       onClick();
@@ -146,11 +158,12 @@ interface TrackedMarker {
   /** Generación de la animación en curso, para poder cancelar una anterior */
   animGen: number;
   /**
-   * Índice sobre `pathCoords` donde quedó este marker la última vez —
-   * arranca en null (sin restricción) y solo avanza hacia adelante. Al
-   * buscar el punto más cercano a la SIGUIENTE posición reportada, la
-   * búsqueda se limita a partir de este índice para no confundirse con un
-   * tramo anterior de una calle que se cruza consigo misma.
+   * Índice sobre `pathCoords` donde EMPEZÓ el segmento de la animación en
+   * curso (no donde terminó) — un piso seguro, ya que el marker nunca está
+   * visualmente antes de él, ni siquiera si esa animación se interrumpió a
+   * mitad de camino. Arranca en null (sin restricción) y solo avanza hacia
+   * adelante, para no confundirse con un tramo anterior de una calle que se
+   * cruza consigo misma. Ver animateMarkerTo.
    */
   pathIndex: number | null;
   /** Marca de tiempo de la última animación — ver `animateMarkerTo`. */
@@ -244,14 +257,25 @@ function animateMarkerTo(
 
   let segment: { points: [number, number][]; cum: number[] } | null = null;
   if (pathCoords && pathCoords.length >= 2) {
-    const startIndex = tm.pathIndex ?? nearestForwardIndex(pathCoords, [fromLng, fromLat], 0);
+    // `tm.pathIndex` se guarda como el índice de INICIO del segmento en
+    // curso (no el de destino) precisamente para poder usarlo como piso
+    // seguro de búsqueda en la próxima llamada: si esta animación se
+    // interrumpe a mitad de camino (llega una posición nueva antes de que
+    // termine — frecuente, porque el tick del backend y la duración de la
+    // animación solo coinciden aproximadamente), el marker sigue
+    // visualmente en algún punto ENTRE el índice de inicio y el de destino,
+    // nunca antes del de inicio. Guardar el de destino ahí hacía que la
+    // siguiente animación arrancara desde un punto por delante de donde el
+    // camión realmente estaba, saltando en línea recta el tramo intermedio
+    // — eso es lo que se veía como "volar" cortando una esquina.
+    const startIndex = nearestForwardIndex(pathCoords, [fromLng, fromLat], tm.pathIndex ?? 0);
     const endIndex = nearestForwardIndex(pathCoords, [toLng, toLat], startIndex);
     if (endIndex > startIndex) {
       const points: [number, number][] = [[fromLng, fromLat], ...pathCoords.slice(startIndex + 1, endIndex + 1)];
       points[points.length - 1] = [toLng, toLat];
       segment = { points, cum: pathSegmentDistances(points) };
     }
-    tm.pathIndex = endIndex;
+    tm.pathIndex = startIndex;
   }
 
   function step(now: number) {
@@ -525,6 +549,7 @@ export default function MapView({
   fitBoundsSignal,
   fitBoundsMarkerIds,
   fitBoundsRoutePoints,
+  disableAutoFit,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
@@ -563,12 +588,12 @@ export default function MapView({
   const _updateAll = useCallback(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId, true, onMarkerDragEnd);
+    syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId, !disableAutoFit, onMarkerDragEnd);
     if (pendingRoutes.current.length > 0) {
       syncRoutes(map, pendingRoutes.current, darkModeRef.current);
       pendingRoutes.current = [];
     }
-  }, [markers, onMarkerClick, followMarkerId, onMarkerDragEnd]);
+  }, [markers, onMarkerClick, followMarkerId, onMarkerDragEnd, disableAutoFit]);
 
   // Init map
   useEffect(() => {
@@ -639,10 +664,10 @@ export default function MapView({
     // no cuando solo cambia su color/label por una acción del usuario
     // (p. ej. seleccionar un punto o calcular el más cercano).
     const idsKey = fitTriggerKey(markers);
-    const shouldFit = idsKey !== prevFitIdsRef.current;
+    const shouldFit = idsKey !== prevFitIdsRef.current && !disableAutoFit;
     prevFitIdsRef.current = idsKey;
     syncMarkers(map, markers, markersRef, darkModeRef.current, onMarkerClick, followMarkerId, shouldFit, onMarkerDragEnd);
-  }, [markers, onMarkerClick, followMarkerId, onMarkerDragEnd]);
+  }, [markers, onMarkerClick, followMarkerId, onMarkerDragEnd, disableAutoFit]);
 
   // Routes
   useEffect(() => {
