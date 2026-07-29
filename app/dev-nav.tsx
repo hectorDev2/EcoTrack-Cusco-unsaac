@@ -6,7 +6,7 @@ const links = [
   { href: "/dashboard", label: "📊 Dashboard" },
   { href: "/admin-incidencias", label: "⚠️ Incidencias Admin" },
   { href: "/incidencias", label: "⚠️ Incidencias" },
-  { href: "/flota", label: "🚛 Flota" },
+  { href: "/vehiculos", label: "🚛 Vehículos" },
   { href: "/analisis", label: "📈 Análisis" },
   { href: "/usuarios", label: "👥 Usuarios" },
   { href: "/configuracion", label: "⚙️ Config" },

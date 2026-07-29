@@ -43,10 +43,10 @@ export class DemoController {
     return this.demoService.stopDemo(id, driverId);
   }
 
-  @ApiOperation({ summary: 'Estado de la simulación de una ruta (conductor)' })
+  @ApiOperation({ summary: 'Estado de la simulación de una ruta (conductor o admin viendo la flota)' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard, DemoModeGuard)
-  @Roles('DRIVER')
+  @Roles('DRIVER', 'ADMIN')
   @Get('routes/:id/status')
   status(@Param('id') id: string) {
     return this.demoService.getStatus(id);
