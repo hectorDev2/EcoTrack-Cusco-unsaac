@@ -180,8 +180,26 @@ model Route {
   locations RouteLocation[]
   incidents Incident[]
   citizenAlarms CitizenAlarm[]
+  schedules RouteSchedule[]
 
   @@map("routes")
+}
+
+/// Un horario en el que corre la ruta — una ruta puede tener varios (p. ej.
+/// Lunes/Miércoles/Viernes 06:00 Y ADEMÁS Martes/Jueves/Sábado 17:00), sin
+/// tener que duplicar la ruta (mismas paradas, mismo conductor) por cada
+/// combinación de días+hora.
+model RouteSchedule {
+  id      String @id @default(cuid())
+  routeId String @map("route_id")
+  days    String // días separados por coma, formato iCal: "MON,WED,FRI"
+  time    String // hora de inicio "HH:MM"
+  label   String? // opcional, ej. "Turno mañana"
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+  @@map("route_schedules")
 }
 
 model RouteStop {
