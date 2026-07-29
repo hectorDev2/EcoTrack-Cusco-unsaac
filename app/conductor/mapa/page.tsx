@@ -6,6 +6,7 @@ import { calculateRoute, nearestForwardPointIndex } from '@/lib/routing';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import DriverRouteSwitcher from '@/components/driver-route-switcher';
 import { type DriverRoute, type DriverRouteStop, SHIFT_LABELS, useSelectedDriverRoute } from '@/lib/driver-routes';
+import { useRouteLive } from '@/lib/live';
 
 type RouteStop = DriverRouteStop;
 type GpsStatus = 'idle' | 'active' | 'error';
@@ -78,6 +79,11 @@ export default function DriverMap() {
 
   const { selectedRoute: activeRoute, selectRoute } = useSelectedDriverRoute(routes);
 
+  // Stream en vivo (SSE): posición del camión de la demo + paradas completadas,
+  // empujado por el servidor. Reemplaza al polling para mover el camión fluido
+  // y en sincronía con las otras vistas (admin, ciudadano).
+  const live = useRouteLive(activeRoute?.id, activeRoute?.status === 'IN_PROGRESS');
+
   useEffect(() => {
     activeRouteIdRef.current = activeRoute?.id ?? null;
   }, [activeRoute]);
@@ -143,8 +149,15 @@ export default function DriverMap() {
   // (demo o GPS real) — busca SOLO hacia adelante desde el índice anterior
   // para no confundirse con un tramo anterior en una calle que se cruza
   // consigo misma.
-  const currentTruckLat = demoRunning ? activeRoute?.currentLocation?.latitude : driverMarker?.lat;
-  const currentTruckLng = demoRunning ? activeRoute?.currentLocation?.longitude : driverMarker?.lng;
+  // Posición del camión de demo: primero la del stream en vivo (SSE), y como
+  // respaldo la última guardada (currentLocation) por si el SSE aún no conectó.
+  const demoTruck: { lat: number; lng: number } | null = live.position
+    ? { lat: live.position.lat, lng: live.position.lng }
+    : activeRoute?.currentLocation
+      ? { lat: activeRoute.currentLocation.latitude, lng: activeRoute.currentLocation.longitude }
+      : null;
+  const currentTruckLat = demoRunning ? demoTruck?.lat : driverMarker?.lat;
+  const currentTruckLng = demoRunning ? demoTruck?.lng : driverMarker?.lng;
   useEffect(() => {
     if (!routePath || currentTruckLat == null || currentTruckLng == null) return;
     setTraveledIndex((prev) =>
@@ -266,8 +279,8 @@ export default function DriverMap() {
 
   // Posición actual del camión (demo o GPS real), para saber hasta dónde ya
   // recorrió el trayecto y pintar ese tramo como rastro discontinuo.
-  const truckPos = demoRunning && activeRoute?.currentLocation
-    ? { lng: activeRoute.currentLocation.longitude, lat: activeRoute.currentLocation.latitude }
+  const truckPos = demoRunning && demoTruck
+    ? { lng: demoTruck.lng, lat: demoTruck.lat }
     : driverMarker
       ? { lng: driverMarker.lng, lat: driverMarker.lat }
       : null;
@@ -300,29 +313,34 @@ export default function DriverMap() {
           .slice()
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((s) => {
+            // Una parada está completada si lo dice el backend O si el stream en
+            // vivo ya avisó el check (llega antes que el próximo refresco).
+            const completed = s.status === 'COMPLETED' || live.completedStopIds.has(s.id);
             let color = STOP_ORDERED;
             if (s.status === 'PENDING') color = STOP_PENDING;
-            if (s.status === 'COMPLETED') color = STOP_COMPLETED;
+            if (completed) color = STOP_COMPLETED;
             return {
               id: s.id,
               lng: s.pickupPoint.longitude,
               lat: s.pickupPoint.latitude,
               color,
-              icon: s.status === 'COMPLETED' ? 'check_circle' : 'location_on',
+              icon: completed ? 'check_circle' : 'location_on',
               label: `${s.pickupPoint.name} (#${s.orderIndex + 1})`,
               description: s.pickupPoint.address,
             };
           })
       : []),
-    ...(demoRunning && activeRoute?.currentLocation
+    ...(demoRunning && demoTruck
       ? [{
           id: '__driver__',
-          lat: activeRoute.currentLocation.latitude,
-          lng: activeRoute.currentLocation.longitude,
+          lat: demoTruck.lat,
+          lng: demoTruck.lng,
           color: '#f59e0b',
           icon: 'local_shipping' as const,
           label: '🎬 Camión (demo)',
-          moveDurationMs: ROUTE_POLL_MS - 500,
+          // El SSE empuja ~1 posición por segundo; la animación se desliza en
+          // ese lapso en vez de saltar (antes se ataba al poll de 4s).
+          moveDurationMs: 1100,
           pathCoords: routePath?.coords,
         }]
       : driverMarker

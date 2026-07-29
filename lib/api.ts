@@ -39,7 +39,12 @@ async function request<T>(
   let response: Response;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    // 20s: Turso remoto (us-east-1) con el adapter libSQL de Prisma puede
+    // generar muchas queries individuales para relaciones anidadas. Las
+    // consultas de /routes/my están optimizadas con batching manual en el
+    // backend (5 queries en vez de ~40), así que la respuesta debería
+    // llegar en <5s. El timeout de 20s es solo red de seguridad.
+    const timeout = setTimeout(() => controller.abort(), 20000);
     response = await fetch(`${API_URL}${path}`, {
       method,
       headers,

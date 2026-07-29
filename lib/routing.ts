@@ -111,20 +111,40 @@ export function nearestPointIndex(
   return bestIndex;
 }
 
+function haversineMetersLL(a: { lng: number; lat: number }, b: { lng: number; lat: number }): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
 /**
  * Índice del punto de `coordinates` más cercano a `target`, buscando SOLO
- * desde `fromIndex` en adelante — para marcar el tramo ya recorrido por el
- * camión sin que una calle que se cruza consigo misma lo haga "retroceder"
- * a un tramo anterior.
+ * desde `fromIndex` en adelante y dentro de una ventana de `maxAdvanceMeters`
+ * — para marcar el tramo ya recorrido por el camión sin que una calle que se
+ * cruza consigo misma lo haga "saltar" a un tramo mucho más adelante donde la
+ * ruta vuelve a pasar cerca (ni "retroceder" a uno anterior).
  */
 export function nearestForwardPointIndex(
   coordinates: [number, number][],
   target: { lng: number; lat: number },
   fromIndex: number,
+  maxAdvanceMeters = 400,
 ): number {
   let bestIndex = fromIndex;
   let bestDist = Infinity;
+  let traveled = 0;
   for (let i = fromIndex; i < coordinates.length; i++) {
+    if (i > fromIndex) {
+      const [plng, plat] = coordinates[i - 1];
+      const [clng, clat] = coordinates[i];
+      traveled += haversineMetersLL({ lng: plng, lat: plat }, { lng: clng, lat: clat });
+      if (traveled > maxAdvanceMeters) break;
+    }
     const [lng, lat] = coordinates[i];
     const d = (lng - target.lng) ** 2 + (lat - target.lat) ** 2;
     if (d < bestDist) {

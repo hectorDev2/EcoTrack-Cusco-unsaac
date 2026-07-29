@@ -9,6 +9,7 @@ import type { PickupPoint, Incident, CollectionSchedule } from '@/lib/types';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { calculateRoute, formatDuration, nearestForwardPointIndex } from '@/lib/routing';
 import type { ActiveRoute } from '@/lib/types';
+import { useRouteLive } from '@/lib/live';
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
 const MAX_PICKUP_MARKERS = 4;
@@ -165,6 +166,16 @@ export default function MapaPage() {
     refetchInterval: TRUCK_POLL_MS,
   });
 
+  // Stream en vivo (SSE) del camión en curso — el mismo que ven el conductor y
+  // el admin, así el vecino lo mira moverse en simultáneo. Para la demo hay un
+  // solo camión activo; se sigue esa ruta.
+  const liveRouteId = activeRoutes.find((r) => r.status === 'IN_PROGRESS')?.id;
+  const live = useRouteLive(liveRouteId, !!liveRouteId);
+  const liveTruckFor = (routeId: string): { lat: number; lng: number } | null =>
+    routeId === liveRouteId && live.position
+      ? { lat: live.position.lat, lng: live.position.lng }
+      : null;
+
   // Trayecto (calles reales) de cada ruta en curso, calculado una sola vez
   // por ruta — se usa para separar el tramo recorrido del que falta, sin
   // recalcular OSRM en cada poll.
@@ -197,12 +208,17 @@ export default function MapaPage() {
       const next = { ...prev };
       let changed = false;
       for (const route of activeRoutes) {
-        if (route.status !== 'IN_PROGRESS' || !route.currentLocation) continue;
+        if (route.status !== 'IN_PROGRESS') continue;
+        const liveTruck = liveTruckFor(route.id);
+        const truck = liveTruck
+          ? { longitude: liveTruck.lng, latitude: liveTruck.lat }
+          : route.currentLocation;
+        if (!truck) continue;
         const path = routePaths[route.id];
         if (!path) continue;
         const idx = nearestForwardPointIndex(
           path.coords,
-          { lng: route.currentLocation.longitude, lat: route.currentLocation.latitude },
+          { lng: truck.longitude, lat: truck.latitude },
           prev[route.id] ?? 0,
         );
         if (idx !== prev[route.id]) {
@@ -212,7 +228,8 @@ export default function MapaPage() {
       }
       return changed ? next : prev;
     });
-  }, [activeRoutes, routePaths]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- live.position mueve el rastro en vivo
+  }, [activeRoutes, routePaths, live.position]);
 
   // Tramo recorrido (rastro discontinuo) + tramo restante (sólido) de cada
   // ruta en curso, y markers de las paradas propias de cada ruta.
@@ -220,19 +237,25 @@ export default function MapaPage() {
   const truckStopMarkers: MapMarker[] = [];
   const truckMarkers: MapMarker[] = [];
   for (const route of activeRoutes) {
-    if (route.status !== 'IN_PROGRESS' || !route.currentLocation) continue;
+    if (route.status !== 'IN_PROGRESS') continue;
+    const liveTruck = liveTruckFor(route.id);
+    const truck = liveTruck
+      ? { longitude: liveTruck.lng, latitude: liveTruck.lat }
+      : route.currentLocation;
+    if (!truck) continue;
     const sorted = route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
     const path = routePaths[route.id];
 
     truckMarkers.push({
       id: `truck-${route.id}`,
-      lng: route.currentLocation.longitude,
-      lat: route.currentLocation.latitude,
+      lng: truck.longitude,
+      lat: truck.latitude,
       color: '#C62828',
       icon: 'local_shipping' as const,
       label: `${route.name ?? route.zone.name} · ${route.zone.name}`,
       description: 'Camión en ruta',
-      moveDurationMs: TRUCK_POLL_MS - 500,
+      // Con SSE llega ~1 posición/seg; se desliza en ese lapso (respaldo: poll).
+      moveDurationMs: liveTruck ? 1100 : TRUCK_POLL_MS - 500,
       pathCoords: path?.coords,
     });
 
@@ -258,7 +281,7 @@ export default function MapaPage() {
     }
 
     sorted.forEach((s) => {
-      const completed = s.status === 'COMPLETED';
+      const completed = s.status === 'COMPLETED' || live.completedStopIds.has(s.id);
       truckStopMarkers.push({
         id: `route-stop-${s.id}`,
         lng: s.pickupPoint.longitude,
