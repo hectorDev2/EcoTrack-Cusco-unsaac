@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
@@ -43,8 +44,12 @@ export class IncidentsController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  findAll(@Query('status') status?: string) {
-    return this.incidentsService.findAll(status);
+  findAll(
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.incidentsService.findAll(status, page ? Number(page) : 1, limit ? Number(limit) : 10);
   }
 
   @ApiOperation({ summary: 'Get incident by ID' })
@@ -62,5 +67,14 @@ export class IncidentsController {
   @Roles('ADMIN')
   update(@Param('id') id: string, @Body() dto: UpdateIncidentDto) {
     return this.incidentsService.update(id, dto);
+  }
+
+  @ApiOperation({ summary: 'Delete incident (admin)' })
+  @ApiBearerAuth()
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  remove(@Param('id') id: string) {
+    return this.incidentsService.remove(id);
   }
 }

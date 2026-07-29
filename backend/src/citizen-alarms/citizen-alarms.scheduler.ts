@@ -90,7 +90,11 @@ export class CitizenAlarmsScheduler {
 
       if (alarm.user.phone) {
         const message = `🚛 Eco Track Wanchaq: tu camión recolector pasará por "${alarm.pickupPoint.name}" en aprox. ${alarm.notifyBeforeMinutes} min (hora estimada ${alarm.pickupPoint.scheduledTime}).`;
-        await this.notifications.sendWhatsapp(alarm.user.phone, message);
+        await this.notifications.sendWhatsapp(alarm.user.phone, message, {
+          userId: alarm.userId,
+          referenceId: alarm.id,
+          referenceType: 'citizen_alarm',
+        });
       } else {
         this.logger.debug(
           `Alarma ${alarm.id}: usuario sin teléfono registrado, no se envió WhatsApp.`,

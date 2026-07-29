@@ -166,3 +166,18 @@ export interface ApiError {
   statusCode: number;
   error?: string;
 }
+
+export interface NotificationLog {
+  id: string;
+  userId: string | null;
+  type: string;
+  channel: string;
+  recipient: string;
+  status: 'SENT' | 'FAILED' | 'DELIVERED';
+  message: string;
+  referenceId: string | null;
+  referenceType: string | null;
+  error: string | null;
+  sentAt: string;
+  user?: { id: string; fullName: string; email: string } | null;
+}

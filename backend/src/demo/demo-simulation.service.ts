@@ -356,7 +356,11 @@ export class DemoSimulationService {
     for (const alarm of alarms) {
       if (!alarm.user.phone) continue;
       const message = `🎬 [DEMO] Eco Track Wanchaq: el camión (simulado) acaba de pasar por "${alarm.pickupPoint.name}".`;
-      await this.notifications.sendWhatsapp(alarm.user.phone, message);
+      await this.notifications.sendWhatsapp(alarm.user.phone, message, {
+        userId: alarm.userId,
+        referenceId: alarm.id,
+        referenceType: 'demo',
+      });
     }
   }
 

@@ -77,4 +77,9 @@ export class IncidentsService {
       include: incidentInclude,
     });
   }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prisma.incident.delete({ where: { id } });
+  }
 }
