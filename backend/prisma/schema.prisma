@@ -23,6 +23,7 @@ model User {
   incidents Incident[]
   citizenAlarms CitizenAlarm[]
   vehicles  Vehicle[]
+  notificationLogs NotificationLog[]
 
   @@map("users")
 }
@@ -299,4 +300,25 @@ model CitizenAlarm {
   @@index([routeId])
   @@index([pickupPointId])
   @@map("citizen_alarms")
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  type      String   // whatsapp | browser | email
+  channel   String   // twilio | browser | pending
+  recipient String   // número de teléfono, email o "browser"
+  status    String   @default("SENT") // SENT | FAILED | DELIVERED
+  message   String
+  referenceId String? @map("reference_id") // ID de la entidad que originó la notif (alarma, incidencia, etc.)
+  referenceType String? @map("reference_type") // citizen_alarm | demo | system
+  error     String?
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([referenceType])
+  @@index([sentAt])
+  @@map("notification_logs")
 }

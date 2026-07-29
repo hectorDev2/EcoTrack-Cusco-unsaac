@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { DevNav } from "./dev-nav";
@@ -17,7 +17,18 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   other: {
     "theme-color": "#154212",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "apple-mobile-web-app-title": "Eco Track",
+    "format-detection": "telephone=no",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#154212",
 };
 
 export default function RootLayout({
@@ -42,6 +53,8 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon.svg" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <Providers>
           <DevNav />
           {children}

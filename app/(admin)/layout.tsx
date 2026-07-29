@@ -15,6 +15,7 @@ const navItems = [
   { href: '/analisis', icon: 'bar_chart', label: 'Analíticas' },
   { href: '/usuarios', icon: 'group', label: 'Usuarios' },
   { href: '/admin-residuos', icon: 'delete', label: 'Residuos' },
+  { href: '/notificaciones', icon: 'notifications', label: 'Notificaciones' },
   { href: '/configuracion', icon: 'settings', label: 'Configuración' },
 ];
 
