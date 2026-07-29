@@ -39,3 +39,6 @@ next-env.d.ts
 # backend local database
 **/prisma/dev.db
 **/prisma/dev.db-journal
+
+# backups generados por scripts de mantenimiento (geocode)
+**/prisma/geocode-backup*.json
