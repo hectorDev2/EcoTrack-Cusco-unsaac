@@ -3,11 +3,22 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
+import { RouteScheduleDto } from './dto/route-schedule.dto';
 import { DemoStateService } from '../demo/demo-state.service';
+
+// Orden natural de los turnos a lo largo del día — usado para ordenar las
+// rutas de un conductor por hora en vez de por fecha de creación.
+const SHIFT_ORDER: Record<string, number> = {
+  MANANA: 0,
+  TARDE: 1,
+  NOCHE: 2,
+  DOMINICAL: 3,
+};
 
 const routeInclude = {
   zone: { select: { id: true, name: true } },
@@ -26,7 +37,21 @@ const routeInclude = {
     },
     orderBy: { orderIndex: 'asc' as const },
   },
+  schedules: {
+    orderBy: { time: 'asc' as const },
+  },
 };
+
+/** `RouteSchedule.days` se guarda como CSV ("MON,WED,FRI") — se expone como array. */
+function mapSchedule(s: { id: string; days: string; time: string; label: string | null }) {
+  return { id: s.id, days: s.days.split(','), time: s.time, label: s.label };
+}
+
+function mapRouteSchedules<T extends { schedules: { id: string; days: string; time: string; label: string | null }[] }>(
+  route: T,
+) {
+  return { ...route, schedules: route.schedules.map(mapSchedule) };
+}
 
 @Injectable()
 export class RoutesService {
@@ -41,11 +66,43 @@ export class RoutesService {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Incluye la última posición conocida de cada ruta en curso — la usa el
+    // admin en /vehiculos para poder ver el camión (real o de demo) en el
+    // mapa sin tener que loguearse como el conductor.
+    const latestByRoute = await this.latestLocationsByRoute(
+      routes.filter((r) => r.status === 'IN_PROGRESS').map((r) => r.id),
+    );
+
     return routes.map((r) => ({
-      ...r,
+      ...mapRouteSchedules(r),
       totalStops: r.stops.length,
       completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
+      currentLocation: latestByRoute.get(r.id) ?? null,
     }));
+  }
+
+  /** Última posición reportada (real o simulada) de cada ruta en `routeIds`. */
+  private async latestLocationsByRoute(routeIds: string[]) {
+    const latestByRoute = new Map<
+      string,
+      { latitude: number; longitude: number; recordedAt: Date }
+    >();
+    if (routeIds.length === 0) return latestByRoute;
+
+    const locations = await this.prisma.routeLocation.findMany({
+      where: { routeId: { in: routeIds } },
+      orderBy: { recordedAt: 'desc' },
+    });
+    for (const loc of locations) {
+      if (!latestByRoute.has(loc.routeId)) {
+        latestByRoute.set(loc.routeId, {
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          recordedAt: loc.recordedAt,
+        });
+      }
+    }
+    return latestByRoute;
   }
 
   async findOne(id: string) {
@@ -57,11 +114,25 @@ export class RoutesService {
     if (!route) throw new NotFoundException('Ruta no encontrada');
 
     return {
-      ...route,
+      ...mapRouteSchedules(route),
       totalStops: route.stops.length,
       completedStops: route.stops.filter((s) => s.status === 'COMPLETED')
         .length,
     };
+  }
+
+  private async replaceSchedules(routeId: string, schedules: RouteScheduleDto[]) {
+    await this.prisma.routeSchedule.deleteMany({ where: { routeId } });
+    if (schedules.length > 0) {
+      await this.prisma.routeSchedule.createMany({
+        data: schedules.map((s) => ({
+          routeId,
+          days: s.days.join(','),
+          time: s.time,
+          label: s.label ?? null,
+        })),
+      });
+    }
   }
 
   async create(dto: CreateRouteDto) {
@@ -86,6 +157,10 @@ export class RoutesService {
           orderIndex: i,
         })),
       });
+    }
+
+    if (dto.schedules && dto.schedules.length > 0) {
+      await this.replaceSchedules(route.id, dto.schedules);
     }
 
     return this.findOne(route.id);
@@ -119,6 +194,10 @@ export class RoutesService {
           })),
         });
       }
+    }
+
+    if (dto.schedules !== undefined) {
+      await this.replaceSchedules(id, dto.schedules);
     }
 
     return this.findOne(id);
@@ -228,43 +307,39 @@ export class RoutesService {
   }
 
   async findByDriver(driverId: string) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Un conductor puede tener varias rutas (zonas/turnos) a su cargo. Se
+    // incluyen tambien las completadas HOY para que pueda ver el check de
+    // "ya lo hice" en vez de que desaparezcan de la lista apenas terminan.
     const routes = await this.prisma.route.findMany({
-      where: { driverId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+      where: {
+        driverId,
+        OR: [
+          { status: { in: ['PENDING', 'IN_PROGRESS'] } },
+          { status: 'COMPLETED', finishedAt: { gte: startOfToday } },
+        ],
+      },
       include: routeInclude,
       orderBy: { createdAt: 'desc' },
     });
 
-    const inProgressIds = routes
-      .filter((r) => r.status === 'IN_PROGRESS')
-      .map((r) => r.id);
+    const latestByRoute = await this.latestLocationsByRoute(
+      routes.filter((r) => r.status === 'IN_PROGRESS').map((r) => r.id),
+    );
 
-    const latestByRoute = new Map<
-      string,
-      { latitude: number; longitude: number; recordedAt: Date }
-    >();
-
-    if (inProgressIds.length > 0) {
-      const locations = await this.prisma.routeLocation.findMany({
-        where: { routeId: { in: inProgressIds } },
-        orderBy: { recordedAt: 'desc' },
-      });
-      for (const loc of locations) {
-        if (!latestByRoute.has(loc.routeId)) {
-          latestByRoute.set(loc.routeId, {
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-            recordedAt: loc.recordedAt,
-          });
-        }
-      }
-    }
-
-    return routes.map((r) => ({
-      ...r,
-      totalStops: r.stops.length,
-      completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
-      currentLocation: latestByRoute.get(r.id) ?? null,
-    }));
+    return routes
+      .map((r) => ({
+        ...mapRouteSchedules(r),
+        totalStops: r.stops.length,
+        completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
+        currentLocation: latestByRoute.get(r.id) ?? null,
+      }))
+      // Ordenadas por hora del turno (mañana → tarde → noche → dominical),
+      // no por fecha de creación, para que el conductor las vea en el orden
+      // en que efectivamente le tocan durante el día.
+      .sort((a, b) => (SHIFT_ORDER[a.shift ?? ''] ?? 99) - (SHIFT_ORDER[b.shift ?? ''] ?? 99));
   }
 
   async startRoute(id: string, driverId: string) {
@@ -404,5 +479,49 @@ export class RoutesService {
         createdAt: r.createdAt,
       })),
     };
+  }
+
+  async remove(id: string) {
+    const route = await this.prisma.route.findUnique({
+      where: { id },
+      include: { stops: { include: { collection: true } } },
+    });
+
+    if (!route) throw new NotFoundException('Ruta no encontrada');
+    if (route.status === 'IN_PROGRESS') {
+      throw new ConflictException('No se puede eliminar una ruta en curso');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Eliminar colecciones asociadas a las paradas
+      const collectionIds = route.stops
+        .map((s) => s.collection?.id)
+        .filter(Boolean) as string[];
+      if (collectionIds.length > 0) {
+        await tx.collection.deleteMany({
+          where: { id: { in: collectionIds } },
+        });
+      }
+
+      // Eliminar paradas
+      await tx.routeStop.deleteMany({ where: { routeId: id } });
+
+      // Eliminar ubicaciones GPS
+      await tx.routeLocation.deleteMany({ where: { routeId: id } });
+
+      // Eliminar alarmas ciudadanas (tienen routeId no-nullable)
+      await tx.citizenAlarm.deleteMany({ where: { routeId: id } });
+
+      // Desvincular incidencias (routeId es nullable)
+      await tx.incident.updateMany({
+        where: { routeId: id },
+        data: { routeId: null },
+      });
+
+      // Eliminar la ruta
+      await tx.route.delete({ where: { id } });
+    });
+
+    return { success: true, id };
   }
 }

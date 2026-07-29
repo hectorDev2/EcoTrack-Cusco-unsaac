@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, ApiClientError } from '@/lib/api';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import { calculateRoute, optimizeWaypointOrder, formatDistance, formatDuration, type RouteWaypoint } from '@/lib/routing';
+import RouteScheduleEditor, { type RouteScheduleInput } from '@/components/route-schedule-editor';
 import type { Zone, User, PickupPoint } from '@/lib/types';
 
 interface RouteStop {
@@ -11,6 +12,21 @@ interface RouteStop {
   orderIndex: number;
   status: string;
   pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
+}
+
+interface RouteSchedule {
+  id: string;
+  days: string[];
+  time: string;
+  label: string | null;
+}
+
+const DAY_SHORT_LABELS: Record<string, string> = {
+  MON: 'Lun', TUE: 'Mar', WED: 'Mié', THU: 'Jue', FRI: 'Vie', SAT: 'Sáb', SUN: 'Dom',
+};
+
+function formatScheduleDays(days: string[]): string {
+  return days.map((d) => DAY_SHORT_LABELS[d] ?? d).join('/');
 }
 
 interface AdminRoute {
@@ -27,6 +43,7 @@ interface AdminRoute {
   finishedAt: string | null;
   createdAt: string;
   stops: RouteStop[];
+  schedules: RouteSchedule[];
 }
 
 const statusStyles: Record<string, string> = {
@@ -54,6 +71,7 @@ export default function AdminRutasPage() {
 
   const [formZone, setFormZone] = useState('');
   const [formDriver, setFormDriver] = useState('');
+  const [formSchedules, setFormSchedules] = useState<RouteScheduleInput[]>([]);
   const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
   const [calculatedRoute, setCalculatedRoute] = useState<MapRoute[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
@@ -62,6 +80,16 @@ export default function AdminRutasPage() {
   const [optimizeError, setOptimizeError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deletingRoute, setDeletingRoute] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [disableAutoFit, setDisableAutoFit] = useState(false);
+
+  useEffect(() => {
+    if (disableAutoFit) {
+      const id = setTimeout(() => setDisableAutoFit(false), 0);
+      return () => clearTimeout(id);
+    }
+  }, [disableAutoFit]);
   const [detalleRuta, setDetalleRuta] = useState<AdminRoute | null>(null);
   const calcTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -84,6 +112,7 @@ export default function AdminRutasPage() {
   const [editName, setEditName] = useState('');
   const [editShift, setEditShift] = useState('');
   const [editFrequency, setEditFrequency] = useState('');
+  const [editSchedules, setEditSchedules] = useState<RouteScheduleInput[]>([]);
   const [editLoading, setEditLoading] = useState(false);
   const [existingQuery, setExistingQuery] = useState('');
 
@@ -161,6 +190,7 @@ export default function AdminRutasPage() {
       color: s.status === 'COMPLETED' ? '#2E7D32' : '#154212',
       icon: (s.status === 'COMPLETED' ? 'check_circle' : 'location_on') as string,
       label: s.pickupPoint.address || s.pickupPoint.name,
+      hideLabel: true,
     })));
 
     if (wps.length < 2) {
@@ -278,6 +308,7 @@ export default function AdminRutasPage() {
         latitude: newPointModal.lat,
         longitude: newPointModal.lng,
       });
+      setDisableAutoFit(true);
       setPickupPoints((prev) => [...prev, pp]);
       addWaypoint(pp.longitude, pp.latitude, pp.name, pp.id);
       setNewPointModal(null);
@@ -301,10 +332,12 @@ export default function AdminRutasPage() {
         zoneId: formZone,
         driverId: formDriver,
         pickupPointIds: pickupIds,
+        schedules: formSchedules.filter((s) => s.days.length > 0),
       });
       setShowForm(false);
       setFormZone('');
       setFormDriver('');
+      setFormSchedules([]);
       setWaypoints([]);
       setCalculatedRoute([]);
       setRouteInfo(null);
@@ -321,6 +354,7 @@ export default function AdminRutasPage() {
     setEditName(route.name ?? '');
     setEditShift(route.shift ?? '');
     setEditFrequency(route.frequency ?? '');
+    setEditSchedules(route.schedules.map((s) => ({ days: s.days, time: s.time, label: s.label ?? undefined })));
     setFormDriver(route.driver?.id ?? '');
     setFormZone(route.zone.id);
     setCalculatedRoute([]);
@@ -354,6 +388,7 @@ export default function AdminRutasPage() {
         frequency: editFrequency || undefined,
         driverId: formDriver || undefined,
         pickupPointIds: waypoints.filter((w) => w.pickupPointId).map((w) => w.pickupPointId!),
+        schedules: editSchedules.filter((s) => s.days.length > 0),
       });
       setEditRoute(null);
       setWaypoints([]);
@@ -364,6 +399,23 @@ export default function AdminRutasPage() {
       setError(err instanceof ApiClientError ? err.message : 'Error al guardar cambios');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!deletingRoute) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await api.delete(`/routes/${deletingRoute}`);
+      setDeletingRoute(null);
+      fetchData();
+    } catch (err) {
+      setDeleteError(err instanceof ApiClientError ? err.message : 'Error al eliminar ruta');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -391,7 +443,7 @@ export default function AdminRutasPage() {
           <p className="text-[14px] text-on-surface-variant">Traza la ruta sobre el mapa — click en puntos existentes o en cualquier lugar para crear uno nuevo</p>
         </div>
         <button
-          onClick={() => { setShowForm(!showForm); setWaypoints([]); setCalculatedRoute([]); setRouteInfo(null); setOptimizeError(null); setExistingQuery(''); }}
+          onClick={() => { setShowForm(!showForm); setWaypoints([]); setCalculatedRoute([]); setRouteInfo(null); setOptimizeError(null); setExistingQuery(''); setFormSchedules([]); }}
           className="bg-primary text-on-primary px-5 py-3 rounded-xl text-[12px] font-bold flex items-center gap-2 active:opacity-80 transition-opacity"
         >
           <span className="material-symbols-outlined text-[18px]">{showForm ? 'close' : 'add'}</span>
@@ -440,6 +492,7 @@ export default function AdminRutasPage() {
                   }}
                   onMarkerDragEnd={moveWaypointPosition}
                   onMapClick={handleMapClick}
+                  disableAutoFit={disableAutoFit}
                 />
               ) : (
                 <div className="w-full h-full bg-surface-container-highest flex items-center justify-center">
@@ -484,6 +537,8 @@ export default function AdminRutasPage() {
                   {drivers.map((d) => (<option key={d.id} value={d.id}>{d.fullName}</option>))}
                 </select>
               </div>
+
+              <RouteScheduleEditor schedules={formSchedules} onChange={setFormSchedules} />
 
               <div>
                 <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-2">Agregar punto existente</label>
@@ -713,6 +768,15 @@ export default function AdminRutasPage() {
                       {statusLabels[r.status] ?? r.status}
                     </span>
                   </div>
+                  {r.schedules.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {r.schedules.map((s) => (
+                        <span key={s.id} className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
+                          {formatScheduleDays(s.days)} {s.time}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Progress bar */}
@@ -779,6 +843,13 @@ export default function AdminRutasPage() {
                       >
                         <span className="material-symbols-outlined text-[14px]">edit</span>
                         Editar
+                      </button>
+                      <button
+                        onClick={() => setDeletingRoute(r.id)}
+                        className="text-[11px] font-bold text-status-alert flex items-center gap-1 hover:text-error hover:underline px-2 py-1"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                        Eliminar
                       </button>
                     </div>
                   </div>
@@ -878,6 +949,7 @@ export default function AdminRutasPage() {
                   }}
                   onMarkerDragEnd={moveWaypointPosition}
                   onMapClick={handleMapClick}
+                  disableAutoFit={disableAutoFit}
                 />
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/90 backdrop-blur px-4 py-2 rounded-full shadow-lg text-[12px] font-bold text-on-surface whitespace-nowrap">
                   Click en el mapa para crear un punto nuevo, o en un marcador para quitarlo de la ruta
@@ -934,6 +1006,8 @@ export default function AdminRutasPage() {
                     </select>
                   </div>
                 </div>
+
+                <RouteScheduleEditor schedules={editSchedules} onChange={setEditSchedules} />
 
                 <div>
                   <label className="text-[11px] font-bold tracking-[0.08em] text-on-surface-variant uppercase block mb-1.5">Conductor</label>
@@ -1054,6 +1128,53 @@ export default function AdminRutasPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmación de eliminación */}
+      {deletingRoute && (
+        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center p-4" onClick={() => !deleteLoading && (setDeletingRoute(null), setDeleteError(null))}>
+          <div className="bg-surface-card rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-outline-variant/20" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-error-container/30 flex items-center justify-center">
+                <span className="material-symbols-outlined text-error text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>delete</span>
+              </div>
+              <div>
+                <h3 className="text-[16px] font-bold text-on-surface">Eliminar ruta</h3>
+                <p className="text-[12px] text-on-surface-variant">Esta acción no se puede deshacer</p>
+              </div>
+            </div>
+            <p className="text-[13px] text-on-surface mb-6">
+              ¿Estás seguro de eliminar esta ruta? Se eliminarán también sus paradas, ubicaciones y alarmas asociadas. Las incidencias vinculadas quedarán sin ruta asignada.
+            </p>
+            {deleteError && (
+              <div className="mb-4 bg-status-alert/10 border border-status-alert/30 rounded-xl p-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-status-alert text-sm">error</span>
+                <p className="text-status-alert text-[12px] font-bold">{deleteError}</p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeletingRoute(null); setDeleteError(null); }}
+                disabled={deleteLoading}
+                className="flex-1 py-2.5 rounded-xl border border-outline-variant text-[13px] font-bold text-on-surface-variant disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="flex-1 bg-error text-on-primary py-2.5 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-md transition-shadow"
+              >
+                {deleteLoading ? (
+                  <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                )}
+                Eliminar
+              </button>
             </div>
           </div>
         </div>

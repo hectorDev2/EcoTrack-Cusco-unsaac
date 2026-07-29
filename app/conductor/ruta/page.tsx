@@ -4,37 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiClientError } from '@/lib/api';
 import DemoControls from '@/components/demo-controls';
+import DriverRouteSwitcher from '@/components/driver-route-switcher';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import { calculateRoute, nearestForwardPointIndex } from '@/lib/routing';
-
-interface RouteStop {
-  id: string;
-  orderIndex: number;
-  status: string;
-  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
-}
-
-interface DriverRoute {
-  id: string;
-  name: string | null;
-  shift: string | null;
-  frequency: string | null;
-  zone: { id: string; name: string };
-  status: string;
-  totalStops: number;
-  completedStops: number;
-  stops: RouteStop[];
-  currentLocation: { latitude: number; longitude: number; recordedAt: string } | null;
-}
+import { type DriverRoute, SHIFT_LABELS, useSelectedDriverRoute } from '@/lib/driver-routes';
 
 const STOP_ORDERED = '#154212';
 const STOP_PENDING = '#2563eb';
 const STOP_COMPLETED = '#16a34a';
 const ROUTE_POLL_MS = 4_000; // refrescar paradas + posición de demo, igual que en /conductor/mapa
-
-const SHIFT_LABELS: Record<string, string> = {
-  MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
-};
 
 const wasteTypes = [
   { id: 'org', name: 'Orgánico', category: 'ORGANIC' },
@@ -47,7 +25,6 @@ export default function DriverRutaPage() {
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [completeModal, setCompleteModal] = useState<{ stopId: string; stopName: string } | null>(null);
   const [selectedWasteType, setSelectedWasteType] = useState('');
   const [notes, setNotes] = useState('');
@@ -71,7 +48,7 @@ export default function DriverRutaPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS') ?? routes.find((r) => r.status === 'PENDING');
+  const { selectedRoute: activeRoute, selectRoute } = useSelectedDriverRoute(routes);
   const pendingStops = activeRoute?.stops.filter((s) => s.status === 'PENDING') ?? [];
   const completedStops = activeRoute?.stops.filter((s) => s.status === 'COMPLETED') ?? [];
 
@@ -183,19 +160,6 @@ export default function DriverRutaPage() {
     }
   };
 
-  const handleCompleteRoute = async () => {
-    if (!activeRoute) return;
-    setActionLoading('complete');
-    try {
-      await api.patch(`/routes/${activeRoute.id}/complete`);
-      fetchData();
-    } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : 'Error al completar ruta');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -284,6 +248,8 @@ export default function DriverRutaPage() {
         </div>
       )}
 
+      <DriverRouteSwitcher routes={routes} selectedId={activeRoute.id} onSelect={selectRoute} />
+
       <div className="bg-surface-card rounded-2xl p-5 border border-outline-variant/20">
         <div className="flex items-center justify-between mb-1">
           <div>
@@ -296,12 +262,17 @@ export default function DriverRutaPage() {
               {activeRoute.frequency ? ` · ${activeRoute.frequency}` : ''}
             </p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
+          <span className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 ${
             activeRoute.status === 'IN_PROGRESS'
               ? 'bg-primary/10 text-primary'
-              : 'bg-surface-container-high text-on-surface-variant'
+              : activeRoute.status === 'COMPLETED'
+                ? 'bg-waste-organic/10 text-waste-organic'
+                : 'bg-surface-container-high text-on-surface-variant'
           }`}>
-            {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : 'Pendiente'}
+            {activeRoute.status === 'COMPLETED' && (
+              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+            )}
+            {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : activeRoute.status === 'COMPLETED' ? 'Completada' : 'Pendiente'}
           </span>
         </div>
         <p className="text-[13px] text-on-surface-variant">
@@ -330,6 +301,16 @@ export default function DriverRutaPage() {
           <button onClick={() => router.push('/conductor/dashboard')} className="text-primary text-[13px] font-bold hover:underline">
             Ir a Mi Ruta
           </button>
+        </div>
+      )}
+
+      {activeRoute.status === 'COMPLETED' && (
+        <div className="bg-waste-organic/10 border border-waste-organic/20 rounded-xl p-6 text-center">
+          <span className="material-symbols-outlined text-4xl text-waste-organic mb-2">check_circle</span>
+          <h3 className="text-[18px] font-bold text-on-surface mb-1">Ya completaste esta zona hoy</h3>
+          <p className="text-on-surface-variant text-sm">
+            {activeRoute.completedStops}/{activeRoute.totalStops} paradas registradas
+          </p>
         </div>
       )}
 
@@ -382,21 +363,9 @@ export default function DriverRutaPage() {
 
           {pendingStops.length === 0 && completedStops.length > 0 && (
             <div className="bg-waste-organic/10 border border-waste-organic/20 rounded-xl p-6 text-center">
-              <span className="material-symbols-outlined text-4xl text-waste-organic mb-2">check_circle</span>
-              <h3 className="text-[18px] font-bold text-on-surface mb-1">¡Ruta completada!</h3>
-              <p className="text-on-surface-variant text-sm mb-4">Todas las paradas han sido registradas.</p>
-              <button
-                onClick={handleCompleteRoute}
-                disabled={actionLoading === 'complete'}
-                className="bg-primary text-on-primary px-6 py-3 rounded-xl text-[13px] font-bold flex items-center gap-2 mx-auto active:opacity-80 transition-opacity disabled:opacity-50"
-              >
-                {actionLoading === 'complete' ? (
-                  <div className="w-4 h-4 border-2 border-on-primary border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <span className="material-symbols-outlined text-[18px]">flag</span>
-                )}
-                Finalizar Ruta
-              </button>
+              <span className="material-symbols-outlined text-4xl text-waste-organic mb-2 animate-pulse">check_circle</span>
+              <h3 className="text-[18px] font-bold text-on-surface mb-1">¡Última parada registrada!</h3>
+              <p className="text-on-surface-variant text-sm">Cerrando la ruta automáticamente...</p>
             </div>
           )}
         </>
