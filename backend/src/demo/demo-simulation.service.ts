@@ -12,9 +12,8 @@ import { StartDemoDto } from './dto/start-demo.dto';
 import {
   fetchRoadPath,
   buildLinearPath,
-  resamplePath,
-  distanceToResampledIndex,
-  pathTotalDistance,
+  densifyPath,
+  pathIndexAtDistance,
   haversineMeters,
   type LatLng,
 } from './osrm.util';
@@ -29,7 +28,7 @@ interface SimulationState {
   path: LatLng[];
   // índice de path -> paradas reales. Es un array y no un único StopMarker
   // porque dos paradas cercanas entre sí pueden redondear al MISMO índice
-  // al remuestrear (ver distanceToResampledIndex) — con un Map<number,
+  // al densificar (ver pathIndexAtDistance) — con un Map<number,
   // StopMarker> la segunda pisaba a la primera y esa parada nunca se
   // marcaba COMPLETED ni notificaba, dando la sensación de que el camión
   // "saltaba" de una parada a otra bastante más adelante en el orden.
@@ -39,11 +38,16 @@ interface SimulationState {
 }
 
 const DEFAULT_DURATION_SECONDS = 150;
-// Tick corto (más puntos por el mismo trayecto) para que el paso entre dos
-// posiciones consecutivas sea pequeño y la recta que el frontend traza entre
-// ellas se pegue a la calle real, en vez de cortar camino por una cuadra
-// entera si el paso fuera muy largo.
-const DEFAULT_TICK_SECONDS = 2;
+// Paso (m) entre puntos del trayecto simulado. Corto para que cada posición
+// caiga sobre la calle real giro por giro y la recta que el frontend traza
+// entre dos posiciones no corte una esquina. Los vértices de OSRM (las
+// esquinas) se preservan siempre; esto solo subdivide los tramos rectos.
+const STEP_METERS = 20;
+// Cota del tick para no saturar de escrituras ni ir demasiado lento cuando
+// la ruta es muy larga o muy corta (el tick se calcula para que la demo dure
+// ~durationSeconds sobre la cantidad de puntos densificados).
+const MIN_TICK_SECONDS = 0.8;
+const MAX_TICK_SECONDS = 3;
 
 @Injectable()
 export class DemoSimulationService {
@@ -112,15 +116,23 @@ export class DemoSimulationService {
       }
     }
 
-    const tickSeconds = dto.tickSeconds ?? DEFAULT_TICK_SECONDS;
     const durationSeconds = dto.durationSeconds ?? DEFAULT_DURATION_SECONDS;
-    const totalTicks = Math.max(2, Math.floor(durationSeconds / tickSeconds));
 
-    const path = resamplePath(rawPath, totalTicks);
-    const totalDistance = pathTotalDistance(rawPath);
+    // Trayecto denso que preserva TODAS las esquinas (ver densifyPath). La
+    // cantidad de puntos la fija la longitud real de la ruta, no un número
+    // fijo, así que una ruta con muchos giros nunca se ve "recortada".
+    const path = densifyPath(rawPath, STEP_METERS);
+
+    // El tick se ajusta para que recorrer todos los puntos tome ~durationSeconds,
+    // acotado para no saturar de escrituras ni arrastrarse. Si el DTO lo fija a
+    // mano, ese valor manda.
+    const tickSeconds =
+      dto.tickSeconds ??
+      Math.min(MAX_TICK_SECONDS, Math.max(MIN_TICK_SECONDS, durationSeconds / path.length));
+
     const stopByPathIndex = new Map<number, StopMarker[]>();
     route.stops.forEach((s, i) => {
-      const newIndex = distanceToResampledIndex(waypointDistances[i], totalDistance, path.length);
+      const newIndex = pathIndexAtDistance(path, waypointDistances[i]);
       const marker: StopMarker = { stopId: s.id, pickupPointId: s.pickupPoint.id };
       const existing = stopByPathIndex.get(newIndex);
       if (existing) existing.push(marker);

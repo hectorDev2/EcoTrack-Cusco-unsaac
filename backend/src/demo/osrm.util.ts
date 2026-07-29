@@ -4,8 +4,8 @@ const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
 // y como `fetchRoadPath` solo se llama UNA VEZ al iniciar la demo (sin
 // reintento), eso significaba caer a `buildLinearPath` (líneas rectas
 // atravesando manzanas) para TODA la simulación, no solo para el dibujo.
-const FETCH_TIMEOUT_MS = 6000;
-const FETCH_RETRIES = 1;
+const FETCH_TIMEOUT_MS = 10000;
+const FETCH_RETRIES = 2;
 
 export interface LatLng {
   lat: number;
@@ -53,6 +53,11 @@ export async function fetchRoadPath(waypoints: LatLng[]): Promise<RoadPath | nul
       };
     } catch {
       if (attempt === FETCH_RETRIES) return null;
+      // Backoff corto antes de reintentar — el OSRM público (rate-limited)
+      // suele responder al segundo intento. Caer al trazado lineal significa
+      // líneas rectas atravesando manzanas durante TODA la demo, así que vale
+      // la pena insistir un poco más antes de rendirse.
+      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
     } finally {
       clearTimeout(timeout);
     }
@@ -94,32 +99,30 @@ function cumulativeDistances(path: LatLng[]): number[] {
 }
 
 /**
- * Remuestrea `path` a exactamente `count` puntos, espaciados de forma
- * uniforme por DISTANCIA recorrida (no por índice). OSRM devuelve muchos
- * puntos en curvas y muy pocos en tramos rectos largos — remuestrear por
- * índice deja esos tramos rectos "estirados" entre dos ticks consecutivos,
- * lo que se ve como el camión "volando" de golpe por una cuadra entera en
- * vez de avanzar a velocidad constante.
+ * Densifica `path` a un paso de ~`stepMeters` PRESERVANDO todos sus vértices
+ * originales (las esquinas de OSRM) y subdividiendo solo los tramos rectos
+ * más largos que ese paso. Esta es la diferencia clave con remuestrear a N
+ * puntos equiespaciados: al remuestrear por distancia, un vértice de esquina
+ * que cae ENTRE dos muestras se descarta, y la recta que une esas dos
+ * muestras corta la esquina (atraviesa la manzana). Aquí ningún vértice se
+ * pierde, así que el trazado sigue la calle giro por giro, y además queda
+ * suficientemente denso para que el camión avance a velocidad pareja.
  */
-export function resamplePath(path: LatLng[], count: number): LatLng[] {
-  if (path.length === 0 || count <= 0) return [];
-  if (path.length === 1 || count === 1) return [path[0]];
+export function densifyPath(path: LatLng[], stepMeters: number): LatLng[] {
+  if (path.length < 2 || stepMeters <= 0) return [...path];
 
-  const cum = cumulativeDistances(path);
-  const total = cum[cum.length - 1];
-  if (total === 0) return [path[0]];
-
-  const result: LatLng[] = [];
-  let seg = 0;
-  for (let i = 0; i < count; i++) {
-    const targetDist = (i / (count - 1)) * total;
-    while (seg < path.length - 2 && cum[seg + 1] < targetDist) seg++;
-    const segStart = cum[seg];
-    const segEnd = cum[seg + 1];
-    const t = segEnd > segStart ? (targetDist - segStart) / (segEnd - segStart) : 0;
-    const a = path[seg];
-    const b = path[seg + 1];
-    result.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+  const result: LatLng[] = [path[0]];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const segDist = haversineMeters(a, b);
+    const steps = Math.max(1, Math.ceil(segDist / stepMeters));
+    // j llega hasta `steps` (t=1) → el vértice original `b` (la esquina)
+    // siempre queda incluido exactamente, nunca interpolado ni salteado.
+    for (let j = 1; j <= steps; j++) {
+      const t = j / steps;
+      result.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+    }
   }
   return result;
 }
@@ -131,18 +134,20 @@ export function pathTotalDistance(path: LatLng[]): number {
 }
 
 /**
- * Traduce una distancia recorrida (m) desde el inicio del trayecto original
- * al índice equivalente dentro del path YA remuestreado por `resamplePath`.
- * Se usa una distancia conocida de antemano (no una búsqueda de "punto más
- * cercano") para que cada parada quede mapeada EXACTAMENTE en el orden en
- * que se visita — buscar el punto más cercano en una cuadrícula de calles
- * puede confundirse con otro tramo cercano y desordenar las paradas.
+ * Índice dentro de `path` (ya densificado) cuya distancia acumulada desde el
+ * inicio alcanza `distanceFromStart`. Se usa una distancia conocida de
+ * antemano (no una búsqueda de "punto más cercano") para que cada parada
+ * quede mapeada EXACTAMENTE en el orden en que se visita — buscar el punto
+ * más cercano en una cuadrícula de calles puede confundirse con otro tramo
+ * cercano y desordenar las paradas. El recorrido es monótono, así que
+ * preserva el orden de las paradas.
  */
-export function distanceToResampledIndex(
-  distanceFromStart: number,
-  totalDistance: number,
-  newLength: number,
-): number {
-  if (newLength <= 1 || totalDistance <= 0) return 0;
-  return Math.round((distanceFromStart / totalDistance) * (newLength - 1));
+export function pathIndexAtDistance(path: LatLng[], distanceFromStart: number): number {
+  if (path.length <= 1 || distanceFromStart <= 0) return 0;
+  let acc = 0;
+  for (let i = 1; i < path.length; i++) {
+    acc += haversineMeters(path[i - 1], path[i]);
+    if (acc >= distanceFromStart) return i;
+  }
+  return path.length - 1;
 }
