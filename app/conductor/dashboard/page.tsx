@@ -5,31 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiClientError } from '@/lib/api';
 import DemoControls from '@/components/demo-controls';
-
-interface RouteStop {
-  id: string;
-  orderIndex: number;
-  status: string;
-  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
-}
-
-interface DriverRoute {
-  id: string;
-  name: string | null;
-  shift: string | null;
-  frequency: string | null;
-  zone: { id: string; name: string };
-  status: string;
-  totalStops: number;
-  completedStops: number;
-  startedAt: string | null;
-  createdAt: string;
-  stops: RouteStop[];
-}
-
-const SHIFT_LABELS: Record<string, string> = {
-  MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
-};
+import DriverRouteSwitcher from '@/components/driver-route-switcher';
+import { type DriverRoute, SHIFT_LABELS, useSelectedDriverRoute } from '@/lib/driver-routes';
 
 interface Schedule {
   id: string;
@@ -74,9 +51,7 @@ export default function DriverDashboard() {
 
   useEffect(() => { fetchRoutes(); }, []);
 
-  const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS');
-  const pendingRoute = routes.find((r) => r.status === 'PENDING');
-  const todayRoute = activeRoute ?? pendingRoute;
+  const { selectedRoute: todayRoute, selectRoute } = useSelectedDriverRoute(routes);
   const routeZoneId = todayRoute?.zone?.id;
   const userZoneId = user?.zones?.[0]?.id;
   const schedulesZoneId = routeZoneId || userZoneId;
@@ -135,12 +110,14 @@ export default function DriverDashboard() {
         </div>
       )}
 
+      <DriverRouteSwitcher routes={routes} selectedId={todayRoute?.id} onSelect={selectRoute} />
+
       {todayRoute && (
         <>
           <div className="bg-surface-card rounded-2xl p-6 border border-outline-variant/20">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-[12px] tracking-[0.08em] font-bold text-on-surface-variant uppercase mb-1">Ruta activa</p>
+                <p className="text-[12px] tracking-[0.08em] font-bold text-on-surface-variant uppercase mb-1">Ruta seleccionada</p>
                 <h2 className="text-[24px] font-extrabold text-primary">
                   {todayRoute.name ?? todayRoute.zone?.name ?? 'Sin zona'}
                 </h2>
@@ -150,12 +127,17 @@ export default function DriverDashboard() {
                   {todayRoute.frequency ? ` · ${todayRoute.frequency}` : ''}
                 </p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
+              <span className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 ${
                 todayRoute.status === 'IN_PROGRESS'
                   ? 'bg-primary/10 text-primary'
-                  : 'bg-surface-container-high text-on-surface-variant'
+                  : todayRoute.status === 'COMPLETED'
+                    ? 'bg-waste-organic/10 text-waste-organic'
+                    : 'bg-surface-container-high text-on-surface-variant'
               }`}>
-                {todayRoute.status === 'IN_PROGRESS' ? 'En curso' : 'Pendiente'}
+                {todayRoute.status === 'COMPLETED' && (
+                  <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                )}
+                {todayRoute.status === 'IN_PROGRESS' ? 'En curso' : todayRoute.status === 'COMPLETED' ? 'Completada' : 'Pendiente'}
               </span>
             </div>
 
@@ -215,31 +197,43 @@ export default function DriverDashboard() {
             )}
           </div>
 
-          <div className="space-y-3">
-            <h3 className="text-[14px] font-bold text-on-surface-variant uppercase tracking-[0.08em]">
-              Paradas {todayRoute.status === 'IN_PROGRESS' ? 'pendientes' : 'programadas'}
-            </h3>
-            {todayRoute.stops
-              .filter((s) => todayRoute.status === 'PENDING' || s.status === 'PENDING')
-              .slice(0, 3)
-              .map((stop) => (
-                <div key={stop.id} className="bg-surface-card rounded-xl p-4 border border-outline-variant/20 flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant flex-shrink-0">
-                    <span className="material-symbols-outlined text-sm">location_on</span>
+          {todayRoute.status !== 'COMPLETED' && (
+            <div className="space-y-3">
+              <h3 className="text-[14px] font-bold text-on-surface-variant uppercase tracking-[0.08em]">
+                Paradas {todayRoute.status === 'IN_PROGRESS' ? 'pendientes' : 'programadas'}
+              </h3>
+              {todayRoute.stops
+                .filter((s) => todayRoute.status === 'PENDING' || s.status === 'PENDING')
+                .slice(0, 3)
+                .map((stop) => (
+                  <div key={stop.id} className="bg-surface-card rounded-xl p-4 border border-outline-variant/20 flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant flex-shrink-0">
+                      <span className="material-symbols-outlined text-sm">location_on</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-bold text-on-surface truncate">{stop.pickupPoint.name}</p>
+                      <p className="text-[12px] text-on-surface-variant truncate">{stop.pickupPoint.address}</p>
+                    </div>
+                    <span className="text-[11px] font-bold text-outline">#{stop.orderIndex + 1}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-bold text-on-surface truncate">{stop.pickupPoint.name}</p>
-                    <p className="text-[12px] text-on-surface-variant truncate">{stop.pickupPoint.address}</p>
-                  </div>
-                  <span className="text-[11px] font-bold text-outline">#{stop.orderIndex + 1}</span>
-                </div>
-              ))}
-            {todayRoute.stops.filter((s) => todayRoute.status === 'PENDING' || s.status === 'PENDING').length === 0 && (
-              <p className="text-center text-on-surface-variant text-sm py-4">
-                {todayRoute.status === 'IN_PROGRESS' ? '¡Todas las paradas completadas!' : 'Sin paradas programadas'}
+                ))}
+              {todayRoute.stops.filter((s) => todayRoute.status === 'PENDING' || s.status === 'PENDING').length === 0 && (
+                <p className="text-center text-on-surface-variant text-sm py-4">
+                  {todayRoute.status === 'IN_PROGRESS' ? '¡Todas las paradas completadas!' : 'Sin paradas programadas'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {todayRoute.status === 'COMPLETED' && (
+            <div className="bg-waste-organic/10 border border-waste-organic/20 rounded-xl p-6 text-center">
+              <span className="material-symbols-outlined text-4xl text-waste-organic mb-2">check_circle</span>
+              <p className="text-on-surface font-bold text-sm">Ya completaste esta zona hoy</p>
+              <p className="text-on-surface-variant text-[12px] mt-1">
+                {todayRoute.completedStops}/{todayRoute.totalStops} paradas registradas
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {todayRoute.status === 'IN_PROGRESS' && todayRoute.completedStops > 0 && (
             <div>
@@ -294,11 +288,6 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      {routes.length > 1 && (
-        <div className="bg-surface-container-low rounded-xl p-4">
-          <p className="text-[11px] font-bold text-on-surface-variant">Tienes {routes.length} rutas asignadas</p>
-        </div>
-      )}
     </div>
   );
 }

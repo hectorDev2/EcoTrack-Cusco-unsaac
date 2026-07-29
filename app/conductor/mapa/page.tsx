@@ -4,34 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { calculateRoute, nearestForwardPointIndex } from '@/lib/routing';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
+import DriverRouteSwitcher from '@/components/driver-route-switcher';
+import { type DriverRoute, type DriverRouteStop, SHIFT_LABELS, useSelectedDriverRoute } from '@/lib/driver-routes';
 
-interface RouteStop {
-  id: string;
-  orderIndex: number;
-  status: string;
-  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
-}
-
-interface DriverRoute {
-  id: string;
-  name: string | null;
-  shift: string | null;
-  frequency: string | null;
-  zone: { id: string; name: string };
-  status: string;
-  totalStops: number;
-  completedStops: number;
-  startedAt: string | null;
-  createdAt: string;
-  stops: RouteStop[];
-  currentLocation: { latitude: number; longitude: number; recordedAt: string } | null;
-}
-
+type RouteStop = DriverRouteStop;
 type GpsStatus = 'idle' | 'active' | 'error';
-
-const SHIFT_LABELS: Record<string, string> = {
-  MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
-};
 
 const STOP_ORDERED = '#154212';
 const STOP_PENDING = '#2563eb';
@@ -99,8 +76,7 @@ export default function DriverMap() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS')
-    ?? routes.find((r) => r.status === 'PENDING');
+  const { selectedRoute: activeRoute, selectRoute } = useSelectedDriverRoute(routes);
 
   useEffect(() => {
     activeRouteIdRef.current = activeRoute?.id ?? null;
@@ -391,6 +367,8 @@ export default function DriverMap() {
 
   return (
     <div className="space-y-4">
+      <DriverRouteSwitcher routes={routes} selectedId={activeRoute.id} onSelect={selectRoute} />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-[20px] font-extrabold text-primary">
@@ -432,9 +410,11 @@ export default function DriverMap() {
           <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
             activeRoute.status === 'IN_PROGRESS'
               ? 'bg-primary/10 text-primary'
-              : 'bg-surface-container-high text-on-surface-variant'
+              : activeRoute.status === 'COMPLETED'
+                ? 'bg-waste-organic/10 text-waste-organic'
+                : 'bg-surface-container-high text-on-surface-variant'
           }`}>
-            {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : 'Pendiente'}
+            {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : activeRoute.status === 'COMPLETED' ? 'Completada' : 'Pendiente'}
           </span>
         </div>
       </div>
