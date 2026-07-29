@@ -17,7 +17,8 @@ export class DemoController {
   @Public()
   @Get('enabled')
   enabled() {
-    return { enabled: process.env.DEMO_MODE_ENABLED === 'true' };
+    // Activado por defecto — se desactiva explícitamente con "false" en .env
+    return { enabled: process.env.DEMO_MODE_ENABLED !== 'false' };
   }
 
   @ApiOperation({ summary: 'Iniciar simulación de movimiento de una ruta (conductor)' })
