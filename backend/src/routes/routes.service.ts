@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
+import { DemoStateService } from '../demo/demo-state.service';
 
 const routeInclude = {
   zone: { select: { id: true, name: true } },
@@ -29,7 +30,10 @@ const routeInclude = {
 
 @Injectable()
 export class RoutesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private demoState: DemoStateService,
+  ) {}
 
   async findAll() {
     const routes = await this.prisma.route.findMany({
@@ -224,20 +228,43 @@ export class RoutesService {
   }
 
   async findByDriver(driverId: string) {
-    return this.prisma.route
-      .findMany({
-        where: { driverId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
-        include: routeInclude,
-        orderBy: { createdAt: 'desc' },
-      })
-      .then((routes) =>
-        routes.map((r) => ({
-          ...r,
-          totalStops: r.stops.length,
-          completedStops: r.stops.filter((s) => s.status === 'COMPLETED')
-            .length,
-        })),
-      );
+    const routes = await this.prisma.route.findMany({
+      where: { driverId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+      include: routeInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const inProgressIds = routes
+      .filter((r) => r.status === 'IN_PROGRESS')
+      .map((r) => r.id);
+
+    const latestByRoute = new Map<
+      string,
+      { latitude: number; longitude: number; recordedAt: Date }
+    >();
+
+    if (inProgressIds.length > 0) {
+      const locations = await this.prisma.routeLocation.findMany({
+        where: { routeId: { in: inProgressIds } },
+        orderBy: { recordedAt: 'desc' },
+      });
+      for (const loc of locations) {
+        if (!latestByRoute.has(loc.routeId)) {
+          latestByRoute.set(loc.routeId, {
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            recordedAt: loc.recordedAt,
+          });
+        }
+      }
+    }
+
+    return routes.map((r) => ({
+      ...r,
+      totalStops: r.stops.length,
+      completedStops: r.stops.filter((s) => s.status === 'COMPLETED').length,
+      currentLocation: latestByRoute.get(r.id) ?? null,
+    }));
   }
 
   async startRoute(id: string, driverId: string) {
@@ -302,6 +329,12 @@ export class RoutesService {
     if (!route) throw new NotFoundException('Ruta no encontrada');
     if (route.driverId !== driverId) {
       throw new ForbiddenException('Esta ruta no te pertenece');
+    }
+    // Mientras corre una demo para esta ruta, se ignora el GPS real para que
+    // no interfiera con el trayecto simulado (p. ej. si el conductor deja
+    // abierta la pestaña del mapa con su ubicación real activa).
+    if (this.demoState.isActive(routeId)) {
+      return { ignored: true, reason: 'Demo en curso para esta ruta' };
     }
     return this.prisma.routeLocation.create({
       data: { routeId, latitude, longitude },

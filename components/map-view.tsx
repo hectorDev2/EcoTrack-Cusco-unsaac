@@ -15,6 +15,23 @@ export interface MapMarker {
   hideLabel?: boolean;
   /** Si es true, el usuario puede arrastrar el marker a otra posición */
   draggable?: boolean;
+  /**
+   * Si se pasa, un cambio de posición de este marker (mismo id, mismo
+   * color/icon/label) se anima suavemente durante esta cantidad de ms en vez
+   * de saltar instantáneamente — pensado para el camión en /mapa, cuyo
+   * polling es mucho más lento que el movimiento real/simulado.
+   */
+  moveDurationMs?: number;
+  /**
+   * Polyline de calles reales (la misma que se dibuja como MapRoute) sobre
+   * la que este marker debe desplazarse mientras se anima, en vez de ir en
+   * línea recta entre la posición anterior y la nueva. La búsqueda del punto
+   * más cercano se hace SOLO hacia adelante desde el último índice conocido
+   * (ver TrackedMarker.pathIndex en syncMarkers) — nunca sobre todo el
+   * trayecto — para no confundirse con un tramo anterior en una calle que se
+   * cruza consigo misma.
+   */
+  pathCoords?: [number, number][];
 }
 
 export interface MapRoute {
@@ -22,6 +39,8 @@ export interface MapRoute {
   points: [number, number][];
   color?: string;
   label?: string;
+  /** Dibuja el tramo como línea discontinua — pensado para marcar el trayecto ya recorrido por el camión, distinto del que falta por recorrer. */
+  dashed?: boolean;
 }
 
 interface MapViewProps {
@@ -92,7 +111,13 @@ function createMarkerEl(marker: MapMarker, darkMode: boolean, onClick?: () => vo
 // y disparar ambos a la vez se sentía como "dos saltos" de cámara.
 function fitTriggerCategory(id: string): string | null {
   if (id === 'origin') return null;
-  if (id.startsWith('truck-')) return 'truck';
+  // El camión (real o de demo) y las paradas de su ruta aparecen/desaparecen
+  // de forma asíncrona (polling, datos de la demo llegando de a poco) — si
+  // contaran para el fitBounds genérico, cada aparición recentraría el mapa
+  // e incluiría el marker "origin" (Mi Ubicación) en el encuadre, dando la
+  // sensación de que el mapa "manda a mi ubicación" solo. Se excluyen.
+  if (id.startsWith('truck-')) return null;
+  if (id.startsWith('route-stop-')) return null;
   if (id.startsWith('inc-')) return 'inc';
   return 'pickup';
 }
@@ -110,20 +135,192 @@ function fitTriggerKey(markers: MapMarker[]): string {
     .join('|');
 }
 
+interface TrackedMarker {
+  id: string;
+  marker: maplibregl.Marker;
+  color?: string;
+  icon?: string;
+  label?: string;
+  hideLabel?: boolean;
+  draggable?: boolean;
+  /** Generación de la animación en curso, para poder cancelar una anterior */
+  animGen: number;
+  /**
+   * Índice sobre `pathCoords` donde quedó este marker la última vez —
+   * arranca en null (sin restricción) y solo avanza hacia adelante. Al
+   * buscar el punto más cercano a la SIGUIENTE posición reportada, la
+   * búsqueda se limita a partir de este índice para no confundirse con un
+   * tramo anterior de una calle que se cruza consigo misma.
+   */
+  pathIndex: number | null;
+  /** Marca de tiempo de la última animación — ver `animateMarkerTo`. */
+  lastMoveAt: number | null;
+}
+
+function haversineMeters(a: [number, number], b: [number, number]): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLng = toRad(b[0] - a[0]);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+/** Punto de `path` más cercano a `target`, buscando SOLO desde `fromIndex` en adelante. */
+function nearestForwardIndex(path: [number, number][], target: [number, number], fromIndex: number): number {
+  let best = fromIndex;
+  let bestDist = Infinity;
+  for (let i = fromIndex; i < path.length; i++) {
+    const d = haversineMeters(path[i], target);
+    if (d < bestDist) { bestDist = d; best = i; }
+  }
+  return best;
+}
+
+function pathSegmentDistances(points: [number, number][]): number[] {
+  const cum = [0];
+  for (let i = 1; i < points.length; i++) {
+    cum.push(cum[i - 1] + haversineMeters(points[i - 1], points[i]));
+  }
+  return cum;
+}
+
+function pointAtDistance(points: [number, number][], cum: number[], dist: number): [number, number] {
+  const total = cum[cum.length - 1];
+  if (total <= 0) return points[0];
+  const target = Math.max(0, Math.min(dist, total));
+  let seg = 0;
+  while (seg < cum.length - 2 && cum[seg + 1] < target) seg++;
+  const segStart = cum[seg];
+  const segEnd = cum[seg + 1];
+  const t = segEnd > segStart ? (target - segStart) / (segEnd - segStart) : 0;
+  const a = points[seg];
+  const b = points[seg + 1];
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+}
+
+/**
+ * Anima un marker existente hacia una nueva posición en vez de saltar.
+ * Si se pasa `pathCoords`, camina SOBRE esa polyline (la misma calle
+ * dibujada) en vez de ir en línea recta — pero el punto de entrada al
+ * trayecto se busca solo hacia adelante desde `tm.pathIndex` (nunca en todo
+ * el trayecto desde cero), así una calle que se cruza consigo misma no hace
+ * que el camión retroceda a un tramo anterior. Si se pasa `map` (el marker
+ * seguido por la cámara), el centro del mapa se mueve en el MISMO frame que
+ * el marker.
+ */
+function animateMarkerTo(
+  tm: TrackedMarker,
+  toLng: number,
+  toLat: number,
+  durationMs: number,
+  map?: maplibregl.Map,
+  pathCoords?: [number, number][],
+) {
+  const gen = ++tm.animGen;
+  const start = performance.now();
+  const from = tm.marker.getLngLat();
+  const fromLng = from.lng;
+  const fromLat = from.lat;
+  // Zoom objetivo fijado una sola vez al arrancar la animación — si se
+  // recalculara en cada frame con map.getZoom(), pelearía contra cualquier
+  // zoom manual del usuario mientras el camión está en movimiento.
+  const targetZoom = map ? Math.max(map.getZoom(), 16) : undefined;
+
+  // La duración NO puede ser fija: el backend avanza una distancia real
+  // constante por tick, pero si un poll tarda más o se saltó un tick, la
+  // distancia a recorrer en ESTA actualización puede ser mayor. Usar la
+  // duración fija de todos modos comprime esa distancia extra en el mismo
+  // tiempo → velocidad disparada, exactamente lo que se ve como "vuela".
+  // En cambio, se usa el tiempo real transcurrido desde el último
+  // movimiento (acotado entre 0.5x y 3x el intervalo nominal) para que la
+  // velocidad percibida se mantenga aproximadamente constante.
+  const now0 = performance.now();
+  const elapsed = tm.lastMoveAt != null ? now0 - tm.lastMoveAt : durationMs;
+  const actualDuration = Math.min(Math.max(elapsed, durationMs * 0.5), durationMs * 3);
+  tm.lastMoveAt = now0;
+
+  let segment: { points: [number, number][]; cum: number[] } | null = null;
+  if (pathCoords && pathCoords.length >= 2) {
+    const startIndex = tm.pathIndex ?? nearestForwardIndex(pathCoords, [fromLng, fromLat], 0);
+    const endIndex = nearestForwardIndex(pathCoords, [toLng, toLat], startIndex);
+    if (endIndex > startIndex) {
+      const points: [number, number][] = [[fromLng, fromLat], ...pathCoords.slice(startIndex + 1, endIndex + 1)];
+      points[points.length - 1] = [toLng, toLat];
+      segment = { points, cum: pathSegmentDistances(points) };
+    }
+    tm.pathIndex = endIndex;
+  }
+
+  function step(now: number) {
+    if (tm.animGen !== gen) return; // una animación más nueva la reemplazó
+    const t = Math.min((now - start) / actualDuration, 1);
+    let lng: number, lat: number;
+    if (segment) {
+      [lng, lat] = pointAtDistance(segment.points, segment.cum, segment.cum[segment.cum.length - 1] * t);
+    } else {
+      lng = fromLng + (toLng - fromLng) * t;
+      lat = fromLat + (toLat - fromLat) * t;
+    }
+    tm.marker.setLngLat([lng, lat]);
+    if (map) map.jumpTo({ center: [lng, lat], zoom: targetZoom });
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 function syncMarkers(
   map: maplibregl.Map,
   markers: MapMarker[],
-  markersRef: React.MutableRefObject<maplibregl.Marker[]>,
+  markersRef: React.MutableRefObject<TrackedMarker[]>,
   darkMode: boolean,
   onMarkerClick?: (marker: MapMarker) => void,
   followMarkerId?: string,
   shouldFit = true,
   onMarkerDragEnd?: (markerId: string, lng: number, lat: number) => void,
 ) {
-  markersRef.current.forEach((m) => m.remove());
-  markersRef.current = [];
+  const existing = new Map(markersRef.current.map((tm) => [tm.id, tm]));
+  const next: TrackedMarker[] = [];
 
   markers.forEach((marker) => {
+    const prev = existing.get(marker.id);
+    const sameContent =
+      prev &&
+      prev.color === marker.color &&
+      prev.icon === marker.icon &&
+      prev.label === marker.label &&
+      prev.hideLabel === marker.hideLabel &&
+      prev.draggable === marker.draggable;
+
+    if (prev && sameContent) {
+      // Solo cambió la posición: mover el marker existente (animado si se
+      // pidió) en vez de recrearlo — evita el "salto"/parpadeo visual.
+      existing.delete(marker.id);
+      const { lng, lat } = prev.marker.getLngLat();
+      if (marker.moveDurationMs && (lng !== marker.lng || lat !== marker.lat)) {
+        animateMarkerTo(
+          prev,
+          marker.lng,
+          marker.lat,
+          marker.moveDurationMs,
+          marker.id === followMarkerId ? map : undefined,
+          marker.pathCoords,
+        );
+      } else {
+        prev.marker.setLngLat([marker.lng, marker.lat]);
+      }
+      next.push(prev);
+      return;
+    }
+
+    // Contenido nuevo o distinto (color/icon/label cambiaron): (re)crear.
+    if (prev) {
+      existing.delete(marker.id);
+      prev.marker.remove();
+    }
+
     const m = new maplibregl.Marker({
       element: createMarkerEl(marker, darkMode, onMarkerClick ? () => onMarkerClick(marker) : undefined),
       draggable: marker.draggable ?? false,
@@ -136,22 +333,42 @@ function syncMarkers(
         onMarkerDragEnd(marker.id, lngLat.lng, lngLat.lat);
       });
     }
-    markersRef.current.push(m);
+    next.push({
+      id: marker.id,
+      marker: m,
+      color: marker.color,
+      icon: marker.icon,
+      label: marker.label,
+      hideLabel: marker.hideLabel,
+      draggable: marker.draggable,
+      animGen: 0,
+      pathIndex: null,
+      lastMoveAt: null,
+    });
   });
+
+  // Lo que quedó en `existing` ya no está en el nuevo set de markers.
+  existing.forEach((tm) => tm.marker.remove());
+  markersRef.current = next;
 
   // Si hay un marker seguido, no hacer fitBounds — el efecto followMarkerId lo maneja
   if (followMarkerId) return;
   // Solo recentrar cuando cambia el conjunto de markers (no en cada acción del usuario)
   if (!shouldFit) return;
 
-  if (markers.length >= 2) {
-    const bounds = markers.reduce(
+  // Mismo filtro que fitTriggerCategory: el encuadre genérico no debe incluir
+  // "origin" (Mi Ubicación) ni el camión/paradas de la ruta — si se colara acá
+  // aunque el trigger lo haya excluido, el mapa igual saltaría a esos puntos.
+  const fitMarkers = markers.filter((m) => fitTriggerCategory(m.id) !== null);
+
+  if (fitMarkers.length >= 2) {
+    const bounds = fitMarkers.reduce(
       (b, m) => b.extend([m.lng, m.lat]),
-      new maplibregl.LngLatBounds([markers[0].lng, markers[0].lat], [markers[0].lng, markers[0].lat]),
+      new maplibregl.LngLatBounds([fitMarkers[0].lng, fitMarkers[0].lat], [fitMarkers[0].lng, fitMarkers[0].lat]),
     );
     map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
-  } else if (markers.length === 1) {
-    map.flyTo({ center: [markers[0].lng, markers[0].lat], zoom: 15 });
+  } else if (fitMarkers.length === 1) {
+    map.flyTo({ center: [fitMarkers[0].lng, fitMarkers[0].lat], zoom: 15 });
   }
 }
 
@@ -176,6 +393,48 @@ function ensureArrowImage(map: maplibregl.Map) {
   map.addImage('route-direction-arrow', { width: size, height: size, data: imageData.data }, { sdf: true });
 }
 
+const M_PER_DEG_LAT = 111320;
+const OVERLAP_OFFSET_METERS = 4;
+
+/**
+ * Cuando la ruta pasa dos veces por la misma calle (p. ej. un camión que
+ * entra a un callejón sin salida y retrocede — ver continue_straight=false
+ * en lib/routing.ts), el segundo paso queda dibujado exactamente encima del
+ * primero y no se distingue en el mapa. Acá detectamos coordenadas repetidas
+ * y desplazamos las repeticiones perpendicularmente al sentido de avance,
+ * para que ambos pasos se vean como dos líneas paralelas en vez de una sola.
+ */
+function offsetOverlappingSegments(points: [number, number][]): [number, number][] {
+  if (points.length < 3) return points;
+
+  const seen = new Map<string, number>();
+  const keyOf = (p: [number, number]) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+
+  return points.map((p, i) => {
+    const key = keyOf(p);
+    const occurrence = seen.get(key) ?? 0;
+    seen.set(key, occurrence + 1);
+    if (occurrence === 0) return p;
+
+    const prev = points[Math.max(i - 1, 0)];
+    const next = points[Math.min(i + 1, points.length - 1)];
+    const latRad = (p[1] * Math.PI) / 180;
+    const mPerDegLng = M_PER_DEG_LAT * Math.cos(latRad) || 1;
+
+    // Tangente local en metros, para obtener la normal perpendicular
+    const dx = (next[0] - prev[0]) * mPerDegLng;
+    const dy = (next[1] - prev[1]) * M_PER_DEG_LAT;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dy / len;
+    const ny = -dx / len;
+
+    return [
+      p[0] + (nx * OVERLAP_OFFSET_METERS) / mPerDegLng,
+      p[1] + (ny * OVERLAP_OFFSET_METERS) / M_PER_DEG_LAT,
+    ] as [number, number];
+  });
+}
+
 function syncRoutes(map: maplibregl.Map, routes: MapRoute[], darkMode: boolean) {
   const existingSources = map.getStyle()?.sources ?? {};
   Object.keys(existingSources).forEach((id) => {
@@ -194,7 +453,7 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[], darkMode: boolean) 
   routes.forEach((route) => {
     const id = `route-${route.id}`;
     const color = route.color ?? '#154212';
-    const coords = route.points.map((p) => [p[0], p[1]] as [number, number]);
+    const coords = offsetOverlappingSegments(route.points.map((p) => [p[0], p[1]] as [number, number]));
 
     map.addSource(id, {
       type: 'geojson',
@@ -210,7 +469,9 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[], darkMode: boolean) 
       type: 'line',
       source: id,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': outlineColor, 'line-width': 10, 'line-opacity': 0.5 },
+      paint: route.dashed
+        ? { 'line-color': outlineColor, 'line-width': 8, 'line-opacity': 0.5, 'line-dasharray': [2, 2] }
+        : { 'line-color': outlineColor, 'line-width': 10, 'line-opacity': 0.5 },
     });
 
     map.addLayer({
@@ -218,28 +479,33 @@ function syncRoutes(map: maplibregl.Map, routes: MapRoute[], darkMode: boolean) 
       type: 'line',
       source: id,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': color, 'line-width': 6, 'line-opacity': 1 },
+      paint: route.dashed
+        ? { 'line-color': color, 'line-width': 5, 'line-opacity': 0.6, 'line-dasharray': [2, 2] }
+        : { 'line-color': color, 'line-width': 6, 'line-opacity': 1 },
     });
 
-    // Directional arrows along the route
-    map.addLayer({
-      id: `${id}-arrows`,
-      type: 'symbol',
-      source: id,
-      layout: {
-        'symbol-placement': 'line',
-        'symbol-spacing': 80,
-        'icon-image': 'route-direction-arrow',
-        'icon-size': 0.75,
-        'icon-rotation-alignment': 'map',
-        'icon-allow-overlap': true,
-        'icon-ignore-placement': true,
-      },
-      paint: {
-        'icon-color': '#ffffff',
-        'icon-opacity': 0.95,
-      },
-    });
+    // Flechas de dirección solo en el tramo por recorrer — en el tramo ya
+    // recorrido (discontinuo) no aportan y compiten visualmente con el rastro.
+    if (!route.dashed) {
+      map.addLayer({
+        id: `${id}-arrows`,
+        type: 'symbol',
+        source: id,
+        layout: {
+          'symbol-placement': 'line',
+          'symbol-spacing': 80,
+          'icon-image': 'route-direction-arrow',
+          'icon-size': 0.75,
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+        paint: {
+          'icon-color': '#ffffff',
+          'icon-opacity': 0.95,
+        },
+      });
+    }
   });
 }
 
@@ -264,7 +530,7 @@ export default function MapView({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [darkMode, setDarkMode] = useState(() => isDarkMode());
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const markersRef = useRef<TrackedMarker[]>([]);
   const loadedRef = useRef(false);
   const pendingMarkers = useRef<MapMarker[]>([]);
   const pendingRoutes = useRef<MapRoute[]>([]);
@@ -364,7 +630,7 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !loadedRef.current) {
-      markersRef.current.forEach((m) => m.remove());
+      markersRef.current.forEach((tm) => tm.marker.remove());
       markersRef.current = [];
       pendingMarkers.current = markers;
       return;
@@ -388,15 +654,22 @@ export default function MapView({
     syncRoutes(map, routes, darkModeRef.current);
   }, [routes]);
 
-  // Seguir un marker específico con animación suave
+  // Salto inicial al empezar a seguir un marker (p. ej. al arrancar la
+  // demo). Los movimientos posteriores del mismo marker seguido los mueve
+  // la cámara en sincronía con animateMarkerTo (ver syncMarkers) — este
+  // efecto NO debe repetirse en cada poll, porque su propio easeTo llegaba
+  // mucho antes que el marker (que tarda varios segundos en deslizarse),
+  // dando la sensación de que el mapa "volaba" a un lugar vacío.
   useEffect(() => {
     if (!followMarkerId) return;
     const map = mapRef.current;
     if (!map || !loadedRef.current) return;
-    const target = markers.find((m) => m.id === followMarkerId);
+    const tm = markersRef.current.find((t) => t.id === followMarkerId);
+    const target = tm ? tm.marker.getLngLat() : markers.find((m) => m.id === followMarkerId);
     if (!target) return;
     map.easeTo({ center: [target.lng, target.lat], zoom: Math.max(map.getZoom(), 16), duration: 800 });
-  }, [followMarkerId, markers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a propósito solo cuando cambia el ID seguido, no en cada poll de `markers`
+  }, [followMarkerId]);
 
   // Fit explícito (p. ej. centrar entre el origen, los vertederos cercanos
   // y la ruta trazada). Se dispara únicamente cuando cambia fitBoundsSignal,

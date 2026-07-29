@@ -7,13 +7,15 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { RoutesService } from '../routes/routes.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { DemoStateService } from './demo-state.service';
 import { StartDemoDto } from './dto/start-demo.dto';
 import {
   fetchRoadPath,
   buildLinearPath,
-  nearestPathIndex,
   resamplePath,
-  mapIndexAfterResample,
+  distanceToResampledIndex,
+  pathTotalDistance,
+  haversineMeters,
   type LatLng,
 } from './osrm.util';
 
@@ -25,13 +27,23 @@ interface StopMarker {
 interface SimulationState {
   intervalId: NodeJS.Timeout;
   path: LatLng[];
-  stopByPathIndex: Map<number, StopMarker>; // índice de path -> parada real
+  // índice de path -> paradas reales. Es un array y no un único StopMarker
+  // porque dos paradas cercanas entre sí pueden redondear al MISMO índice
+  // al remuestrear (ver distanceToResampledIndex) — con un Map<number,
+  // StopMarker> la segunda pisaba a la primera y esa parada nunca se
+  // marcaba COMPLETED ni notificaba, dando la sensación de que el camión
+  // "saltaba" de una parada a otra bastante más adelante en el orden.
+  stopByPathIndex: Map<number, StopMarker[]>;
   notifiedStopIds: Set<string>;
   currentIndex: number;
 }
 
-const DEFAULT_DURATION_SECONDS = 120;
-const DEFAULT_TICK_SECONDS = 3;
+const DEFAULT_DURATION_SECONDS = 150;
+// Tick corto (más puntos por el mismo trayecto) para que el paso entre dos
+// posiciones consecutivas sea pequeño y la recta que el frontend traza entre
+// ellas se pegue a la calle real, en vez de cortar camino por una cuadra
+// entera si el paso fuera muy largo.
+const DEFAULT_TICK_SECONDS = 2;
 
 @Injectable()
 export class DemoSimulationService {
@@ -42,6 +54,7 @@ export class DemoSimulationService {
     private prisma: PrismaService,
     private routesService: RoutesService,
     private notifications: NotificationsService,
+    private demoState: DemoStateService,
   ) {}
 
   async startDemo(routeId: string, driverId: string, dto: StartDemoDto) {
@@ -76,25 +89,42 @@ export class DemoSimulationService {
     }));
 
     const roadPath = await fetchRoadPath(waypoints);
-    const rawPath = roadPath ?? buildLinearPath(waypoints);
+    const rawPath = roadPath?.coordinates ?? buildLinearPath(waypoints);
 
-    // Mapear cada parada real al índice más cercano dentro del trayecto denso.
-    const stopByRawIndex = new Map<number, StopMarker>();
-    route.stops.forEach((s) => {
-      const target: LatLng = { lat: s.pickupPoint.latitude, lng: s.pickupPoint.longitude };
-      const idx = nearestPathIndex(rawPath, target);
-      stopByRawIndex.set(idx, { stopId: s.id, pickupPointId: s.pickupPoint.id });
-    });
+    // Distancia acumulada de cada parada desde el inicio de la ruta, EN EL
+    // ORDEN en que se visitan. Se calcula a partir de las distancias reales
+    // por tramo que ya devuelve OSRM (`legs[].distance`) o, si no hay OSRM,
+    // sumando la distancia en línea recta entre paradas consecutivas — no se
+    // busca "el punto más cercano" del trayecto, porque en una cuadrícula de
+    // calles eso puede confundirse con un tramo distinto y desordenar el
+    // recorrido (una parada "más adelante" podría coincidir por cercanía con
+    // un tramo anterior).
+    const waypointDistances: number[] = [0];
+    if (roadPath) {
+      for (const legDist of roadPath.legDistances) {
+        waypointDistances.push(waypointDistances[waypointDistances.length - 1] + legDist);
+      }
+    } else {
+      for (let i = 1; i < waypoints.length; i++) {
+        waypointDistances.push(
+          waypointDistances[waypointDistances.length - 1] + haversineMeters(waypoints[i - 1], waypoints[i]),
+        );
+      }
+    }
 
     const tickSeconds = dto.tickSeconds ?? DEFAULT_TICK_SECONDS;
     const durationSeconds = dto.durationSeconds ?? DEFAULT_DURATION_SECONDS;
     const totalTicks = Math.max(2, Math.floor(durationSeconds / tickSeconds));
 
     const path = resamplePath(rawPath, totalTicks);
-    const stopByPathIndex = new Map<number, StopMarker>();
-    stopByRawIndex.forEach((marker, rawIndex) => {
-      const newIndex = mapIndexAfterResample(rawIndex, rawPath.length, path.length);
-      stopByPathIndex.set(newIndex, marker);
+    const totalDistance = pathTotalDistance(rawPath);
+    const stopByPathIndex = new Map<number, StopMarker[]>();
+    route.stops.forEach((s, i) => {
+      const newIndex = distanceToResampledIndex(waypointDistances[i], totalDistance, path.length);
+      const marker: StopMarker = { stopId: s.id, pickupPointId: s.pickupPoint.id };
+      const existing = stopByPathIndex.get(newIndex);
+      if (existing) existing.push(marker);
+      else stopByPathIndex.set(newIndex, [marker]);
     });
 
     const intervalId = setInterval(() => {
@@ -110,6 +140,7 @@ export class DemoSimulationService {
       notifiedStopIds: new Set(),
       currentIndex: 0,
     });
+    this.demoState.markActive(routeId);
 
     this.logger.log(
       `Demo iniciada para ruta ${routeId}: ${path.length} puntos, tick=${tickSeconds}s (${roadPath ? 'OSRM' : 'lineal'})`,
@@ -133,14 +164,17 @@ export class DemoSimulationService {
       data: { routeId, latitude: point.lat, longitude: point.lng, simulated: true },
     });
 
-    const stopMarker = state.stopByPathIndex.get(state.currentIndex);
-    if (stopMarker && !state.notifiedStopIds.has(stopMarker.pickupPointId)) {
-      state.notifiedStopIds.add(stopMarker.pickupPointId);
-      await this.prisma.routeStop.update({
-        where: { id: stopMarker.stopId },
-        data: { status: 'COMPLETED' },
-      });
-      await this.notifyAlarms(routeId, stopMarker.pickupPointId);
+    const stopMarkers = state.stopByPathIndex.get(state.currentIndex);
+    if (stopMarkers) {
+      for (const stopMarker of stopMarkers) {
+        if (state.notifiedStopIds.has(stopMarker.pickupPointId)) continue;
+        state.notifiedStopIds.add(stopMarker.pickupPointId);
+        await this.prisma.routeStop.update({
+          where: { id: stopMarker.stopId },
+          data: { status: 'COMPLETED' },
+        });
+        await this.notifyAlarms(routeId, stopMarker.pickupPointId);
+      }
     }
 
     state.currentIndex++;
@@ -174,6 +208,7 @@ export class DemoSimulationService {
       clearInterval(state.intervalId);
       this.simulations.delete(routeId);
     }
+    this.demoState.markInactive(routeId);
   }
 
   getStatus(routeId: string) {

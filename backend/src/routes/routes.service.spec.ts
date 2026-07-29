@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { RoutesService } from './routes.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { DemoStateService } from '../demo/demo-state.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 
@@ -97,6 +98,7 @@ describe('RoutesService', () => {
       providers: [
         RoutesService,
         { provide: PrismaService, useValue: mockPrisma },
+        DemoStateService,
       ],
     }).compile();
 
@@ -468,8 +470,9 @@ describe('RoutesService', () => {
         -71.978,
       );
 
-      expect(result.latitude).toBe(-13.517);
-      expect(result.longitude).toBe(-71.978);
+      expect('ignored' in result).toBe(false);
+      expect((result as typeof location).latitude).toBe(-13.517);
+      expect((result as typeof location).longitude).toBe(-71.978);
       expect(mockPrisma.routeLocation.create).toHaveBeenCalledWith({
         data: { routeId: 'route-1', latitude: -13.517, longitude: -71.978 },
       });

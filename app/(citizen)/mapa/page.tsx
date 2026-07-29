@@ -7,7 +7,7 @@ import { queries } from '@/lib/queries';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
 import type { PickupPoint, Incident, CollectionSchedule } from '@/lib/types';
 import { useGeolocation } from '@/hooks/use-geolocation';
-import { calculateRoute, formatDuration, nearestPointIndex } from '@/lib/routing';
+import { calculateRoute, formatDuration, nearestForwardPointIndex } from '@/lib/routing';
 import type { ActiveRoute } from '@/lib/types';
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
@@ -156,29 +156,19 @@ export default function MapaPage() {
     setOriginIsMyLocation(true);
   };
 
+  // Polling más frecuente que antes (era 15s) para que, combinado con
+  // moveDurationMs abajo, el camión se vea deslizarse en vez de saltar.
+  const TRUCK_POLL_MS = 5000;
+
   const { data: activeRoutes = [] } = useQuery({
     ...queries.routes.active(),
-    refetchInterval: 15000,
+    refetchInterval: TRUCK_POLL_MS,
   });
 
-  const truckMarkers: MapMarker[] = activeRoutes
-    .filter((r) => r.status === 'IN_PROGRESS' && r.currentLocation)
-    .map((r) => ({
-      id: `truck-${r.id}`,
-      lng: r.currentLocation!.longitude,
-      lat: r.currentLocation!.latitude,
-      color: '#C62828',
-      icon: 'local_shipping' as const,
-      label: `${r.name ?? r.zone.name} · ${r.zone.name}`,
-      description: 'Camión en ruta',
-    }));
-
   // Trayecto (calles reales) de cada ruta en curso, calculado una sola vez
-  // por ruta — se usa para "ocultar" el tramo ya recorrido a medida que se
-  // van completando paradas, sin recalcular OSRM en cada poll.
-  const [routePaths, setRoutePaths] = useState<
-    Record<string, { coords: [number, number][]; stopIndices: number[] }>
-  >({});
+  // por ruta — se usa para separar el tramo recorrido del que falta, sin
+  // recalcular OSRM en cada poll.
+  const [routePaths, setRoutePaths] = useState<Record<string, { coords: [number, number][] }>>({});
 
   useEffect(() => {
     const inProgress = activeRoutes.filter(
@@ -190,33 +180,78 @@ export default function MapaPage() {
       const waypoints = sorted.map((s) => ({ lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }));
       calculateRoute(waypoints).then((result) => {
         if (!result) return;
-        const stopIndices = sorted.map((s) =>
-          nearestPointIndex(result.coordinates, { lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }),
-        );
-        setRoutePaths((prev) => ({ ...prev, [route.id]: { coords: result.coordinates, stopIndices } }));
+        setRoutePaths((prev) => ({ ...prev, [route.id]: { coords: result.coordinates } }));
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recalcular cuando cambian las rutas activas, no en cada render por routePaths
   }, [activeRoutes]);
 
-  // Tramos restantes (se oculta el tramo hacia cualquier parada ya
-  // COMPLETED) y markers de las paradas propias de cada ruta en curso.
+  // Índice (por ruta) hasta donde ya pasó el camión sobre `routePaths[id].coords`
+  // — se usa para pintar el tramo recorrido como rastro discontinuo, separado
+  // del tramo que falta. Solo avanza hacia adelante (ver nearestForwardPointIndex)
+  // para no confundirse con un tramo anterior en una calle que se cruza consigo misma.
+  const [traveledIndexByRoute, setTraveledIndexByRoute] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setTraveledIndexByRoute((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const route of activeRoutes) {
+        if (route.status !== 'IN_PROGRESS' || !route.currentLocation) continue;
+        const path = routePaths[route.id];
+        if (!path) continue;
+        const idx = nearestForwardPointIndex(
+          path.coords,
+          { lng: route.currentLocation.longitude, lat: route.currentLocation.latitude },
+          prev[route.id] ?? 0,
+        );
+        if (idx !== prev[route.id]) {
+          next[route.id] = idx;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [activeRoutes, routePaths]);
+
+  // Tramo recorrido (rastro discontinuo) + tramo restante (sólido) de cada
+  // ruta en curso, y markers de las paradas propias de cada ruta.
   const truckRouteLines: MapRoute[] = [];
   const truckStopMarkers: MapMarker[] = [];
+  const truckMarkers: MapMarker[] = [];
   for (const route of activeRoutes) {
     if (route.status !== 'IN_PROGRESS' || !route.currentLocation) continue;
     const sorted = route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
     const path = routePaths[route.id];
 
+    truckMarkers.push({
+      id: `truck-${route.id}`,
+      lng: route.currentLocation.longitude,
+      lat: route.currentLocation.latitude,
+      color: '#C62828',
+      icon: 'local_shipping' as const,
+      label: `${route.name ?? route.zone.name} · ${route.zone.name}`,
+      description: 'Camión en ruta',
+      moveDurationMs: TRUCK_POLL_MS - 500,
+      pathCoords: path?.coords,
+    });
+
     if (path) {
-      for (let i = 0; i < sorted.length - 1; i++) {
-        const destStop = sorted[i + 1];
-        if (destStop.status === 'COMPLETED') continue;
-        const start = path.stopIndices[i];
-        const end = path.stopIndices[i + 1];
+      const idx = traveledIndexByRoute[route.id];
+      const traveled = idx != null ? path.coords.slice(0, idx + 1) : [];
+      const remaining = idx != null ? path.coords.slice(idx) : path.coords;
+      if (traveled.length >= 2) {
         truckRouteLines.push({
-          id: `truck-route-${route.id}-${i}`,
-          points: path.coords.slice(start, end + 1),
+          id: `truck-route-${route.id}-traveled`,
+          points: traveled,
+          color: '#9aa0a6',
+          dashed: true,
+        });
+      }
+      if (remaining.length >= 2) {
+        truckRouteLines.push({
+          id: `truck-route-${route.id}-remaining`,
+          points: remaining,
           color: '#C62828',
         });
       }
