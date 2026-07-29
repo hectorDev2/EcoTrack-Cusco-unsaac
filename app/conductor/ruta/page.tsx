@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiClientError } from '@/lib/api';
 import DemoControls from '@/components/demo-controls';
+import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
+import { calculateRoute, nearestForwardPointIndex } from '@/lib/routing';
 
 interface RouteStop {
   id: string;
@@ -22,7 +24,13 @@ interface DriverRoute {
   totalStops: number;
   completedStops: number;
   stops: RouteStop[];
+  currentLocation: { latitude: number; longitude: number; recordedAt: string } | null;
 }
+
+const STOP_ORDERED = '#154212';
+const STOP_PENDING = '#2563eb';
+const STOP_COMPLETED = '#16a34a';
+const ROUTE_POLL_MS = 4_000; // refrescar paradas + posición de demo, igual que en /conductor/mapa
 
 const SHIFT_LABELS: Record<string, string> = {
   MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
@@ -44,24 +52,85 @@ export default function DriverRutaPage() {
   const [selectedWasteType, setSelectedWasteType] = useState('');
   const [notes, setNotes] = useState('');
   const [modalLoading, setModalLoading] = useState(false);
+  const [routePath, setRoutePath] = useState<{ coords: [number, number][] } | null>(null);
   const router = useRouter();
 
-  const fetchData = () => {
-    setLoading(true);
+  const fetchData = (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
     api.get<DriverRoute[]>('/routes/my')
       .then(setRoutes)
       .catch((err) => setError(err.message ?? 'Error al cargar datos'))
-      .finally(() => setLoading(false));
+      .finally(() => { if (showSpinner) setLoading(false); });
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    // Poll para reflejar en vivo paradas completadas y la posición simulada
+    // durante una demo — igual que en /conductor/mapa.
+    const interval = setInterval(() => fetchData(false), ROUTE_POLL_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS') ?? routes.find((r) => r.status === 'PENDING');
   const pendingStops = activeRoute?.stops.filter((s) => s.status === 'PENDING') ?? [];
   const completedStops = activeRoute?.stops.filter((s) => s.status === 'COMPLETED') ?? [];
 
+  // Trazar el trayecto (calles reales) entre las paradas — una sola vez por ruta.
   useEffect(() => {
-    if (!activeRoute || activeRoute.status !== 'IN_PROGRESS') return;
+    if (!activeRoute || activeRoute.stops.length < 2) { setRoutePath(null); return; }
+
+    const sorted = activeRoute.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
+    const waypoints = sorted.map((s) => ({
+      lng: s.pickupPoint.longitude,
+      lat: s.pickupPoint.latitude,
+      label: s.pickupPoint.name,
+    }));
+
+    calculateRoute(waypoints).then((result) => {
+      if (!result) return;
+      setRoutePath({ coords: result.coordinates });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recalcular al cambiar de ruta, no en cada poll
+  }, [activeRoute?.id]);
+
+  // Índice hasta donde ya pasó el camión (demo) sobre `routePath.coords` —
+  // separa el tramo recorrido (rastro discontinuo) del tramo que falta.
+  const [traveledIndex, setTraveledIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setTraveledIndex(null);
+  }, [activeRoute?.id]);
+
+  const [demoRunning, setDemoRunning] = useState(false);
+  // true recién cuando ya confirmamos por red si hay demo corriendo. Mientras
+  // sea false, el GPS real no debe arrancar (si no, hay una ventana antes de
+  // que resuelva /demo/routes/:id/status donde demoRunning vale su default
+  // `false` sin que eso sea cierto, y el efecto de abajo activa GPS real).
+  const [demoStatusKnown, setDemoStatusKnown] = useState(false);
+
+  useEffect(() => {
+    setDemoStatusKnown(false);
+    if (!activeRoute || activeRoute.status !== 'IN_PROGRESS') {
+      setDemoRunning(false);
+      setDemoStatusKnown(true);
+      return;
+    }
+    let cancelled = false;
+    const check = () => {
+      api.get<{ running: boolean }>(`/demo/routes/${activeRoute.id}/status`)
+        .then((res) => { if (!cancelled) { setDemoRunning(res.running); setDemoStatusKnown(true); } })
+        .catch(() => { if (!cancelled) { setDemoRunning(false); setDemoStatusKnown(true); } });
+    };
+    check();
+    const interval = setInterval(check, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recomprobar al cambiar de ruta/estado, no en cada poll
+  }, [activeRoute?.id, activeRoute?.status]);
+
+  // Mientras corre una demo para esta ruta (o todavía no confirmamos si
+  // corre), no se envía GPS real (el backend igual lo rechazaría, pero así
+  // se evita el gasto de batería/red y la ventana de carrera al montar).
+  useEffect(() => {
+    if (!activeRoute || activeRoute.status !== 'IN_PROGRESS' || !demoStatusKnown || demoRunning) return;
 
     let lastLat = 0, lastLng = 0, lastTime = 0;
 
@@ -81,7 +150,18 @@ export default function DriverRutaPage() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [activeRoute?.id, activeRoute?.status]);
+  }, [activeRoute?.id, activeRoute?.status, demoRunning, demoStatusKnown]);
+
+  // Avanzar `traveledIndex` con cada nueva posición del camión (demo) —
+  // busca SOLO hacia adelante desde el índice anterior (ver nearestForwardPointIndex).
+  const demoTruckLat = demoRunning ? activeRoute?.currentLocation?.latitude : undefined;
+  const demoTruckLng = demoRunning ? activeRoute?.currentLocation?.longitude : undefined;
+  useEffect(() => {
+    if (!routePath || demoTruckLat == null || demoTruckLng == null) return;
+    setTraveledIndex((prev) =>
+      nearestForwardPointIndex(routePath.coords, { lng: demoTruckLng, lat: demoTruckLat }, prev ?? 0),
+    );
+  }, [routePath, demoTruckLat, demoTruckLng]);
 
   const handleCompleteStop = async () => {
     if (!completeModal || !selectedWasteType) return;
@@ -126,6 +206,58 @@ export default function DriverRutaPage() {
       </div>
     );
   }
+
+  const sortedStops = activeRoute?.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex) ?? [];
+  const mainRouteLines: MapRoute[] = [];
+  if (activeRoute && routePath) {
+    const idx = demoRunning && activeRoute.currentLocation ? traveledIndex : null;
+    const traveled = idx != null ? routePath.coords.slice(0, idx + 1) : [];
+    const remaining = idx != null ? routePath.coords.slice(idx) : routePath.coords;
+    if (traveled.length >= 2) {
+      mainRouteLines.push({
+        id: `${activeRoute.id}-traveled`,
+        points: traveled,
+        color: '#9aa0a6',
+        dashed: true,
+      });
+    }
+    if (remaining.length >= 2) {
+      mainRouteLines.push({
+        id: `${activeRoute.id}-remaining`,
+        points: remaining,
+        color: '#154212',
+      });
+    }
+  }
+
+  const mapMarkers: MapMarker[] = [
+    ...sortedStops.map((s) => {
+      let color = STOP_ORDERED;
+      if (s.status === 'PENDING') color = STOP_PENDING;
+      if (s.status === 'COMPLETED') color = STOP_COMPLETED;
+      return {
+        id: s.id,
+        lng: s.pickupPoint.longitude,
+        lat: s.pickupPoint.latitude,
+        color,
+        icon: s.status === 'COMPLETED' ? 'check_circle' : 'location_on',
+        label: `${s.pickupPoint.name} (#${s.orderIndex + 1})`,
+        description: s.pickupPoint.address,
+      };
+    }),
+    ...(demoRunning && activeRoute?.currentLocation
+      ? [{
+          id: '__driver__',
+          lat: activeRoute.currentLocation.latitude,
+          lng: activeRoute.currentLocation.longitude,
+          color: '#f59e0b',
+          icon: 'local_shipping' as const,
+          label: '🎬 Camión (demo)',
+          moveDurationMs: ROUTE_POLL_MS - 500,
+          pathCoords: routePath?.coords,
+        }]
+      : []),
+  ];
 
   if (!activeRoute) {
     return (
@@ -180,6 +312,17 @@ export default function DriverRutaPage() {
           <DemoControls routeId={activeRoute.id} />
         )}
       </div>
+
+      {activeRoute.status === 'IN_PROGRESS' && (
+        <div className="rounded-2xl overflow-hidden border border-outline-variant/20">
+          <MapView
+            markers={mapMarkers}
+            routes={mainRouteLines}
+            followMarkerId={demoRunning && activeRoute.currentLocation ? '__driver__' : undefined}
+            height="280px"
+          />
+        </div>
+      )}
 
       {activeRoute.status === 'PENDING' && (
         <div className="bg-surface-container-low rounded-xl p-5 text-center">
