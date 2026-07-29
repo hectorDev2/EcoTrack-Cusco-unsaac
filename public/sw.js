@@ -1,7 +1,18 @@
-const CACHE = 'eco-track-v2';
+const CACHE = 'eco-track-v3';
+const SHELL = [
+  '/',
+  '/auth/login',
+  '/favicon.svg',
+  '/icon.svg',
+];
 
-self.addEventListener('install', () => {
-  self.skipWaiting();
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    Promise.all([
+      self.skipWaiting(),
+      caches.open(CACHE).then((cache) => cache.addAll(SHELL)),
+    ]),
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -9,6 +20,7 @@ self.addEventListener('activate', (event) => {
     Promise.all([
       self.clients.claim(),
       caches.delete('eco-track-v1'),
+      caches.delete('eco-track-v2'),
     ]),
   );
 });
@@ -31,7 +43,10 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       });
-      return cached ?? fetchPromise;
+      return (cached ?? fetchPromise).catch(() => {
+        // Offline fallback: devolver la página principal cacheada
+        return caches.match('/').then((fallback) => fallback ?? new Response('Sin conexión', { status: 503 }));
+      });
     }),
   );
 });
