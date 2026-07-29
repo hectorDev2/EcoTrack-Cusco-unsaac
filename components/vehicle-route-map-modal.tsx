@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { calculateRoute, nearestForwardPointIndex } from '@/lib/routing';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
+import { useRouteLive } from '@/lib/live';
 
 interface RouteStop {
   id: string;
@@ -32,7 +33,11 @@ const SHIFT_LABELS: Record<string, string> = {
 const STOP_ORDERED = '#154212';
 const STOP_PENDING = '#2563eb';
 const STOP_COMPLETED = '#16a34a';
-const ROUTE_POLL_MS = 4_000;
+// Antes 4s. Ahora la posición del camión y los checks llegan por SSE en vivo,
+// así que /routes (consulta pesada contra Turso remoto) solo se re-pide de vez
+// en cuando para detectar que la ruta arrancó/terminó — sin saturar ni apilar
+// llamadas lentas que terminaban en "Network error".
+const ROUTE_POLL_MS = 12_000;
 
 export default function VehicleRouteMapModal({
   driverId,
@@ -105,8 +110,18 @@ export default function VehicleRouteMapModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recomprobar al cambiar de ruta/estado, no en cada poll
   }, [demoEnabled, route?.id, route?.status]);
 
-  const truckLat = route?.currentLocation?.latitude;
-  const truckLng = route?.currentLocation?.longitude;
+  // Stream en vivo (SSE) del camión — el mismo que ven el conductor y el
+  // ciudadano, así el admin lo mira moverse en simultáneo.
+  const live = useRouteLive(route?.id, route?.status === 'IN_PROGRESS');
+
+  // Posición del camión: primero el vivo (SSE), respaldo currentLocation.
+  const truckPoint: { lat: number; lng: number } | null = live.position
+    ? { lat: live.position.lat, lng: live.position.lng }
+    : route?.currentLocation
+      ? { lat: route.currentLocation.latitude, lng: route.currentLocation.longitude }
+      : null;
+  const truckLat = truckPoint?.lat;
+  const truckLng = truckPoint?.lng;
   useEffect(() => {
     if (!routePath || truckLat == null || truckLng == null) return;
     setTraveledIndex((prev) =>
@@ -116,7 +131,7 @@ export default function VehicleRouteMapModal({
 
   const mainRouteLines: MapRoute[] = [];
   if (route && routePath) {
-    const idx = route.currentLocation ? traveledIndex : null;
+    const idx = truckPoint ? traveledIndex : null;
     const traveled = idx != null ? routePath.coords.slice(0, idx + 1) : [];
     const remaining = idx != null ? routePath.coords.slice(idx) : routePath.coords;
     if (traveled.length >= 2) mainRouteLines.push({ id: `${route.id}-traveled`, points: traveled, color: '#9aa0a6', dashed: true });
@@ -126,29 +141,30 @@ export default function VehicleRouteMapModal({
   const markers: MapMarker[] = [
     ...(route
       ? route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex).map((s) => {
+          const completed = s.status === 'COMPLETED' || live.completedStopIds.has(s.id);
           let color = STOP_ORDERED;
           if (s.status === 'PENDING') color = STOP_PENDING;
-          if (s.status === 'COMPLETED') color = STOP_COMPLETED;
+          if (completed) color = STOP_COMPLETED;
           return {
             id: s.id,
             lng: s.pickupPoint.longitude,
             lat: s.pickupPoint.latitude,
             color,
-            icon: s.status === 'COMPLETED' ? 'check_circle' : 'location_on',
+            icon: completed ? 'check_circle' : 'location_on',
             label: `${s.pickupPoint.name} (#${s.orderIndex + 1})`,
             description: s.pickupPoint.address,
           };
         })
       : []),
-    ...(route?.currentLocation
+    ...(truckPoint
       ? [{
           id: '__truck__',
-          lat: route.currentLocation.latitude,
-          lng: route.currentLocation.longitude,
+          lat: truckPoint.lat,
+          lng: truckPoint.lng,
           color: '#f59e0b',
           icon: 'local_shipping' as const,
           label: demoRunning ? '🎬 Camión (simulación)' : 'Camión',
-          moveDurationMs: ROUTE_POLL_MS - 500,
+          moveDurationMs: 1100,
           pathCoords: routePath?.coords,
         }]
       : []),
@@ -211,7 +227,7 @@ export default function VehicleRouteMapModal({
             <MapView
               markers={markers}
               routes={mainRouteLines}
-              followMarkerId={route.currentLocation ? '__truck__' : undefined}
+              followMarkerId={truckPoint ? '__truck__' : undefined}
             />
           )}
         </div>

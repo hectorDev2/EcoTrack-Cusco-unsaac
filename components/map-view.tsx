@@ -182,10 +182,23 @@ function haversineMeters(a: [number, number], b: [number, number]): number {
 }
 
 /** Punto de `path` más cercano a `target`, buscando SOLO desde `fromIndex` en adelante. */
+// Ventana máxima (m) de avance por actualización. Buscar el punto más cercano
+// hacia adelante SIN tope hace que, en una ruta que se cruza consigo misma
+// (cuadrícula de calles, ida y vuelta por la misma avenida), el punto más
+// cercano a la posición del camión sea a veces un tramo MUCHO más adelante
+// donde la ruta vuelve a pasar cerca — y el marcador se teletransporta ahí,
+// saltándose media ruta. Acotar la búsqueda a un avance razonable lo evita.
+const MAX_FORWARD_ADVANCE_M = 400;
+
 function nearestForwardIndex(path: [number, number][], target: [number, number], fromIndex: number): number {
   let best = fromIndex;
   let bestDist = Infinity;
+  let traveled = 0;
   for (let i = fromIndex; i < path.length; i++) {
+    if (i > fromIndex) {
+      traveled += haversineMeters(path[i - 1], path[i]);
+      if (traveled > MAX_FORWARD_ADVANCE_M) break;
+    }
     const d = haversineMeters(path[i], target);
     if (d < bestDist) { bestDist = d; best = i; }
   }
