@@ -1,5 +1,7 @@
-import { IsOptional, IsString, IsIn, IsArray } from 'class-validator';
+import { IsOptional, IsString, IsIn, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { RouteScheduleDto } from './route-schedule.dto';
 
 export class UpdateRouteDto {
   @ApiPropertyOptional({
@@ -44,4 +46,14 @@ export class UpdateRouteDto {
   @IsArray()
   @IsString({ each: true })
   pickupPointIds?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Horarios en los que corre la ruta — reemplaza los existentes si se envía',
+    type: [RouteScheduleDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RouteScheduleDto)
+  schedules?: RouteScheduleDto[];
 }

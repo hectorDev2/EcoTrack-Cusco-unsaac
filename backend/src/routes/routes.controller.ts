@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -132,5 +133,13 @@ export class RoutesController {
   @Roles('DRIVER')
   completeRoute(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.routesService.completeRoute(id, userId);
+  }
+
+  @ApiOperation({ summary: 'Delete a route (admin)' })
+  @ApiBearerAuth()
+  @Delete(':id')
+  @Roles('ADMIN')
+  remove(@Param('id') id: string) {
+    return this.routesService.remove(id);
   }
 }
