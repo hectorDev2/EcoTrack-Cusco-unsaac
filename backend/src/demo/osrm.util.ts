@@ -4,8 +4,8 @@ const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
 // y como `fetchRoadPath` solo se llama UNA VEZ al iniciar la demo (sin
 // reintento), eso significaba caer a `buildLinearPath` (líneas rectas
 // atravesando manzanas) para TODA la simulación, no solo para el dibujo.
-const FETCH_TIMEOUT_MS = 10000;
-const FETCH_RETRIES = 2;
+const FETCH_TIMEOUT_MS = 8000;
+const FETCH_RETRIES = 1;
 
 export interface LatLng {
   lat: number;
