@@ -7,6 +7,41 @@ import { queries } from '@/lib/queries';
 import { ScheduleCard } from '@/components/schedule-card';
 import type { Zone, CollectionSchedule } from '@/lib/types';
 
+// Semana en orden Lun→Dom con su inicial, para pintar de un vistazo qué días
+// corre cada frecuencia (los que están en freq.days quedan resaltados).
+const WEEK: { code: string; short: string }[] = [
+  { code: 'MON', short: 'L' },
+  { code: 'TUE', short: 'M' },
+  { code: 'WED', short: 'M' },
+  { code: 'THU', short: 'J' },
+  { code: 'FRI', short: 'V' },
+  { code: 'SAT', short: 'S' },
+  { code: 'SUN', short: 'D' },
+];
+
+function DayStrip({ days }: { days: string }) {
+  const active = new Set(days.split(',').map((d) => d.trim()));
+  return (
+    <div className="flex gap-1 mt-2" aria-label={`Días: ${days}`}>
+      {WEEK.map((d, i) => {
+        const on = active.has(d.code);
+        return (
+          <span
+            key={i}
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+              on
+                ? 'bg-primary text-on-primary'
+                : 'bg-surface-container-high text-on-surface-variant/50'
+            }`}
+          >
+            {d.short}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function RecoleccionPage() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState('');
@@ -76,7 +111,8 @@ export default function RecoleccionPage() {
                       <p className="text-[14px] font-bold text-on-surface mt-1">
                         {freq.label}
                       </p>
-                      <p className="text-[12px] text-on-surface-variant mt-0.5">
+                      <DayStrip days={freq.days} />
+                      <p className="text-[12px] text-on-surface-variant mt-1.5">
                         {freq.pickupPointsCount ?? 0} paradas
                       </p>
                     </div>

@@ -35,8 +35,10 @@ export function ScheduleCard({ schedule }: { schedule: CollectionSchedule }) {
         </p>
       </div>
       <div className="text-right shrink-0">
-        <p className="text-[14px] leading-[20px] font-bold text-primary">{schedule.startTime}</p>
-        <p className="text-[11px] leading-[14px] text-on-surface-variant">{schedule.endTime}</p>
+        <p className="text-[10px] leading-[12px] text-on-surface-variant uppercase tracking-wide mb-0.5">Horario</p>
+        <p className="text-[14px] leading-[20px] font-bold text-primary whitespace-nowrap">
+          {schedule.startTime} – {schedule.endTime}
+        </p>
       </div>
     </div>
   );
