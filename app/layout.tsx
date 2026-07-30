@@ -46,7 +46,15 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(function(){})`,
+            // En producción registramos el service worker (PWA/offline).
+            // En desarrollo lo desregistramos y limpiamos sus cachés: un SW
+            // cache-first sirve un shell HTML rancio que apunta a chunks de
+            // Next con hash viejo tras cada rebuild y rompe la navegación
+            // con ERR_FAILED.
+            __html:
+              process.env.NODE_ENV === 'production'
+                ? `if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(function(){})`
+                : `if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})});if(window.caches)caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})})}`,
           }}
         />
         <link
