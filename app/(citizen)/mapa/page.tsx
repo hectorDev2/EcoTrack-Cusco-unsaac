@@ -13,7 +13,6 @@ import type { ActiveRoute } from '@/lib/types';
 import { useRouteLive } from '@/lib/live';
 
 const CUSCO_CENTER: [number, number] = [-71.9675, -13.5320];
-const MAX_PICKUP_MARKERS = 4;
 
 function haversineKm(lng1: number, lat1: number, lng2: number, lat2: number): number {
   const R = 6371;
@@ -126,13 +125,23 @@ const STATUS_LABELS: Record<string, string> = {
   CLOSED: 'Cerrado',
 };
 
+// Contenedor/vertedero de la ruta más cercana que se muestra en el mapa.
+interface RouteContainer {
+  id: string;
+  name: string;
+  address: string;
+  longitude: number;
+  latitude: number;
+  completed: boolean;
+}
+
 export default function MapaPage() {
   const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedPoint, setSelectedPoint] = useState<PickupPoint | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [nearestRoute, setNearestRoute] = useState<MapRoute | null>(null);
-  const [nearestPoint, setNearestPoint] = useState<PickupPoint | null>(null);
+  const [nearestPoint, setNearestPoint] = useState<RouteContainer | null>(null);
   const [nearestDuration, setNearestDuration] = useState<number | null>(null);
 
   // Origen de la ruta: por defecto el centro de Cusco (ya no se prioriza la
@@ -223,11 +232,57 @@ export default function MapaPage() {
   // Stream en vivo (SSE) del camión en curso — el mismo que ven el conductor y
   // el admin, así el vecino lo mira moverse en simultáneo. Para la demo hay un
   // solo camión activo; se sigue esa ruta.
-  const liveRouteId = activeRoutes.find((r) => r.status === 'IN_PROGRESS')?.id;
+  // Entre las rutas en curso se elige SOLO la más cercana al origen (ubicación
+  // del usuario / casa): su camión, trazado y paradas son lo único que se
+  // muestra. Al mover el origen, la elección se recalcula.
+  const closestRoute = useMemo(() => {
+    const candidates = activeRoutes.filter((r) => r.stops.length > 0);
+    let best: ActiveRoute | undefined;
+    let bestDist = Infinity;
+    for (const r of candidates) {
+      let d = Infinity;
+      for (const s of r.stops) {
+        d = Math.min(
+          d,
+          haversineKm(origin.lng, origin.lat, s.pickupPoint.longitude, s.pickupPoint.latitude),
+        );
+      }
+      if (d < bestDist) { bestDist = d; best = r; }
+    }
+    return best;
+  }, [activeRoutes, origin.lng, origin.lat]);
+
+  const nearestActiveRouteId = closestRoute?.id;
+  // El camión en vivo solo tiene sentido si la ruta más cercana está EN CURSO.
+  const liveRouteId = closestRoute?.status === 'IN_PROGRESS' ? closestRoute.id : undefined;
   const live = useRouteLive(liveRouteId, !!liveRouteId, user?.id);
   // Aviso anticipado "a N paradas de tu casa" — se descarta por marca temporal.
   const [alertDismissed, setAlertDismissed] = useState<number | null>(null);
   const showAlert = live.alert && live.alert.at !== alertDismissed;
+
+  // Contenedores/vertederos de la ÚNICA ruta más cercana (no los globales).
+  // Se agrupan por coordenada (varios PickupPoint comparten ubicación física,
+  // un turno/horario cada uno) y se marca si el camión ya pasó por cada uno.
+  const routeContainers = useMemo<RouteContainer[]>(() => {
+    if (!closestRoute) return [];
+    const seen = new Set<string>();
+    const out: RouteContainer[] = [];
+    const sorted = closestRoute.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
+    for (const s of sorted) {
+      const key = `${s.pickupPoint.latitude.toFixed(4)},${s.pickupPoint.longitude.toFixed(4)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        id: s.pickupPoint.id,
+        name: s.pickupPoint.name,
+        address: s.pickupPoint.address,
+        longitude: s.pickupPoint.longitude,
+        latitude: s.pickupPoint.latitude,
+        completed: s.status === 'COMPLETED' || live.completedStopIds.has(s.id),
+      });
+    }
+    return out;
+  }, [closestRoute, live.completedStopIds]);
   const liveTruckFor = (routeId: string): { lat: number; lng: number } | null =>
     routeId === liveRouteId && live.position
       ? { lat: live.position.lat, lng: live.position.lng }
@@ -239,10 +294,12 @@ export default function MapaPage() {
   const [routePaths, setRoutePaths] = useState<Record<string, { coords: [number, number][] }>>({});
 
   useEffect(() => {
-    const inProgress = activeRoutes.filter(
-      (r): r is ActiveRoute => r.status === 'IN_PROGRESS' && r.stops.length >= 2,
+    // Trazado de la ruta más cercana, esté EN CURSO o PENDING — así su
+    // recorrido se dibuja aunque todavía no haya camión.
+    const toTrace = activeRoutes.filter(
+      (r): r is ActiveRoute => r.stops.length >= 2 && r.id === nearestActiveRouteId,
     );
-    for (const route of inProgress) {
+    for (const route of toTrace) {
       if (routePaths[route.id]) continue;
       const sorted = route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
       const waypoints = sorted.map((s) => ({ lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }));
@@ -251,8 +308,8 @@ export default function MapaPage() {
         setRoutePaths((prev) => ({ ...prev, [route.id]: { coords: result.coordinates } }));
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recalcular cuando cambian las rutas activas, no en cada render por routePaths
-  }, [activeRoutes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcular al cambiar las rutas activas o la ruta más cercana elegida, no en cada render por routePaths
+  }, [activeRoutes, nearestActiveRouteId]);
 
   // Índice (por ruta) hasta donde ya pasó el camión sobre `routePaths[id].coords`
   // — se usa para pintar el tramo recorrido como rastro discontinuo, separado
@@ -265,7 +322,7 @@ export default function MapaPage() {
       const next = { ...prev };
       let changed = false;
       for (const route of activeRoutes) {
-        if (route.status !== 'IN_PROGRESS') continue;
+        if (route.id !== nearestActiveRouteId) continue;
         const liveTruck = liveTruckFor(route.id);
         const truck = liveTruck
           ? { longitude: liveTruck.lng, latitude: liveTruck.lat }
@@ -286,43 +343,44 @@ export default function MapaPage() {
       return changed ? next : prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- live.position mueve el rastro en vivo
-  }, [activeRoutes, routePaths, live.position]);
+  }, [activeRoutes, routePaths, live.position, nearestActiveRouteId]);
 
-  // Tramo recorrido (rastro discontinuo) + tramo restante (sólido) de cada
-  // ruta en curso, y markers de las paradas propias de cada ruta.
+  // Trayecto de la ruta más cercana. SIEMPRE se dibuja su recorrido (aunque no
+  // haya camión: ruta PENDING). Si hay camión, se separa el tramo recorrido
+  // (gris discontinuo) del restante (rojo) y se muestra el marker del camión.
   const truckRouteLines: MapRoute[] = [];
-  const truckStopMarkers: MapMarker[] = [];
   const truckMarkers: MapMarker[] = [];
-  for (const route of activeRoutes) {
-    if (route.status !== 'IN_PROGRESS') continue;
-    const liveTruck = liveTruckFor(route.id);
+  if (closestRoute) {
+    const path = routePaths[closestRoute.id];
+    const liveTruck = liveTruckFor(closestRoute.id);
     const truck = liveTruck
       ? { longitude: liveTruck.lng, latitude: liveTruck.lat }
-      : route.currentLocation;
-    if (!truck) continue;
-    const sorted = route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
-    const path = routePaths[route.id];
+      : closestRoute.currentLocation;
 
-    truckMarkers.push({
-      id: `truck-${route.id}`,
-      lng: truck.longitude,
-      lat: truck.latitude,
-      color: '#C62828',
-      icon: 'local_shipping' as const,
-      label: `${route.name ?? route.zone.name} · ${route.zone.name}`,
-      description: 'Camión en ruta',
-      // Con SSE llega ~1 posición/seg; se desliza en ese lapso (respaldo: poll).
-      moveDurationMs: liveTruck ? 1100 : TRUCK_POLL_MS - 500,
-      pathCoords: path?.coords,
-    });
+    if (truck) {
+      truckMarkers.push({
+        id: `truck-${closestRoute.id}`,
+        lng: truck.longitude,
+        lat: truck.latitude,
+        color: '#C62828',
+        icon: 'local_shipping' as const,
+        label: `${closestRoute.name ?? closestRoute.zone.name} · ${closestRoute.zone.name}`,
+        description: 'Camión en ruta',
+        // Con SSE llega ~1 posición/seg; se desliza en ese lapso (respaldo: poll).
+        moveDurationMs: liveTruck ? 1100 : TRUCK_POLL_MS - 500,
+        pathCoords: path?.coords,
+      });
+    }
 
     if (path) {
-      const idx = traveledIndexByRoute[route.id];
+      // Sin camión: recorrido completo en verde (trayecto de la ruta).
+      // Con camión: recorrido gris + restante rojo.
+      const idx = truck ? traveledIndexByRoute[closestRoute.id] : undefined;
       const traveled = idx != null ? path.coords.slice(0, idx + 1) : [];
       const remaining = idx != null ? path.coords.slice(idx) : path.coords;
       if (traveled.length >= 2) {
         truckRouteLines.push({
-          id: `truck-route-${route.id}-traveled`,
+          id: `route-${closestRoute.id}-traveled`,
           points: traveled,
           color: '#9aa0a6',
           dashed: true,
@@ -330,24 +388,14 @@ export default function MapaPage() {
       }
       if (remaining.length >= 2) {
         truckRouteLines.push({
-          id: `truck-route-${route.id}-remaining`,
+          id: `route-${closestRoute.id}-remaining`,
           points: remaining,
-          color: '#C62828',
+          // Con camión: rojo (tramo restante). Sin camión: azul = recorrido de
+          // la ruta a la que pertenecen estos contenedores.
+          color: truck ? '#C62828' : '#2563eb',
         });
       }
     }
-
-    sorted.forEach((s) => {
-      const completed = s.status === 'COMPLETED' || live.completedStopIds.has(s.id);
-      truckStopMarkers.push({
-        id: `route-stop-${s.id}`,
-        lng: s.pickupPoint.longitude,
-        lat: s.pickupPoint.latitude,
-        color: completed ? '#16a34a' : '#2563eb',
-        icon: completed ? 'check_circle' : 'location_on',
-        hideLabel: true,
-      });
-    });
   }
 
   useEffect(() => {
@@ -359,15 +407,21 @@ export default function MapaPage() {
       .catch(() => {});
   }, []);
 
-  // Calculate nearest pickup point by road
+  // Punto de recojo más cercano por carretera — SOLO entre los contenedores de
+  // la ruta más cercana (no entre todos los vertederos del distrito).
   useEffect(() => {
-    if (pickupPoints.length === 0) return;
+    if (routeContainers.length === 0) {
+      setNearestRoute(null);
+      setNearestPoint(null);
+      setNearestDuration(null);
+      return;
+    }
     setNearestRoute(null);
     setNearestPoint(null);
     setNearestDuration(null);
     let cancelled = false;
 
-    const destinations = pickupPoints.map((p) => ({ lng: p.longitude, lat: p.latitude }));
+    const destinations = routeContainers.map((p) => ({ lng: p.longitude, lat: p.latitude }));
     const originStr = `${origin.lng},${origin.lat}`;
     const destStr = destinations.map((d) => `${d.lng},${d.lat}`).join(';');
     const destIndices = destinations.map((_, i) => i + 1).join(';');
@@ -387,13 +441,13 @@ export default function MapaPage() {
         });
 
         if (minIdx >= 0) {
-          setNearestPoint(pickupPoints[minIdx]);
+          setNearestPoint(routeContainers[minIdx]);
           setNearestDuration(minDur);
 
           // Draw route to nearest
           calculateRoute([
             { lng: origin.lng, lat: origin.lat },
-            { lng: pickupPoints[minIdx].longitude, lat: pickupPoints[minIdx].latitude },
+            { lng: routeContainers[minIdx].longitude, lat: routeContainers[minIdx].latitude },
           ]).then((route) => {
             if (!cancelled && route) {
               setNearestRoute({
@@ -412,7 +466,7 @@ export default function MapaPage() {
       .catch(() => {});
 
     return () => { cancelled = true; };
-  }, [origin.lng, origin.lat, pickupPoints]);
+  }, [origin.lng, origin.lat, routeContainers]);
 
   const incidentMarkers: MapMarker[] = incidents
     .filter((inc) => inc.latitude != null && inc.longitude != null)
@@ -425,24 +479,6 @@ export default function MapaPage() {
       label: TYPE_LABELS[inc.type] ?? inc.type,
       description: inc.address ?? '',
     }));
-
-  // Varios registros de PickupPoint comparten la misma ubicación física
-  // (un turno/horario distinto cada uno). Se agrupan por coordenada para
-  // no mostrar el mismo vertedero repetido entre los "más cercanos".
-  const nearestPickupPoints = useMemo(() => {
-    if (pickupPoints.length === 0) return [];
-    const seenLocations = new Set<string>();
-    return pickupPoints
-      .map((pp) => ({ ...pp, dist: haversineKm(origin.lng, origin.lat, pp.longitude, pp.latitude) }))
-      .sort((a, b) => a.dist - b.dist)
-      .filter((pp) => {
-        const key = `${pp.latitude.toFixed(4)},${pp.longitude.toFixed(4)}`;
-        if (seenLocations.has(key)) return false;
-        seenLocations.add(key);
-        return true;
-      })
-      .slice(0, MAX_PICKUP_MARKERS);
-  }, [pickupPoints, origin.lng, origin.lat]);
 
   const originMarker: MapMarker = {
     id: 'origin',
@@ -461,17 +497,19 @@ export default function MapaPage() {
   const markers: MapMarker[] = [
     originMarker,
     ...truckMarkers,
-    ...truckStopMarkers,
-    ...nearestPickupPoints.map((pp) => ({
-      id: pp.id,
-      lng: pp.longitude,
-      lat: pp.latitude,
-      color: nearestPoint?.id === pp.id ? '#8BC34A' : '#2d5a27',
-      icon: 'delete' as const,
-      label: pp.name + (nearestPoint?.id === pp.id ? ' 🏆 Más cercano' : ''),
-      description: pp.address,
-      hideLabel: true,
-    })),
+    ...routeContainers.map((pp) => {
+      const isNearest = nearestPoint?.id === pp.id;
+      return {
+        id: pp.id,
+        lng: pp.longitude,
+        lat: pp.latitude,
+        color: pp.completed ? '#16a34a' : isNearest ? '#8BC34A' : '#2d5a27',
+        icon: pp.completed ? 'check_circle' : 'delete',
+        label: pp.name + (isNearest ? ' 🏆 Más cercano' : ''),
+        description: pp.address,
+        hideLabel: true,
+      };
+    }),
     ...incidentMarkers,
   ];
 
@@ -525,7 +563,7 @@ export default function MapaPage() {
             ) : undefined
           }
           fitBoundsSignal={fitSignal}
-          fitBoundsMarkerIds={['origin', ...nearestPickupPoints.map((p) => p.id)]}
+          fitBoundsMarkerIds={['origin', ...routeContainers.map((p) => p.id)]}
           fitBoundsRoutePoints={fitRoutePoints}
           onMarkerClick={(m) => {
             if (m.id === 'origin') return;
@@ -671,10 +709,15 @@ export default function MapaPage() {
                 <span>Más cercano</span>
               </div>
             )}
-            {truckMarkers.length > 0 && (
+            {truckMarkers.length > 0 ? (
               <div className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded-full bg-[#C62828]" />
                 <span>Camión en ruta</span>
+              </div>
+            ) : truckRouteLines.length > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-[#2563eb]" />
+                <span>Recorrido de la ruta</span>
               </div>
             )}
             <div className="flex items-center gap-1">

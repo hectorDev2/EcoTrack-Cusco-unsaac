@@ -130,6 +130,28 @@ async function migrate() {
     console.log('\n📦 route_locations:');
     await addColumn('route_locations', 'simulated', 'BOOLEAN DEFAULT 0');
 
+    // ── notification_logs: registro de notificaciones (WhatsApp/browser) ──────
+    console.log('\n📦 notification_logs:');
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS notification_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        type TEXT NOT NULL,
+        channel TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'SENT',
+        message TEXT NOT NULL,
+        reference_id TEXT,
+        reference_type TEXT,
+        error TEXT,
+        sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notification_logs_user_id ON notification_logs(user_id)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notification_logs_reference_type ON notification_logs(reference_type)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notification_logs_sent_at ON notification_logs(sent_at)`);
+    console.log('  ✅ notification_logs lista');
+
     console.log('\n✅ Migración completada');
   } finally {
     await prisma.$disconnect();
