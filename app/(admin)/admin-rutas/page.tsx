@@ -216,8 +216,8 @@ export default function AdminRutasPage() {
     setWaypoints((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  // Arrastrar un marker ajusta su posición solo para el trazado de esta ruta
-  // — no toca la ubicación real del PickupPoint en la base de datos.
+  // Arrastrar un marker ajusta su posición en memoria. En el modal de edición,
+  // handleEditSave persiste las coordenadas cambiadas con PATCH /pickup-points/:id.
   const moveWaypointPosition = useCallback((markerId: string, lng: number, lat: number) => {
     setWaypoints((prev) => prev.map((w, i) =>
       (w.pickupPointId ?? `wp-${i}`) === markerId ? { ...w, lng, lat } : w));
@@ -382,6 +382,21 @@ export default function AdminRutasPage() {
     if (!editRoute) return;
     setEditLoading(true);
     try {
+      // Persistir las posiciones de los marcadores arrastrados: comparamos cada
+      // waypoint con las coordenadas canónicas del PickupPoint y actualizamos las
+      // que hayan cambiado (arrastrar solo cambiaba la posición en memoria).
+      const EPS = 1e-6;
+      const moved = waypoints.filter((w) => {
+        if (!w.pickupPointId) return false;
+        const pp = pickupPoints.find((p) => p.id === w.pickupPointId);
+        return pp && (Math.abs(pp.longitude - w.lng) > EPS || Math.abs(pp.latitude - w.lat) > EPS);
+      });
+      if (moved.length > 0) {
+        await Promise.all(
+          moved.map((w) =>
+            api.patch(`/pickup-points/${w.pickupPointId}`, { latitude: w.lat, longitude: w.lng })),
+        );
+      }
       await api.patch(`/routes/${editRoute.id}`, {
         name: editName || undefined,
         shift: editShift || undefined,
