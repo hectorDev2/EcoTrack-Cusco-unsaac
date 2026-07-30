@@ -55,6 +55,14 @@ export class RoutesController {
     return this.routesService.findActive();
   }
 
+  @ApiOperation({ summary: 'Get all routes for citizen alarms (any status)' })
+  @ApiBearerAuth()
+  @Get('for-alarms')
+  @Roles('CITIZEN')
+  findForAlarms() {
+    return this.routesService.findForAlarms();
+  }
+
   @ApiOperation({ summary: 'Get routes by zone' })
   @ApiBearerAuth()
   @Get('zone/:zoneId')

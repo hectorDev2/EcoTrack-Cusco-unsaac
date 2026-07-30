@@ -55,36 +55,36 @@ export default function CitizenLayout({ children }: { children: React.ReactNode 
     <CitizenGuard>
       <div className="min-h-screen bg-background text-on-background pb-32 font-sans">
         {children}
-        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-5 pb-4 pt-2 bg-surface-container border-t border-outline-variant/30 shadow-[0_-4px_12px_rgba(45,90,39,0.08)] rounded-t-xl">
-          <Link className="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 transition-all duration-150" href="/inicio">
+        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center gap-0.5 px-1.5 pb-4 pt-2 bg-surface-container border-t border-outline-variant/30 shadow-[0_-4px_12px_rgba(45,90,39,0.08)] rounded-t-xl overflow-x-auto">
+          <Link className="flex flex-col items-center justify-center flex-shrink-0 bg-primary-container text-on-primary-container rounded-full px-2 py-1 active:scale-90 transition-all duration-150" href="/inicio">
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
-            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Inicio</span>
+            <span className="text-[10px] leading-[14px] tracking-[0.03em] font-bold">Inicio</span>
           </Link>
-          <Link className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/mapa">
+          <Link className="flex flex-col items-center justify-center flex-shrink-0 text-on-surface-variant px-2 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/mapa">
             <span className="material-symbols-outlined">distance</span>
-            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Mapa</span>
+            <span className="text-[10px] leading-[14px] tracking-[0.03em] font-bold">Mapa</span>
           </Link>
-          <Link className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/reportar">
+          <Link className="flex flex-col items-center justify-center flex-shrink-0 text-on-surface-variant px-2 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/reportar">
             <span className="material-symbols-outlined">report_problem</span>
-            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Reportar</span>
+            <span className="text-[10px] leading-[14px] tracking-[0.03em] font-bold">Reportar</span>
           </Link>
-          <Link className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/alarmas">
+          <Link className="flex flex-col items-center justify-center flex-shrink-0 text-on-surface-variant px-2 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/alarmas">
             <span className="material-symbols-outlined">add_alert</span>
-            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Alarmas</span>
+            <span className="text-[10px] leading-[14px] tracking-[0.03em] font-bold">Alarmas</span>
           </Link>
-          <Link className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/residuos">
+          <Link className="flex flex-col items-center justify-center flex-shrink-0 text-on-surface-variant px-2 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/residuos">
             <span className="material-symbols-outlined">delete</span>
-            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Residuos</span>
+            <span className="text-[10px] leading-[14px] tracking-[0.03em] font-bold">Residuos</span>
           </Link>
-          <Link className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/perfil">
+          <Link className="flex flex-col items-center justify-center flex-shrink-0 text-on-surface-variant px-2 py-1 hover:bg-primary-container/20 transition-colors active:scale-90 transition-all duration-150" href="/perfil">
             <span className="material-symbols-outlined">person</span>
-            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Perfil</span>
+            <span className="text-[10px] leading-[14px] tracking-[0.03em] font-bold">Perfil</span>
           </Link>
-          <button onClick={handleLogout} className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1 hover:bg-error/10 hover:text-error transition-colors active:scale-90 transition-all duration-150">
+          <button onClick={handleLogout} className="flex flex-col items-center justify-center flex-shrink-0 text-on-surface-variant px-2 py-1 hover:bg-error/10 hover:text-error transition-colors active:scale-90 transition-all duration-150">
             <span className="material-symbols-outlined">logout</span>
-            <span className="text-[12px] leading-[16px] tracking-[0.05em] font-bold">Salir</span>
+            <span className="text-[10px] leading-[14px] tracking-[0.03em] font-bold">Salir</span>
           </button>
-          <div className="flex flex-col items-center justify-center px-2 py-1">
+          <div className="flex flex-col items-center justify-center flex-shrink-0 px-1 py-1">
             <ThemeToggle />
           </div>
         </nav>
