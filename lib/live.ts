@@ -13,6 +13,15 @@ export interface LivePosition {
   total: number;
 }
 
+export interface RouteAlert {
+  /** Nombre del punto de recojo más cercano a la casa del usuario. */
+  name: string;
+  /** A cuántas paradas está el camión de ese punto. */
+  stopsAway: number;
+  /** Marca temporal para poder re-mostrar el aviso si llega otro. */
+  at: number;
+}
+
 export interface RouteLiveState {
   /** Última posición del camión empujada por el servidor (o null si no hay). */
   position: LivePosition | null;
@@ -20,6 +29,8 @@ export interface RouteLiveState {
   completedStopIds: Set<string>;
   /** Nombre de la última parada completada (para un aviso puntual). */
   lastCompletedName: string | null;
+  /** Aviso anticipado dirigido a ESTE usuario ("a N paradas de tu casa"). */
+  alert: RouteAlert | null;
   /** Si hay una demo corriendo para esta ruta según el stream. */
   running: boolean;
   /** Si el stream SSE está conectado ahora mismo. */
@@ -38,10 +49,12 @@ export interface RouteLiveState {
 export function useRouteLive(
   routeId: string | null | undefined,
   enabled = true,
+  userId?: string | null,
 ): RouteLiveState {
   const [position, setPosition] = useState<LivePosition | null>(null);
   const [completedStopIds, setCompletedStopIds] = useState<Set<string>>(new Set());
   const [lastCompletedName, setLastCompletedName] = useState<string | null>(null);
+  const [alert, setAlert] = useState<RouteAlert | null>(null);
   const [running, setRunning] = useState(false);
   const [connected, setConnected] = useState(false);
 
@@ -50,6 +63,7 @@ export function useRouteLive(
     setPosition(null);
     setCompletedStopIds(new Set());
     setLastCompletedName(null);
+    setAlert(null);
     setRunning(false);
     setConnected(false);
 
@@ -73,6 +87,8 @@ export function useRouteLive(
         stopId?: string;
         name?: string;
         running?: boolean;
+        userId?: string;
+        stopsAway?: number;
       };
       try {
         data = JSON.parse(e.data);
@@ -93,6 +109,9 @@ export function useRouteLive(
       } else if (data.type === 'status') {
         setRunning(!!data.running);
         if (!data.running) setPosition(null);
+      } else if (data.type === 'alarm' && data.name && data.userId && data.userId === userId) {
+        // Aviso anticipado dirigido a este usuario.
+        setAlert({ name: data.name, stopsAway: data.stopsAway ?? 0, at: Date.now() });
       }
       // type === 'ping' → latido, se ignora
     };
@@ -101,7 +120,7 @@ export function useRouteLive(
       es.close();
       setConnected(false);
     };
-  }, [routeId, enabled]);
+  }, [routeId, enabled, userId]);
 
-  return { position, completedStopIds, lastCompletedName, running, connected };
+  return { position, completedStopIds, lastCompletedName, alert, running, connected };
 }

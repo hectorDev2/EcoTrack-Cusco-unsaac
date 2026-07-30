@@ -16,6 +16,11 @@ model User {
   phone        String?  // Número de WhatsApp para notificaciones (ej. "+51987654321")
   role         String   @default("CITIZEN")
   status       String   @default("ACTIVE")
+  // Ubicación "Casa" del ciudadano: origen para ver el camión en vivo y la ruta
+  // al punto de recojo más cercano. Nullable — no todos la configuran.
+  homeLatitude  Float?  @map("home_latitude")
+  homeLongitude Float?  @map("home_longitude")
+  homeAddress   String? @map("home_address")
   createdAt    DateTime @default(now()) @map("created_at")
 
   zones     UserZone[]
