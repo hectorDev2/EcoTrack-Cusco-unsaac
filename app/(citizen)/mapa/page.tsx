@@ -515,18 +515,10 @@ export default function MapaPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="flex justify-between items-center w-full px-5 py-2 bg-surface shadow-sm shadow-primary/10 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <button className="text-primary active:scale-95 transition-transform duration-200">
-            <span className="material-symbols-outlined">menu</span>
-          </button>
-          <h1 className="text-[20px] leading-[28px] font-black text-primary">
-            Eco Track Wanchaq
-          </h1>
-        </div>
-        <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center border-2 border-surface-container-high overflow-hidden shadow-sm text-on-primary-container font-bold">
-          <span className="material-symbols-outlined">person</span>
-        </div>
+      <header className="flex items-center w-full px-5 py-2 bg-surface shadow-sm shadow-primary/10 sticky top-0 z-50">
+        <h1 className="text-[20px] leading-[28px] font-black text-primary">
+          Eco Track Wanchaq
+        </h1>
       </header>
 
       <main className="flex-grow relative w-full min-h-[400px]">

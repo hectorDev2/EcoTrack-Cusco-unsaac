@@ -181,7 +181,7 @@ export default function AlarmasPage() {
   const [label, setLabel] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: allRoutes = [] } = useQuery(queries.routes.active());
+  const { data: allRoutes = [] } = useQuery(queries.routes.forAlarms());
   const { data: allPoints = [] } = useQuery(queries.pickupPoints.all());
 
   const myZoneIds = new Set(user?.zones?.map((z) => z.id) ?? []);

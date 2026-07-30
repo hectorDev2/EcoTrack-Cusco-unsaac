@@ -15,6 +15,7 @@ export const queryKeys = {
   routes: {
     public: () => ['routes', 'public'] as const,
     active: () => ['routes', 'active'] as const,
+    forAlarms: () => ['routes', 'for-alarms'] as const,
   },
   frequencies: {
     all: () => ['frequencies'] as const,
@@ -94,6 +95,10 @@ export const queries = {
     active: () => ({
       queryKey: queryKeys.routes.active(),
       queryFn: () => api.get<ActiveRoute[]>('/routes/active'),
+    }),
+    forAlarms: () => ({
+      queryKey: queryKeys.routes.forAlarms(),
+      queryFn: () => api.get<ActiveRoute[]>('/routes/for-alarms'),
     }),
   },
   citizenAlarms: {

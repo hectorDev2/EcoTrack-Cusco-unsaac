@@ -344,6 +344,54 @@ export class RoutesService {
       });
   }
 
+  /**
+   * Rutas para crear alarmas del ciudadano. A diferencia de findActive, NO
+   * filtra por estado: una alarma es recurrente (se dispara según la frecuencia
+   * y horario de la ruta), así que debe poder crearse aunque la ruta del día ya
+   * esté COMPLETED o todavía no haya iniciado. Solo se excluyen las canceladas.
+   */
+  async findForAlarms() {
+    const routes = await this.prisma.route.findMany({
+      where: { status: { not: 'CANCELLED' } },
+      include: {
+        zone: { select: { id: true, name: true } },
+        stops: {
+          include: {
+            pickupPoint: {
+              select: {
+                id: true,
+                name: true,
+                address: true,
+                latitude: true,
+                longitude: true,
+                scheduledTime: true,
+              },
+            },
+          },
+          orderBy: { orderIndex: 'asc' as const },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return routes.map((r) => ({
+      id: r.id,
+      name: r.name,
+      zone: r.zone,
+      status: r.status,
+      frequency: r.frequency,
+      shift: r.shift,
+      totalStops: r.stops.length,
+      stops: r.stops.map((s) => ({
+        id: s.id,
+        pickupPoint: s.pickupPoint,
+        orderIndex: s.orderIndex,
+        status: s.status,
+      })),
+      currentLocation: null,
+    }));
+  }
+
   async findByZone(zoneId: string) {
     return this.prisma.route
       .findMany({
