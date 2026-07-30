@@ -10,7 +10,11 @@ import { Observable, Subject } from 'rxjs';
 export type LiveEvent =
   | { type: 'position'; lat: number; lng: number; index: number; total: number }
   | { type: 'stop'; stopId: string; pickupPointId: string; name: string }
-  | { type: 'status'; running: boolean };
+  | { type: 'status'; running: boolean }
+  // Aviso anticipado ("el camión está a N paradas de tu casa"). Se emite en el
+  // canal de la ruta con el userId destinatario; cada cliente filtra por su
+  // usuario. name = nombre del punto de recojo más cercano a la casa.
+  | { type: 'alarm'; userId: string; name: string; stopsAway: number };
 
 /**
  * Un canal (Subject de RxJS) por ruta. El servicio de simulación empuja

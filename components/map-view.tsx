@@ -265,7 +265,16 @@ function animateMarkerTo(
   // velocidad percibida se mantenga aproximadamente constante.
   const now0 = performance.now();
   const elapsed = tm.lastMoveAt != null ? now0 - tm.lastMoveAt : durationMs;
-  const actualDuration = Math.min(Math.max(elapsed, durationMs * 0.5), durationMs * 3);
+  // Buffer de suavizado: la animación dura un poco MÁS que el intervalo real
+  // entre updates, así el marker sigue deslizándose cuando llega la próxima
+  // posición y nunca se congela unos ms al final de cada segmento (ese
+  // micro-freeze en el borde era lo que se veía "a saltos"). El marker queda
+  // ~15% detrás de la posición real —imperceptible—, a cambio de movimiento
+  // continuo. El lag es acotado: cada animación apunta siempre al último
+  // destino recibido, no se acumula.
+  const SMOOTH_BUFFER = 1.15;
+  const actualDuration =
+    Math.min(Math.max(elapsed, durationMs * 0.5), durationMs * 3) * SMOOTH_BUFFER;
   tm.lastMoveAt = now0;
 
   let segment: { points: [number, number][]; cum: number[] } | null = null;

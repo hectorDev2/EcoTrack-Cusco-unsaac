@@ -23,6 +23,19 @@ interface StopMarker {
   stopId: string;
   pickupPointId: string;
   name: string;
+  // Posición ordinal de la parada en la ruta (0 = primera). Se usa para el
+  // aviso anticipado "a N paradas de tu casa".
+  orderIndex: number;
+}
+
+// Destinatario del aviso anticipado: un ciudadano con "Casa" guardada cuya
+// parada más cercana en esta ruta es `targetOrdinal`. Se le notifica cuando el
+// camión llega a la parada `targetOrdinal - ADVANCE_STOPS`.
+interface HomeTarget {
+  userId: string;
+  phone: string | null;
+  name: string;
+  targetOrdinal: number;
 }
 
 interface SimulationState {
@@ -36,6 +49,9 @@ interface SimulationState {
   // "saltaba" de una parada a otra bastante más adelante en el orden.
   stopByPathIndex: Map<number, StopMarker[]>;
   notifiedStopIds: Set<string>;
+  // Avisos anticipados (3 paradas antes) por casa, y usuarios ya avisados.
+  homeTargets: HomeTarget[];
+  notifiedAdvanceUserIds: Set<string>;
   currentIndex: number;
   // Cuántos puntos del path avanza el camión en cada tick. Se calcula para
   // que la ruta entera tarde ~durationSeconds SIN atar la cadencia de ticks
@@ -76,6 +92,14 @@ const DEFAULT_TICK_SECONDS = 1.2;
 const DEMO_SPEED_MPS = 12; // ~43 km/h
 const MIN_DURATION_SECONDS = 60;
 const MAX_DURATION_SECONDS = 300; // tope para que una ruta larga no sea eterna
+
+// Aviso anticipado: cuántas paradas antes de la parada más cercana a la casa se
+// notifica al ciudadano (web + WhatsApp).
+const ADVANCE_STOPS = 3;
+// Distancia máxima (m) entre la casa y su parada más cercana para considerar
+// que esta ruta "pasa por su casa" y notificar. Evita avisar a usuarios cuyo
+// hogar no está cerca de esta ruta.
+const MAX_HOME_STOP_METERS = 1000;
 
 @Injectable()
 export class DemoSimulationService {
@@ -143,7 +167,12 @@ export class DemoSimulationService {
     const path = densifyPath(linearPath, STEP_METERS);
     const waypointDistances = straightLineWaypointDistances(waypoints);
 
-    this.startSimulation(routeId, route.stops, path, waypointDistances, durationSeconds, tickSeconds, 'lineal');
+    // Destinatarios del aviso anticipado: ciudadanos con "Casa" cuya parada más
+    // cercana está en esta ruta. Se calcula una vez al arrancar (no cambia
+    // durante la demo).
+    const homeTargets = await this.computeHomeTargets(route.stops);
+
+    this.startSimulation(routeId, route.stops, path, waypointDistances, durationSeconds, tickSeconds, 'lineal', homeTargets);
 
     // FASE 2: mejorar el trazado con OSRM en segundo plano. Si OSRM responde
     // (normalmente 2-5s), el path se reemplaza y la simulación continúa
@@ -164,6 +193,7 @@ export class DemoSimulationService {
     durationSeconds: number,
     tickSeconds: number,
     source: string,
+    homeTargets: HomeTarget[] = [],
   ) {
     const totalTicks = Math.max(1, Math.round(durationSeconds / tickSeconds));
     const pointsPerTick = Math.max(1, Math.ceil(path.length / totalTicks));
@@ -176,6 +206,7 @@ export class DemoSimulationService {
         stopId: s.id,
         pickupPointId: s.pickupPoint.id,
         name: s.pickupPoint.name,
+        orderIndex: i,
       };
       const existing = stopByPathIndex.get(newIndex);
       if (existing) existing.push(marker);
@@ -195,6 +226,8 @@ export class DemoSimulationService {
       path,
       stopByPathIndex,
       notifiedStopIds: new Set(),
+      homeTargets,
+      notifiedAdvanceUserIds: new Set(),
       currentIndex: 0,
       pointsPerTick,
     });
@@ -248,6 +281,7 @@ export class DemoSimulationService {
         stopId: s.id,
         pickupPointId: s.pickupPoint.id,
         name: s.pickupPoint.name,
+        orderIndex: i,
       };
       const existing = newStopByPathIndex.get(newIndex);
       if (existing) existing.push(marker);
@@ -326,6 +360,9 @@ export class DemoSimulationService {
       });
     }
 
+    // 1b) Avisos anticipados "a N paradas de tu casa" (web + WhatsApp).
+    this.fireAdvanceAlarms(routeId, state, reachedStops);
+
     // 2) Persistir (best-effort, fire-and-forget): un fallo de Turso se
     //    registra pero NO corta la simulación ni congela el camión.
     this.prisma.routeLocation.create({
@@ -344,6 +381,80 @@ export class DemoSimulationService {
       this.notifyAlarms(routeId, stop.pickupPointId).catch((err: unknown) => {
         this.logger.warn(`Demo ${routeId}: fallo al notificar alarma: ${err instanceof Error ? err.message : err}`);
       });
+    }
+  }
+
+  /**
+   * Calcula, para cada ciudadano con "Casa" guardada, su parada más cercana en
+   * esta ruta. Solo se incluyen los que tienen una parada a ≤ MAX_HOME_STOP_METERS
+   * (es decir, la ruta realmente pasa cerca de su casa).
+   */
+  private async computeHomeTargets(
+    stops: { pickupPoint: { latitude: number; longitude: number; name: string } }[],
+  ): Promise<HomeTarget[]> {
+    const homeUsers = await this.prisma.user.findMany({
+      where: {
+        role: 'CITIZEN',
+        homeLatitude: { not: null },
+        homeLongitude: { not: null },
+      },
+      select: { id: true, phone: true, homeLatitude: true, homeLongitude: true },
+    });
+
+    const targets: HomeTarget[] = [];
+    for (const u of homeUsers) {
+      const home = { lat: u.homeLatitude!, lng: u.homeLongitude! };
+      let best: { d: number; ordinal: number; name: string } | null = null;
+      for (let i = 0; i < stops.length; i++) {
+        const pp = stops[i].pickupPoint;
+        const d = haversineMeters(home, { lat: pp.latitude, lng: pp.longitude });
+        if (best === null || d < best.d) best = { d, ordinal: i, name: pp.name };
+      }
+      if (best !== null && best.d <= MAX_HOME_STOP_METERS) {
+        targets.push({ userId: u.id, phone: u.phone, name: best.name, targetOrdinal: best.ordinal });
+      }
+    }
+    return targets;
+  }
+
+  /**
+   * Aviso anticipado (ADVANCE_STOPS paradas antes): cuando el camión llega a la
+   * parada `targetOrdinal - ADVANCE_STOPS` de un destinatario, se le empuja un
+   * evento SSE (toast en la app) y un WhatsApp. Una sola vez por usuario.
+   */
+  private fireAdvanceAlarms(routeId: string, state: SimulationState, reachedStops: StopMarker[]) {
+    if (state.homeTargets.length === 0 || reachedStops.length === 0) return;
+    const reachedOrdinals = new Set(reachedStops.map((s) => s.orderIndex));
+
+    for (const target of state.homeTargets) {
+      if (state.notifiedAdvanceUserIds.has(target.userId)) continue;
+      const triggerOrdinal = Math.max(0, target.targetOrdinal - ADVANCE_STOPS);
+      const stopsAway = target.targetOrdinal - triggerOrdinal;
+      if (stopsAway <= 0) continue; // la casa cae en la primera parada: no hay "antes"
+      if (!reachedOrdinals.has(triggerOrdinal)) continue;
+
+      state.notifiedAdvanceUserIds.add(target.userId);
+
+      // Web: toast en vivo (cada cliente filtra por su userId).
+      this.live.emit(routeId, {
+        type: 'alarm',
+        userId: target.userId,
+        name: target.name,
+        stopsAway,
+      });
+
+      // WhatsApp (si tiene teléfono configurado).
+      if (target.phone) {
+        const message = `🎬 [DEMO] Eco Track Wanchaq: el camión está a ${stopsAway} parada${stopsAway === 1 ? '' : 's'} de tu casa ("${target.name}"). ¡Prepárate para sacar tus residuos!`;
+        this.notifications
+          .sendWhatsapp(target.phone, message, {
+            userId: target.userId,
+            referenceType: 'demo-advance',
+          })
+          .catch((err: unknown) => {
+            this.logger.warn(`Demo ${routeId}: fallo al avisar (anticipado) a ${target.userId}: ${err instanceof Error ? err.message : err}`);
+          });
+      }
     }
   }
 

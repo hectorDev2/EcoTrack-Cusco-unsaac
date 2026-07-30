@@ -72,6 +72,9 @@ export interface User {
   phone?: string | null;
   role: 'CITIZEN' | 'DRIVER' | 'ADMIN';
   status: 'ACTIVE' | 'INACTIVE';
+  homeLatitude?: number | null;
+  homeLongitude?: number | null;
+  homeAddress?: string | null;
   createdAt: string;
   zones: Zone[];
 }

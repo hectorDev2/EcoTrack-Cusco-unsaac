@@ -80,6 +80,10 @@ async function migrate() {
     // ── users: teléfono para notificaciones WhatsApp ──────────────────────────
     console.log('\n📦 users:');
     await addColumn('users', 'phone', 'TEXT');
+    // Ubicación "Casa" del ciudadano
+    await addColumn('users', 'home_latitude', 'REAL');
+    await addColumn('users', 'home_longitude', 'REAL');
+    await addColumn('users', 'home_address', 'TEXT');
 
     // ── citizen_alarms: la tabla existente quedó con el esquema viejo
     // (zone_id/day_of_week NOT NULL) de una iteración de producto anterior
