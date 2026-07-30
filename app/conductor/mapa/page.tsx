@@ -168,7 +168,15 @@ export default function DriverMap() {
   // GPS: watchPosition para actualizar el marcador en tiempo real +
   //      setInterval cada 10 s para enviar al backend y recalcular nav
   useEffect(() => {
-    const isActive = activeRoute?.status === 'IN_PROGRESS' || activeRoute?.status === 'PENDING';
+    // Depender solo de id/estado (primitivos), NO del objeto `activeRoute`
+    // completo: /routes/my se re-consulta cada 4 s y devuelve un objeto nuevo
+    // en cada poll, así que atarse a la referencia hacía que este efecto se
+    // desmontara y remontara cada 4 s → clearWatch()+watchPosition() en bucle.
+    // Con enableHighAccuracy cada re-suscripción tarda segundos en dar el primer
+    // fix, y se destruía antes de emitir updates continuos: el marcador quedaba
+    // casi congelado aunque el conductor se moviera de verdad.
+    const routeStatus = activeRoute?.status;
+    const isActive = routeStatus === 'IN_PROGRESS' || routeStatus === 'PENDING';
 
     const stop = () => {
       if (watchIdRef.current !== null) {
@@ -245,7 +253,7 @@ export default function DriverMap() {
       const { latitude, longitude } = pos;
 
       // Enviar al backend solo si IN_PROGRESS
-      if (activeRouteIdRef.current && activeRoute.status === 'IN_PROGRESS') {
+      if (activeRouteIdRef.current && routeStatus === 'IN_PROGRESS') {
         void api.post(`/routes/${activeRouteIdRef.current}/location`, {
           latitude,
           longitude,
@@ -275,7 +283,8 @@ export default function DriverMap() {
     tickIntervalRef.current = setInterval(tick, BACKEND_SEND_MS);
 
     return stop;
-  }, [activeRoute, demoRunning, demoStatusKnown]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo re/montar el watch al cambiar id/estado de la ruta, no en cada poll de /routes/my
+  }, [activeRoute?.id, activeRoute?.status, demoRunning, demoStatusKnown]);
 
   // Posición actual del camión (demo o GPS real), para saber hasta dónde ya
   // recorrió el trayecto y pintar ese tramo como rastro discontinuo.
