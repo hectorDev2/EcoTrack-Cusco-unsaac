@@ -294,11 +294,12 @@ export default function MapaPage() {
   const [routePaths, setRoutePaths] = useState<Record<string, { coords: [number, number][] }>>({});
 
   useEffect(() => {
-    const inProgress = activeRoutes.filter(
-      (r): r is ActiveRoute =>
-        r.status === 'IN_PROGRESS' && r.stops.length >= 2 && r.id === nearestActiveRouteId,
+    // Trazado de la ruta más cercana, esté EN CURSO o PENDING — así su
+    // recorrido se dibuja aunque todavía no haya camión.
+    const toTrace = activeRoutes.filter(
+      (r): r is ActiveRoute => r.stops.length >= 2 && r.id === nearestActiveRouteId,
     );
-    for (const route of inProgress) {
+    for (const route of toTrace) {
       if (routePaths[route.id]) continue;
       const sorted = route.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex);
       const waypoints = sorted.map((s) => ({ lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }));
@@ -307,8 +308,8 @@ export default function MapaPage() {
         setRoutePaths((prev) => ({ ...prev, [route.id]: { coords: result.coordinates } }));
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recalcular cuando cambian las rutas activas, no en cada render por routePaths
-  }, [activeRoutes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcular al cambiar las rutas activas o la ruta más cercana elegida, no en cada render por routePaths
+  }, [activeRoutes, nearestActiveRouteId]);
 
   // Índice (por ruta) hasta donde ya pasó el camión sobre `routePaths[id].coords`
   // — se usa para pintar el tramo recorrido como rastro discontinuo, separado
@@ -344,39 +345,42 @@ export default function MapaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- live.position mueve el rastro en vivo
   }, [activeRoutes, routePaths, live.position, nearestActiveRouteId]);
 
-  // Tramo recorrido (rastro discontinuo) + tramo restante (sólido) de cada
-  // ruta en curso, y markers de las paradas propias de cada ruta.
+  // Trayecto de la ruta más cercana. SIEMPRE se dibuja su recorrido (aunque no
+  // haya camión: ruta PENDING). Si hay camión, se separa el tramo recorrido
+  // (gris discontinuo) del restante (rojo) y se muestra el marker del camión.
   const truckRouteLines: MapRoute[] = [];
   const truckMarkers: MapMarker[] = [];
-  for (const route of activeRoutes) {
-    if (route.id !== nearestActiveRouteId) continue;
-    const liveTruck = liveTruckFor(route.id);
+  if (closestRoute) {
+    const path = routePaths[closestRoute.id];
+    const liveTruck = liveTruckFor(closestRoute.id);
     const truck = liveTruck
       ? { longitude: liveTruck.lng, latitude: liveTruck.lat }
-      : route.currentLocation;
-    if (!truck) continue;
-    const path = routePaths[route.id];
+      : closestRoute.currentLocation;
 
-    truckMarkers.push({
-      id: `truck-${route.id}`,
-      lng: truck.longitude,
-      lat: truck.latitude,
-      color: '#C62828',
-      icon: 'local_shipping' as const,
-      label: `${route.name ?? route.zone.name} · ${route.zone.name}`,
-      description: 'Camión en ruta',
-      // Con SSE llega ~1 posición/seg; se desliza en ese lapso (respaldo: poll).
-      moveDurationMs: liveTruck ? 1100 : TRUCK_POLL_MS - 500,
-      pathCoords: path?.coords,
-    });
+    if (truck) {
+      truckMarkers.push({
+        id: `truck-${closestRoute.id}`,
+        lng: truck.longitude,
+        lat: truck.latitude,
+        color: '#C62828',
+        icon: 'local_shipping' as const,
+        label: `${closestRoute.name ?? closestRoute.zone.name} · ${closestRoute.zone.name}`,
+        description: 'Camión en ruta',
+        // Con SSE llega ~1 posición/seg; se desliza en ese lapso (respaldo: poll).
+        moveDurationMs: liveTruck ? 1100 : TRUCK_POLL_MS - 500,
+        pathCoords: path?.coords,
+      });
+    }
 
     if (path) {
-      const idx = traveledIndexByRoute[route.id];
+      // Sin camión: recorrido completo en verde (trayecto de la ruta).
+      // Con camión: recorrido gris + restante rojo.
+      const idx = truck ? traveledIndexByRoute[closestRoute.id] : undefined;
       const traveled = idx != null ? path.coords.slice(0, idx + 1) : [];
       const remaining = idx != null ? path.coords.slice(idx) : path.coords;
       if (traveled.length >= 2) {
         truckRouteLines.push({
-          id: `truck-route-${route.id}-traveled`,
+          id: `route-${closestRoute.id}-traveled`,
           points: traveled,
           color: '#9aa0a6',
           dashed: true,
@@ -384,9 +388,11 @@ export default function MapaPage() {
       }
       if (remaining.length >= 2) {
         truckRouteLines.push({
-          id: `truck-route-${route.id}-remaining`,
+          id: `route-${closestRoute.id}-remaining`,
           points: remaining,
-          color: '#C62828',
+          // Con camión: rojo (tramo restante). Sin camión: azul = recorrido de
+          // la ruta a la que pertenecen estos contenedores.
+          color: truck ? '#C62828' : '#2563eb',
         });
       }
     }
@@ -703,10 +709,15 @@ export default function MapaPage() {
                 <span>Más cercano</span>
               </div>
             )}
-            {truckMarkers.length > 0 && (
+            {truckMarkers.length > 0 ? (
               <div className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded-full bg-[#C62828]" />
                 <span>Camión en ruta</span>
+              </div>
+            ) : truckRouteLines.length > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-[#2563eb]" />
+                <span>Recorrido de la ruta</span>
               </div>
             )}
             <div className="flex items-center gap-1">
