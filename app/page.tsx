@@ -42,7 +42,7 @@ export default function OnboardingPage() {
 
       <footer className="relative w-full py-6 text-center mt-12">
         <span className="text-[11px] leading-[14px] tracking-[0.08em] font-extrabold text-outline uppercase">
-          Municipalidad de Wanchaq • 2025
+          Municipalidad de Wanchaq • 2026
         </span>
       </footer>
     </main>

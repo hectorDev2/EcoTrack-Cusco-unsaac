@@ -93,6 +93,9 @@ export class AuthService {
         phone: true,
         role: true,
         status: true,
+        homeLatitude: true,
+        homeLongitude: true,
+        homeAddress: true,
         createdAt: true,
         zones: {
           select: {
@@ -115,9 +118,12 @@ export class AuthService {
       throw new BadRequestException('Debes proporcionar tu contraseña actual');
     }
 
-    const data: Record<string, string | null> = {};
+    const data: Record<string, string | number | null> = {};
     if (dto.fullName) data.fullName = dto.fullName;
     if (dto.phone !== undefined) data.phone = dto.phone || null;
+    if (dto.homeLatitude !== undefined) data.homeLatitude = dto.homeLatitude;
+    if (dto.homeLongitude !== undefined) data.homeLongitude = dto.homeLongitude;
+    if (dto.homeAddress !== undefined) data.homeAddress = dto.homeAddress || null;
 
     if (dto.newPassword) {
       const user = await this.prisma.user.findUnique({

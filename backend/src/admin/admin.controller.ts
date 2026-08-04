@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -23,5 +23,20 @@ export class AdminController {
   @Get('analytics')
   getAnalytics() {
     return this.adminService.getAnalytics();
+  }
+
+  @ApiOperation({ summary: 'Get notification history (admin)' })
+  @ApiBearerAuth()
+  @Get('notifications')
+  getNotifications(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('type') type?: string,
+  ) {
+    return this.adminService.getNotifications(
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 20,
+      type,
+    );
   }
 }

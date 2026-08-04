@@ -1,10 +1,10 @@
 import { api } from './api';
-import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, FrequencyConfig, ActiveRoute, CitizenAlarm } from './types';
+import type { Incident, CollectionSchedule, Zone, PickupPoint, WasteType, PaginatedResponse, FrequencyConfig, ActiveRoute, CitizenAlarm, NotificationLog } from './types';
 
 export const queryKeys = {
   incidents: {
     my: () => ['incidents', 'my'] as const,
-    all: (status?: string) => ['incidents', 'all', status] as const,
+    all: (status?: string, page?: number) => ['incidents', 'all', status, page] as const,
   },
   schedules: {
     all: (zoneId?: string, wasteTypeId?: string) => ['schedules', zoneId, wasteTypeId] as const,
@@ -15,6 +15,7 @@ export const queryKeys = {
   routes: {
     public: () => ['routes', 'public'] as const,
     active: () => ['routes', 'active'] as const,
+    forAlarms: () => ['routes', 'for-alarms'] as const,
   },
   frequencies: {
     all: () => ['frequencies'] as const,
@@ -45,11 +46,14 @@ export const queries = {
       queryKey: queryKeys.incidents.my(),
       queryFn: () => api.get<Incident[]>('/incidents/my'),
     }),
-    all: (status?: string) => ({
-      queryKey: queryKeys.incidents.all(status),
+    all: (status?: string, page = 1) => ({
+      queryKey: queryKeys.incidents.all(status, page),
       queryFn: () => {
-        const params = status ? `?status=${status}` : '';
-        return api.get<PaginatedResponse<Incident>>(`/incidents${params}`);
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        params.set('page', String(page));
+        params.set('limit', '10');
+        return api.get<PaginatedResponse<Incident>>(`/incidents?${params}`);
       },
     }),
   },
@@ -92,6 +96,10 @@ export const queries = {
       queryKey: queryKeys.routes.active(),
       queryFn: () => api.get<ActiveRoute[]>('/routes/active'),
     }),
+    forAlarms: () => ({
+      queryKey: queryKeys.routes.forAlarms(),
+      queryFn: () => api.get<ActiveRoute[]>('/routes/for-alarms'),
+    }),
   },
   citizenAlarms: {
     mine: () => ({
@@ -115,6 +123,16 @@ export const queries = {
     dashboard: () => ({
       queryKey: queryKeys.admin.dashboard(),
       queryFn: () => api.get<DashboardData>('/admin/dashboard'),
+    }),
+    notifications: (page = 1, type?: string) => ({
+      queryKey: ['admin', 'notifications', page, type] as const,
+      queryFn: () => {
+        const params = new URLSearchParams();
+        params.set('page', String(page));
+        params.set('limit', '20');
+        if (type) params.set('type', type);
+        return api.get<PaginatedResponse<NotificationLog>>(`/admin/notifications?${params}`);
+      },
     }),
   },
 };

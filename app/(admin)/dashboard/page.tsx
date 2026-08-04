@@ -123,7 +123,8 @@ export default function AdminDashboardPage() {
 
         {data && (
           <>
-            <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Tarjetas de resumen (Cobertura / Incidencias / Usuarios) ocultas a pedido */}
+            <section className="hidden grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-surface-card p-8 rounded-xl shadow-sm border border-outline-variant/20 relative overflow-hidden group">
                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full group-hover:scale-110 transition-transform duration-500" />
                 <div className="flex items-start justify-between">

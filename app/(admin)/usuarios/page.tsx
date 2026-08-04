@@ -614,7 +614,7 @@ export default function UsuariosPage() {
       )}
 
       <footer className="w-full py-6 px-xl flex justify-between items-center max-w-[1440px] mx-auto bg-surface-container border-t border-outline-variant">
-        <p className="text-[14px] leading-[20px] text-on-surface-variant">© 2025 Municipalidad de Wanchaq - Gestión de Residuos</p>
+        <p className="text-[14px] leading-[20px] text-on-surface-variant">© 2026 Municipalidad de Wanchaq - Gestión de Residuos</p>
         <div className="flex gap-6">
           <a className="text-[14px] leading-[20px] text-on-surface-variant hover:text-primary transition-colors" href="#">Política de Privacidad</a>
           <a className="text-[14px] leading-[20px] text-on-surface-variant hover:text-primary transition-colors" href="#">Soporte</a>

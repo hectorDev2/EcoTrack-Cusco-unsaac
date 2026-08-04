@@ -80,6 +80,10 @@ async function migrate() {
     // ── users: teléfono para notificaciones WhatsApp ──────────────────────────
     console.log('\n📦 users:');
     await addColumn('users', 'phone', 'TEXT');
+    // Ubicación "Casa" del ciudadano
+    await addColumn('users', 'home_latitude', 'REAL');
+    await addColumn('users', 'home_longitude', 'REAL');
+    await addColumn('users', 'home_address', 'TEXT');
 
     // ── citizen_alarms: la tabla existente quedó con el esquema viejo
     // (zone_id/day_of_week NOT NULL) de una iteración de producto anterior
@@ -125,6 +129,28 @@ async function migrate() {
     // ── route_locations: modo demo ────────────────────────────────────────────
     console.log('\n📦 route_locations:');
     await addColumn('route_locations', 'simulated', 'BOOLEAN DEFAULT 0');
+
+    // ── notification_logs: registro de notificaciones (WhatsApp/browser) ──────
+    console.log('\n📦 notification_logs:');
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS notification_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        type TEXT NOT NULL,
+        channel TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'SENT',
+        message TEXT NOT NULL,
+        reference_id TEXT,
+        reference_type TEXT,
+        error TEXT,
+        sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notification_logs_user_id ON notification_logs(user_id)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notification_logs_reference_type ON notification_logs(reference_type)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notification_logs_sent_at ON notification_logs(sent_at)`);
+    console.log('  ✅ notification_logs lista');
 
     console.log('\n✅ Migración completada');
   } finally {

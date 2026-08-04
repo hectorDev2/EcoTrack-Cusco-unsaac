@@ -72,6 +72,9 @@ export interface User {
   phone?: string | null;
   role: 'CITIZEN' | 'DRIVER' | 'ADMIN';
   status: 'ACTIVE' | 'INACTIVE';
+  homeLatitude?: number | null;
+  homeLongitude?: number | null;
+  homeAddress?: string | null;
   createdAt: string;
   zones: Zone[];
 }
@@ -165,4 +168,19 @@ export interface ApiError {
   message: string;
   statusCode: number;
   error?: string;
+}
+
+export interface NotificationLog {
+  id: string;
+  userId: string | null;
+  type: string;
+  channel: string;
+  recipient: string;
+  status: 'SENT' | 'FAILED' | 'DELIVERED';
+  message: string;
+  referenceId: string | null;
+  referenceType: string | null;
+  error: string | null;
+  sentAt: string;
+  user?: { id: string; fullName: string; email: string } | null;
 }

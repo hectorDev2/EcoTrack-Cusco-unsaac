@@ -2,41 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
-import { calculateRoute, nearestPointIndex } from '@/lib/routing';
+import { calculateRoute, nearestForwardPointIndex } from '@/lib/routing';
 import MapView, { type MapMarker, type MapRoute } from '@/components/map-view';
+import DriverRouteSwitcher from '@/components/driver-route-switcher';
+import { type DriverRoute, type DriverRouteStop, SHIFT_LABELS, useSelectedDriverRoute } from '@/lib/driver-routes';
+import { useRouteLive } from '@/lib/live';
 
-interface RouteStop {
-  id: string;
-  orderIndex: number;
-  status: string;
-  pickupPoint: { id: string; name: string; address: string; latitude: number; longitude: number };
-}
-
-interface DriverRoute {
-  id: string;
-  name: string | null;
-  shift: string | null;
-  frequency: string | null;
-  zone: { id: string; name: string };
-  status: string;
-  totalStops: number;
-  completedStops: number;
-  startedAt: string | null;
-  createdAt: string;
-  stops: RouteStop[];
-}
-
+type RouteStop = DriverRouteStop;
 type GpsStatus = 'idle' | 'active' | 'error';
-
-const SHIFT_LABELS: Record<string, string> = {
-  MANANA: 'Mañana', TARDE: 'Tarde', NOCHE: 'Noche', DOMINICAL: 'Dominical',
-};
 
 const STOP_ORDERED = '#154212';
 const STOP_PENDING = '#2563eb';
 const STOP_COMPLETED = '#16a34a';
 const NAV_ROUTE_COLOR = '#f59e0b';
-const MARKER_POLL_MS = 3_000;    // cada 3 s → marcador fluido
+const ROUTE_POLL_MS = 4_000;     // cada 4 s → refrescar /routes/my (paradas + posición de demo)
 const BACKEND_SEND_MS = 10_000;  // cada 10 s → envío al backend
 const ARRIVAL_THRESHOLD_M = 50;  // metros → nav desaparece al llegar aquí
 
@@ -56,11 +35,23 @@ export default function DriverMap() {
   const [routes, setRoutes] = useState<DriverRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [routePath, setRoutePath] = useState<{ coords: [number, number][]; stopIndices: number[] } | null>(null);
+  const [routePath, setRoutePath] = useState<{ coords: [number, number][] } | null>(null);
   const [navRoute, setNavRoute] = useState<MapRoute | null>(null);
   const [gpsStatus, setGpsStatus] = useState<GpsStatus>('idle');
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [driverMarker, setDriverMarker] = useState<MapMarker | null>(null);
+  const [demoEnabled, setDemoEnabled] = useState<boolean | null>(null);
+  const [demoRunning, setDemoRunning] = useState(false);
+  // Se vuelve true recién cuando ya confirmamos (por red) si hay una demo
+  // corriendo para esta ruta. Mientras sea false, el GPS real NO debe
+  // arrancar — si no, hay una ventana (mientras /demo/enabled y
+  // /demo/routes/:id/status todavía no responden) donde demoRunning vale
+  // su default `false` sin que eso sea realmente cierto, y el efecto de GPS
+  // toma la posición real del navegador y mueve la cámara ahí.
+  const [demoStatusKnown, setDemoStatusKnown] = useState(false);
+  // Índice hasta donde ya pasó el camión sobre `routePath.coords` — separa
+  // el tramo recorrido (rastro discontinuo) del tramo que falta.
+  const [traveledIndex, setTraveledIndex] = useState<number | null>(null);
 
   const watchIdRef = useRef<number | null>(null);
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -79,17 +70,52 @@ export default function DriverMap() {
         .finally(() => setLoading(false));
 
     fetchRoutes();
-    // Poll para reflejar en vivo paradas completadas (p. ej. durante una demo).
-    const interval = setInterval(fetchRoutes, 8000);
+    // Poll para reflejar en vivo paradas completadas y la posición simulada
+    // (durante una demo). Más frecuente que antes (era 8s) para que, junto
+    // con moveDurationMs del marker, el camión se deslice en vez de saltar.
+    const interval = setInterval(fetchRoutes, ROUTE_POLL_MS);
     return () => clearInterval(interval);
   }, []);
 
-  const activeRoute = routes.find((r) => r.status === 'IN_PROGRESS')
-    ?? routes.find((r) => r.status === 'PENDING');
+  const { selectedRoute: activeRoute, selectRoute } = useSelectedDriverRoute(routes);
+
+  // Stream en vivo (SSE): posición del camión de la demo + paradas completadas,
+  // empujado por el servidor. Reemplaza al polling para mover el camión fluido
+  // y en sincronía con las otras vistas (admin, ciudadano).
+  const live = useRouteLive(activeRoute?.id, activeRoute?.status === 'IN_PROGRESS');
 
   useEffect(() => {
     activeRouteIdRef.current = activeRoute?.id ?? null;
   }, [activeRoute]);
+
+  useEffect(() => {
+    api.get<{ enabled: boolean }>('/demo/enabled')
+      .then((res) => setDemoEnabled(res.enabled))
+      .catch(() => setDemoEnabled(false));
+  }, []);
+
+  // Mientras haya una demo corriendo para esta ruta, se ignora el GPS real
+  // del navegador (el backend también lo rechaza) y se muestra la posición
+  // simulada en su lugar.
+  useEffect(() => {
+    if (demoEnabled === null) return; // aún no sabemos si el modo demo está habilitado
+    setDemoStatusKnown(false);
+    if (!demoEnabled || !activeRoute || activeRoute.status !== 'IN_PROGRESS') {
+      setDemoRunning(false);
+      setDemoStatusKnown(true);
+      return;
+    }
+    let cancelled = false;
+    const check = () => {
+      api.get<{ running: boolean }>(`/demo/routes/${activeRoute.id}/status`)
+        .then((res) => { if (!cancelled) { setDemoRunning(res.running); setDemoStatusKnown(true); } })
+        .catch(() => { if (!cancelled) { setDemoRunning(false); setDemoStatusKnown(true); } });
+    };
+    check();
+    const interval = setInterval(check, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recomprobar al cambiar de ruta/estado, no en cada poll
+  }, [demoEnabled, activeRoute?.id, activeRoute?.status]);
 
   // Actualizar primera parada y resetear estado de llegada cuando cambia la ruta
   useEffect(() => {
@@ -97,6 +123,7 @@ export default function DriverMap() {
     firstStopRef.current = sorted[0] ?? null;
     arrivedAtStartRef.current = false;
     setNavRoute(null);
+    setTraveledIndex(null);
   }, [activeRoute?.id]);
 
   // Trazar el trayecto (calles reales) entre las paradas — una sola vez por
@@ -113,18 +140,43 @@ export default function DriverMap() {
 
     calculateRoute(waypoints).then((result) => {
       if (!result) return;
-      const stopIndices = sorted.map((s) =>
-        nearestPointIndex(result.coordinates, { lng: s.pickupPoint.longitude, lat: s.pickupPoint.latitude }),
-      );
-      setRoutePath({ coords: result.coordinates, stopIndices });
+      setRoutePath({ coords: result.coordinates });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recalcular al cambiar de ruta, no en cada poll
   }, [activeRoute?.id]);
 
+  // Avanzar `traveledIndex` a medida que llega una nueva posición del camión
+  // (demo o GPS real) — busca SOLO hacia adelante desde el índice anterior
+  // para no confundirse con un tramo anterior en una calle que se cruza
+  // consigo misma.
+  // Posición del camión de demo: primero la del stream en vivo (SSE), y como
+  // respaldo la última guardada (currentLocation) por si el SSE aún no conectó.
+  const demoTruck: { lat: number; lng: number } | null = live.position
+    ? { lat: live.position.lat, lng: live.position.lng }
+    : activeRoute?.currentLocation
+      ? { lat: activeRoute.currentLocation.latitude, lng: activeRoute.currentLocation.longitude }
+      : null;
+  const currentTruckLat = demoRunning ? demoTruck?.lat : driverMarker?.lat;
+  const currentTruckLng = demoRunning ? demoTruck?.lng : driverMarker?.lng;
+  useEffect(() => {
+    if (!routePath || currentTruckLat == null || currentTruckLng == null) return;
+    setTraveledIndex((prev) =>
+      nearestForwardPointIndex(routePath.coords, { lng: currentTruckLng, lat: currentTruckLat }, prev ?? 0),
+    );
+  }, [routePath, currentTruckLat, currentTruckLng]);
+
   // GPS: watchPosition para actualizar el marcador en tiempo real +
   //      setInterval cada 10 s para enviar al backend y recalcular nav
   useEffect(() => {
-    const isActive = activeRoute?.status === 'IN_PROGRESS' || activeRoute?.status === 'PENDING';
+    // Depender solo de id/estado (primitivos), NO del objeto `activeRoute`
+    // completo: /routes/my se re-consulta cada 4 s y devuelve un objeto nuevo
+    // en cada poll, así que atarse a la referencia hacía que este efecto se
+    // desmontara y remontara cada 4 s → clearWatch()+watchPosition() en bucle.
+    // Con enableHighAccuracy cada re-suscripción tarda segundos en dar el primer
+    // fix, y se destruía antes de emitir updates continuos: el marcador quedaba
+    // casi congelado aunque el conductor se moviera de verdad.
+    const routeStatus = activeRoute?.status;
+    const isActive = routeStatus === 'IN_PROGRESS' || routeStatus === 'PENDING';
 
     const stop = () => {
       if (watchIdRef.current !== null) {
@@ -137,10 +189,15 @@ export default function DriverMap() {
       }
     };
 
-    if (!activeRoute || !isActive) {
+    if (!activeRoute || !isActive || !demoStatusKnown || demoRunning) {
       stop();
       setGpsStatus('idle');
       setDriverMarker(null);
+      // Nada de GPS real ni "ir al inicio" mientras corre la demo (o todavía
+      // no confirmamos si corre) — limpiar cualquier rastro que haya
+      // quedado de antes.
+      setNavRoute(null);
+      lastPositionRef.current = null;
       return;
     }
 
@@ -196,7 +253,7 @@ export default function DriverMap() {
       const { latitude, longitude } = pos;
 
       // Enviar al backend solo si IN_PROGRESS
-      if (activeRouteIdRef.current && activeRoute.status === 'IN_PROGRESS') {
+      if (activeRouteIdRef.current && routeStatus === 'IN_PROGRESS') {
         void api.post(`/routes/${activeRouteIdRef.current}/location`, {
           latitude,
           longitude,
@@ -226,21 +283,34 @@ export default function DriverMap() {
     tickIntervalRef.current = setInterval(tick, BACKEND_SEND_MS);
 
     return stop;
-  }, [activeRoute]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo re/montar el watch al cambiar id/estado de la ruta, no en cada poll de /routes/my
+  }, [activeRoute?.id, activeRoute?.status, demoRunning, demoStatusKnown]);
 
-  // Tramos restantes del trayecto: se oculta el segmento hacia cualquier
-  // parada ya COMPLETED, para que la ruta se vaya "acortando" en el mapa.
-  const sortedStops = activeRoute?.stops.slice().sort((a, b) => a.orderIndex - b.orderIndex) ?? [];
+  // Posición actual del camión (demo o GPS real), para saber hasta dónde ya
+  // recorrió el trayecto y pintar ese tramo como rastro discontinuo.
+  const truckPos = demoRunning && demoTruck
+    ? { lng: demoTruck.lng, lat: demoTruck.lat }
+    : driverMarker
+      ? { lng: driverMarker.lng, lat: driverMarker.lat }
+      : null;
+
   const mainRouteLines: MapRoute[] = [];
   if (activeRoute && routePath) {
-    for (let i = 0; i < sortedStops.length - 1; i++) {
-      const destStop = sortedStops[i + 1];
-      if (destStop.status === 'COMPLETED') continue;
-      const start = routePath.stopIndices[i];
-      const end = routePath.stopIndices[i + 1];
+    const idx = truckPos != null ? traveledIndex : null;
+    const traveled = idx != null ? routePath.coords.slice(0, idx + 1) : [];
+    const remaining = idx != null ? routePath.coords.slice(idx) : routePath.coords;
+    if (traveled.length >= 2) {
       mainRouteLines.push({
-        id: `${activeRoute.id}-seg-${i}`,
-        points: routePath.coords.slice(start, end + 1),
+        id: `${activeRoute.id}-traveled`,
+        points: traveled,
+        color: '#9aa0a6',
+        dashed: true,
+      });
+    }
+    if (remaining.length >= 2) {
+      mainRouteLines.push({
+        id: `${activeRoute.id}-remaining`,
+        points: remaining,
         color: '#154212',
       });
     }
@@ -252,21 +322,39 @@ export default function DriverMap() {
           .slice()
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((s) => {
+            // Una parada está completada si lo dice el backend O si el stream en
+            // vivo ya avisó el check (llega antes que el próximo refresco).
+            const completed = s.status === 'COMPLETED' || live.completedStopIds.has(s.id);
             let color = STOP_ORDERED;
             if (s.status === 'PENDING') color = STOP_PENDING;
-            if (s.status === 'COMPLETED') color = STOP_COMPLETED;
+            if (completed) color = STOP_COMPLETED;
             return {
               id: s.id,
               lng: s.pickupPoint.longitude,
               lat: s.pickupPoint.latitude,
               color,
-              icon: s.status === 'COMPLETED' ? 'check_circle' : 'location_on',
+              icon: completed ? 'check_circle' : 'location_on',
               label: `${s.pickupPoint.name} (#${s.orderIndex + 1})`,
               description: s.pickupPoint.address,
             };
           })
       : []),
-    ...(driverMarker ? [driverMarker] : []),
+    ...(demoRunning && demoTruck
+      ? [{
+          id: '__driver__',
+          lat: demoTruck.lat,
+          lng: demoTruck.lng,
+          color: '#f59e0b',
+          icon: 'local_shipping' as const,
+          label: '🎬 Camión (demo)',
+          // El SSE empuja ~1 posición por segundo; la animación se desliza en
+          // ese lapso en vez de saltar (antes se ataba al poll de 4s).
+          moveDurationMs: 1100,
+          pathCoords: routePath?.coords,
+        }]
+      : driverMarker
+        ? [driverMarker]
+        : []),
   ];
 
   const allRoutes: MapRoute[] = [
@@ -306,6 +394,8 @@ export default function DriverMap() {
 
   return (
     <div className="space-y-4">
+      <DriverRouteSwitcher routes={routes} selectedId={activeRoute.id} onSelect={selectRoute} />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-[20px] font-extrabold text-primary">
@@ -321,6 +411,12 @@ export default function DriverMap() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {demoRunning && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold bg-secondary/10 text-secondary">
+              <span className="material-symbols-outlined text-[14px]">movie</span>
+              Demo en curso
+            </div>
+          )}
           {/* GPS status */}
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold ${
             gpsStatus === 'active'
@@ -336,14 +432,16 @@ export default function DriverMap() {
                   ? 'bg-status-alert'
                   : 'bg-outline'
             }`} />
-            {gpsStatus === 'active' ? 'GPS activo' : gpsStatus === 'error' ? 'Sin GPS' : 'GPS inactivo'}
+            {demoRunning ? 'GPS pausado (demo)' : gpsStatus === 'active' ? 'GPS activo' : gpsStatus === 'error' ? 'Sin GPS' : 'GPS inactivo'}
           </div>
           <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
             activeRoute.status === 'IN_PROGRESS'
               ? 'bg-primary/10 text-primary'
-              : 'bg-surface-container-high text-on-surface-variant'
+              : activeRoute.status === 'COMPLETED'
+                ? 'bg-waste-organic/10 text-waste-organic'
+                : 'bg-surface-container-high text-on-surface-variant'
           }`}>
-            {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : 'Pendiente'}
+            {activeRoute.status === 'IN_PROGRESS' ? 'En curso' : activeRoute.status === 'COMPLETED' ? 'Completada' : 'Pendiente'}
           </span>
         </div>
       </div>
@@ -370,7 +468,7 @@ export default function DriverMap() {
           markers={markers}
           routes={allRoutes}
           height="400px"
-          followMarkerId={driverMarker ? '__driver__' : undefined}
+          followMarkerId={(demoRunning && activeRoute?.currentLocation) || driverMarker ? '__driver__' : undefined}
         />
       </div>
 

@@ -15,9 +15,19 @@ const FREQUENCY_DAYS: Record<string, string[]> = {
   TODOS: DAY_CODES,
 };
 
-function runsToday(frequency: string | null, todayCode: string): boolean {
-  if (!frequency) return true;
-  const days = FREQUENCY_DAYS[frequency];
+function runsToday(
+  route: { frequency: string | null; schedules: { days: string }[] },
+  todayCode: string,
+): boolean {
+  // Una ruta con horarios propios (RouteSchedule) puede correr en más de un
+  // grupo de días (ej. LMV 06:00 Y MJS 17:00) — alcanza con que el día de
+  // hoy esté en CUALQUIERA de ellos. Si no tiene horarios cargados, se cae
+  // al campo `frequency` legado (una ruta = una sola frecuencia).
+  if (route.schedules.length > 0) {
+    return route.schedules.some((s) => s.days.split(',').includes(todayCode));
+  }
+  if (!route.frequency) return true;
+  const days = FREQUENCY_DAYS[route.frequency];
   if (!days) return true;
   return days.includes(todayCode);
 }
@@ -54,14 +64,20 @@ export class CitizenAlarmsScheduler {
       },
       include: {
         user: { select: { id: true, phone: true } },
-        route: { select: { id: true, frequency: true } },
+        route: {
+          select: {
+            id: true,
+            frequency: true,
+            schedules: { select: { days: true } },
+          },
+        },
         pickupPoint: { select: { id: true, name: true, scheduledTime: true } },
       },
     });
 
     for (const alarm of alarms) {
       if (!alarm.pickupPoint.scheduledTime) continue;
-      if (!runsToday(alarm.route.frequency, todayCode)) continue;
+      if (!runsToday(alarm.route, todayCode)) continue;
 
       const scheduledMinutes = toMinutes(alarm.pickupPoint.scheduledTime);
       if (scheduledMinutes == null) continue;
@@ -74,7 +90,11 @@ export class CitizenAlarmsScheduler {
 
       if (alarm.user.phone) {
         const message = `🚛 Eco Track Wanchaq: tu camión recolector pasará por "${alarm.pickupPoint.name}" en aprox. ${alarm.notifyBeforeMinutes} min (hora estimada ${alarm.pickupPoint.scheduledTime}).`;
-        await this.notifications.sendWhatsapp(alarm.user.phone, message);
+        await this.notifications.sendWhatsapp(alarm.user.phone, message, {
+          userId: alarm.userId,
+          referenceId: alarm.id,
+          referenceType: 'citizen_alarm',
+        });
       } else {
         this.logger.debug(
           `Alarma ${alarm.id}: usuario sin teléfono registrado, no se envió WhatsApp.`,

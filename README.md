@@ -222,6 +222,11 @@ pm2 restart ecotrack-frontend ecotrack-backend
 | Notificación WhatsApp | Cron cada minuto compara `scheduledTime - notifyBeforeMinutes` y envía por Twilio (una vez por día) |
 | Notificación del navegador | Notification API con permiso + polling cliente, dedupe en localStorage |
 | Teléfono en perfil | Campo WhatsApp (`+51...`) en `/perfil`, editable vía `PATCH /auth/me` |
+| Dirección "Casa" del ciudadano | Guardar una ubicación (mapa, click o GPS) como casa 🏠 en `PATCH /auth/me`; se carga como origen del mapa y persiste entre sesiones |
+| Seguimiento en vivo desde la casa | El ciudadano ve el camión moverse por SSE y la ruta al punto de recojo más cercano a su casa |
+| Aviso anticipado "a 3 paradas" | En la simulación, cuando el camión está 3 paradas antes del punto más cercano a la casa, se notifica en la app (toast SSE) y por WhatsApp |
+| Movimiento suave del camión | Interpolación por calle con buffer para que el marcador se deslice sin saltos ni micro-freezes |
+| Service worker network-first | Navegaciones siempre desde la red (caché solo fallback offline); registrado solo en producción para no servir shell rancio en dev |
 | CI/CD | GitHub Actions en push/PR |
 
 ---

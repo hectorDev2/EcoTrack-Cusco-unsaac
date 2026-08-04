@@ -181,12 +181,25 @@ export default function AlarmasPage() {
   const [label, setLabel] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: allRoutes = [] } = useQuery(queries.routes.active());
+  const { data: allRoutes = [] } = useQuery(queries.routes.forAlarms());
   const { data: allPoints = [] } = useQuery(queries.pickupPoints.all());
 
   const myZoneIds = new Set(user?.zones?.map((z) => z.id) ?? []);
   const routes = myZoneIds.size > 0 ? allRoutes.filter((r) => myZoneIds.has(r.zone.id)) : allRoutes;
-  const points = myZoneIds.size > 0 ? allPoints.filter((p) => myZoneIds.has(p.zoneId)) : allPoints;
+  const zonePoints = myZoneIds.size > 0 ? allPoints.filter((p) => myZoneIds.has(p.zoneId)) : allPoints;
+
+  // Solo se ofrecen puntos que pertenecen a alguna ruta. Los vertederos
+  // "libres" (sin ruta) no sirven para una alarma —no habría ruta candidata y
+  // el botón quedaría deshabilitado—, así que se descartan del selector/mapa.
+  const routePointIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of routes) for (const st of r.stops) s.add(st.pickupPoint.id);
+    return s;
+  }, [routes]);
+  const points = useMemo(
+    () => zonePoints.filter((p) => routePointIds.has(p.id)),
+    [zonePoints, routePointIds],
+  );
 
   const locations = useMemo(() => dedupeLocations(points), [points]);
   const filteredLocations = useMemo(() => {

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -52,6 +53,14 @@ export class RoutesController {
   @Roles('CITIZEN')
   findActive() {
     return this.routesService.findActive();
+  }
+
+  @ApiOperation({ summary: 'Get all routes for citizen alarms (any status)' })
+  @ApiBearerAuth()
+  @Get('for-alarms')
+  @Roles('CITIZEN')
+  findForAlarms() {
+    return this.routesService.findForAlarms();
   }
 
   @ApiOperation({ summary: 'Get routes by zone' })
@@ -132,5 +141,13 @@ export class RoutesController {
   @Roles('DRIVER')
   completeRoute(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.routesService.completeRoute(id, userId);
+  }
+
+  @ApiOperation({ summary: 'Delete a route (admin)' })
+  @ApiBearerAuth()
+  @Delete(':id')
+  @Roles('ADMIN')
+  remove(@Param('id') id: string) {
+    return this.routesService.remove(id);
   }
 }

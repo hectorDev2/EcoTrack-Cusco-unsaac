@@ -12,27 +12,86 @@ export interface CalculatedRoute {
 }
 
 const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
+const OSRM_TIMEOUT_MS = 8000;
+const OSRM_RETRIES = 2;
 
+/**
+ * Sin esto, una sola falla de red (timeout, DNS, etc.) dejaba `routePath` en
+ * `null` para siempre — el marker del camión pierde su polyline de
+ * referencia y pasa a animarse en línea recta entre dos posiciones GPS
+ * (cortando por encima de manzanas) en vez de seguir la calle. Reintentar
+ * con backoff corto cubre los cortes de red transitorios, que son mucho más
+ * comunes que un fallo real de OSRM.
+ */
 export async function calculateRoute(waypoints: RouteWaypoint[]): Promise<CalculatedRoute | null> {
   if (waypoints.length < 2) return null;
 
   const coords = waypoints.map((w) => `${w.lng},${w.lat}`).join(';');
-  const url = `${OSRM_URL}/${coords}?geometries=geojson&overview=full&steps=false`;
+  // continue_straight=false: por defecto OSRM evita giros en U en los waypoints
+  // intermedios, así que una parada en un callejón sin salida hacía que buscara
+  // un camino alternativo (a veces mucho más largo) en vez de simplemente entrar
+  // y retroceder por la misma calle — que es justo lo que hace un camión
+  // recolector real en un callejón sin salida.
+  const url = `${OSRM_URL}/${coords}?geometries=geojson&overview=full&steps=false&continue_straight=false`;
 
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!data.routes?.[0]) return null;
+  for (let attempt = 0; attempt <= OSRM_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OSRM_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      const data = await res.json();
+      const route = data.routes?.[0];
+      if (!route) throw new Error('OSRM: sin rutas en la respuesta');
 
-    const route = data.routes[0];
-    return {
-      coordinates: route.geometry.coordinates as [number, number][],
-      distance: route.distance,
-      duration: route.duration,
-    };
-  } catch {
-    return null;
+      return {
+        coordinates: route.geometry.coordinates as [number, number][],
+        distance: route.distance,
+        duration: route.duration,
+      };
+    } catch {
+      if (attempt < OSRM_RETRIES) await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+  return null;
+}
+
+/**
+ * Reordena `waypoints` para minimizar el recorrido total, usando el servicio
+ * "trip" de OSRM (resuelve un TSP aproximado). El primer punto queda fijo
+ * como inicio (`source=first`) — normalmente es donde arranca el camión —
+ * y el resto se reordena para no cruzar la ruta sobre sí misma ni pegar
+ * saltos entre puntos lejanos por un orden agregado a mano. No es un
+ * "roundtrip": no vuelve al punto de partida al final.
+ */
+export async function optimizeWaypointOrder<T extends RouteWaypoint>(waypoints: T[]): Promise<T[] | null> {
+  if (waypoints.length < 3) return waypoints;
+
+  const coords = waypoints.map((w) => `${w.lng},${w.lat}`).join(';');
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coords}?source=first&roundtrip=false&geometries=geojson`;
+
+  for (let attempt = 0; attempt <= OSRM_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OSRM_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      const data = await res.json();
+      const tripWaypoints = data.waypoints as { waypoint_index: number }[] | undefined;
+      if (!tripWaypoints || tripWaypoints.length !== waypoints.length) throw new Error('OSRM trip: respuesta inválida');
+
+      // `tripWaypoints[i]` corresponde a `waypoints[i]` (mismo orden de entrada) y
+      // trae la posición que le tocó en el recorrido optimizado.
+      const ordered = new Array<T>(waypoints.length);
+      tripWaypoints.forEach((tw, i) => { ordered[tw.waypoint_index] = waypoints[i]; });
+      return ordered;
+    } catch {
+      if (attempt < OSRM_RETRIES) await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+  return null;
 }
 
 /** Índice del punto de `coordinates` (formato [lng,lat]) más cercano a `target`. */
@@ -49,6 +108,50 @@ export function nearestPointIndex(
       bestIndex = i;
     }
   });
+  return bestIndex;
+}
+
+function haversineMetersLL(a: { lng: number; lat: number }, b: { lng: number; lat: number }): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+/**
+ * Índice del punto de `coordinates` más cercano a `target`, buscando SOLO
+ * desde `fromIndex` en adelante y dentro de una ventana de `maxAdvanceMeters`
+ * — para marcar el tramo ya recorrido por el camión sin que una calle que se
+ * cruza consigo misma lo haga "saltar" a un tramo mucho más adelante donde la
+ * ruta vuelve a pasar cerca (ni "retroceder" a uno anterior).
+ */
+export function nearestForwardPointIndex(
+  coordinates: [number, number][],
+  target: { lng: number; lat: number },
+  fromIndex: number,
+  maxAdvanceMeters = 400,
+): number {
+  let bestIndex = fromIndex;
+  let bestDist = Infinity;
+  let traveled = 0;
+  for (let i = fromIndex; i < coordinates.length; i++) {
+    if (i > fromIndex) {
+      const [plng, plat] = coordinates[i - 1];
+      const [clng, clat] = coordinates[i];
+      traveled += haversineMetersLL({ lng: plng, lat: plat }, { lng: clng, lat: clat });
+      if (traveled > maxAdvanceMeters) break;
+    }
+    const [lng, lat] = coordinates[i];
+    const d = (lng - target.lng) ** 2 + (lat - target.lat) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      bestIndex = i;
+    }
+  }
   return bestIndex;
 }
 

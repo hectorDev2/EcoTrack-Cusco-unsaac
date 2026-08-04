@@ -55,7 +55,7 @@ export default function ReportarPage() {
         setLocating(false);
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            setError('Permiso denegado. Activá la ubicación desde tu navegador.');
+            setError('Permiso denegado. Activa la ubicación desde tu navegador.');
             break;
           case err.POSITION_UNAVAILABLE:
             setError('No se pudo obtener la ubicación.');

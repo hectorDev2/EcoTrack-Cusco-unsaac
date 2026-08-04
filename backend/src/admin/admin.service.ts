@@ -206,4 +206,25 @@ export class AdminService {
       totalIncidents: incidents.length,
     };
   }
+
+  async getNotifications(page = 1, limit = 20, type?: string) {
+    const where: { type?: string } = {};
+    if (type) where.type = type;
+
+    const [data, total] = await Promise.all([
+      this.prisma.notificationLog.findMany({
+        where,
+        include: { user: { select: { id: true, fullName: true, email: true } } },
+        orderBy: { sentAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.notificationLog.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
 }

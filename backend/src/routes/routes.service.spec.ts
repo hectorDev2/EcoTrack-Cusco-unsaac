@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { RoutesService } from './routes.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { DemoStateService } from '../demo/demo-state.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 
@@ -64,6 +65,7 @@ const mockRoute = {
   zone: mockZone,
   driver: mockDriver,
   stops: mockStops,
+  schedules: [],
 };
 
 describe('RoutesService', () => {
@@ -90,6 +92,10 @@ describe('RoutesService', () => {
       findMany: jest.fn(),
       create: jest.fn(),
     },
+    routeSchedule: {
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -97,6 +103,7 @@ describe('RoutesService', () => {
       providers: [
         RoutesService,
         { provide: PrismaService, useValue: mockPrisma },
+        DemoStateService,
       ],
     }).compile();
 
@@ -138,6 +145,23 @@ describe('RoutesService', () => {
         id: 'zone-1',
         name: 'Centro Histórico',
       });
+    });
+
+    it('debe devolver los horarios como arrays de días, no como CSV', async () => {
+      mockPrisma.route.findUnique.mockResolvedValue({
+        ...mockRoute,
+        schedules: [
+          { id: 'sch-1', days: 'MON,WED,FRI', time: '06:00', label: null },
+          { id: 'sch-2', days: 'TUE,THU,SAT', time: '17:00', label: 'Turno tarde' },
+        ],
+      });
+
+      const result = await service.findOne('route-1');
+
+      expect(result.schedules).toEqual([
+        { id: 'sch-1', days: ['MON', 'WED', 'FRI'], time: '06:00', label: null },
+        { id: 'sch-2', days: ['TUE', 'THU', 'SAT'], time: '17:00', label: 'Turno tarde' },
+      ]);
     });
 
     it('debe lanzar NotFoundException si la ruta no existe', async () => {
@@ -182,6 +206,32 @@ describe('RoutesService', () => {
         ],
       });
       expect(result.id).toBe('route-new');
+    });
+
+    it('debe crear los horarios de la ruta si se proporcionan schedules', async () => {
+      const dto: CreateRouteDto = {
+        zoneId: 'zone-1',
+        driverId: 'driver-1',
+        schedules: [
+          { days: ['MON', 'WED', 'FRI'], time: '06:00' },
+          { days: ['TUE', 'THU', 'SAT'], time: '17:00', label: 'Turno tarde' },
+        ],
+      };
+      const createdRoute = { ...mockRoute, id: 'route-new-3' };
+      mockPrisma.route.create.mockResolvedValue(createdRoute);
+      mockPrisma.route.findUnique.mockResolvedValue(createdRoute);
+
+      await service.create(dto);
+
+      expect(mockPrisma.routeSchedule.deleteMany).toHaveBeenCalledWith({
+        where: { routeId: 'route-new-3' },
+      });
+      expect(mockPrisma.routeSchedule.createMany).toHaveBeenCalledWith({
+        data: [
+          { routeId: 'route-new-3', days: 'MON,WED,FRI', time: '06:00', label: null },
+          { routeId: 'route-new-3', days: 'TUE,THU,SAT', time: '17:00', label: 'Turno tarde' },
+        ],
+      });
     });
 
     it('debe crear una ruta sin paradas si no se proporcionan pickupPointIds', async () => {
@@ -273,6 +323,39 @@ describe('RoutesService', () => {
         service.update('non-existent', { status: 'IN_PROGRESS' }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('debe reemplazar los horarios existentes cuando se envía schedules', async () => {
+      mockPrisma.route.findUnique
+        .mockResolvedValueOnce(mockRoute)
+        .mockResolvedValueOnce(mockRoute);
+      mockPrisma.route.update.mockResolvedValue(mockRoute);
+
+      const dto: UpdateRouteDto = {
+        schedules: [{ days: ['DOM'], time: '08:00', label: 'Dominical' }],
+      };
+      await service.update('route-1', dto);
+
+      expect(mockPrisma.routeSchedule.deleteMany).toHaveBeenCalledWith({
+        where: { routeId: 'route-1' },
+      });
+      expect(mockPrisma.routeSchedule.createMany).toHaveBeenCalledWith({
+        data: [{ routeId: 'route-1', days: 'DOM', time: '08:00', label: 'Dominical' }],
+      });
+    });
+
+    it('debe dejar la ruta sin horarios si se envía schedules vacío', async () => {
+      mockPrisma.route.findUnique
+        .mockResolvedValueOnce(mockRoute)
+        .mockResolvedValueOnce(mockRoute);
+      mockPrisma.route.update.mockResolvedValue(mockRoute);
+
+      await service.update('route-1', { schedules: [] });
+
+      expect(mockPrisma.routeSchedule.deleteMany).toHaveBeenCalledWith({
+        where: { routeId: 'route-1' },
+      });
+      expect(mockPrisma.routeSchedule.createMany).not.toHaveBeenCalled();
+    });
   });
 
   describe('findByZone', () => {
@@ -310,6 +393,36 @@ describe('RoutesService', () => {
       const result = await service.findByDriver('driver-sin-rutas');
 
       expect(result).toHaveLength(0);
+    });
+
+    it('debe ordenar varias rutas del conductor por hora de turno, no por fecha de creación', async () => {
+      const noche = { ...mockRoute, id: 'route-noche', shift: 'NOCHE' };
+      const manana = { ...mockRoute, id: 'route-manana', shift: 'MANANA' };
+      const tarde = { ...mockRoute, id: 'route-tarde', shift: 'TARDE' };
+      // El mock ya viene en un orden distinto (simula orderBy createdAt: desc)
+      mockPrisma.route.findMany.mockResolvedValue([noche, manana, tarde]);
+
+      const result = await service.findByDriver('driver-1');
+
+      expect(result.map((r) => r.id)).toEqual(['route-manana', 'route-tarde', 'route-noche']);
+    });
+
+    it('debe incluir en la consulta las rutas COMPLETED de hoy además de PENDING/IN_PROGRESS', async () => {
+      mockPrisma.route.findMany.mockResolvedValue([mockRoute]);
+
+      await service.findByDriver('driver-1');
+
+      expect(mockPrisma.route.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            driverId: 'driver-1',
+            OR: [
+              { status: { in: ['PENDING', 'IN_PROGRESS'] } },
+              { status: 'COMPLETED', finishedAt: { gte: expect.any(Date) } },
+            ],
+          }),
+        }),
+      );
     });
   });
 
@@ -468,8 +581,9 @@ describe('RoutesService', () => {
         -71.978,
       );
 
-      expect(result.latitude).toBe(-13.517);
-      expect(result.longitude).toBe(-71.978);
+      expect('ignored' in result).toBe(false);
+      expect((result as typeof location).latitude).toBe(-13.517);
+      expect((result as typeof location).longitude).toBe(-71.978);
       expect(mockPrisma.routeLocation.create).toHaveBeenCalledWith({
         data: { routeId: 'route-1', latitude: -13.517, longitude: -71.978 },
       });

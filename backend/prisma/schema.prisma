@@ -16,6 +16,11 @@ model User {
   phone        String?  // Número de WhatsApp para notificaciones (ej. "+51987654321")
   role         String   @default("CITIZEN")
   status       String   @default("ACTIVE")
+  // Ubicación "Casa" del ciudadano: origen para ver el camión en vivo y la ruta
+  // al punto de recojo más cercano. Nullable — no todos la configuran.
+  homeLatitude  Float?  @map("home_latitude")
+  homeLongitude Float?  @map("home_longitude")
+  homeAddress   String? @map("home_address")
   createdAt    DateTime @default(now()) @map("created_at")
 
   zones     UserZone[]
@@ -23,6 +28,7 @@ model User {
   incidents Incident[]
   citizenAlarms CitizenAlarm[]
   vehicles  Vehicle[]
+  notificationLogs NotificationLog[]
 
   @@map("users")
 }
@@ -180,8 +186,26 @@ model Route {
   locations RouteLocation[]
   incidents Incident[]
   citizenAlarms CitizenAlarm[]
+  schedules RouteSchedule[]
 
   @@map("routes")
+}
+
+/// Un horario en el que corre la ruta — una ruta puede tener varios (p. ej.
+/// Lunes/Miércoles/Viernes 06:00 Y ADEMÁS Martes/Jueves/Sábado 17:00), sin
+/// tener que duplicar la ruta (mismas paradas, mismo conductor) por cada
+/// combinación de días+hora.
+model RouteSchedule {
+  id      String @id @default(cuid())
+  routeId String @map("route_id")
+  days    String // días separados por coma, formato iCal: "MON,WED,FRI"
+  time    String // hora de inicio "HH:MM"
+  label   String? // opcional, ej. "Turno mañana"
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+  @@map("route_schedules")
 }
 
 model RouteStop {
@@ -281,4 +305,25 @@ model CitizenAlarm {
   @@index([routeId])
   @@index([pickupPointId])
   @@map("citizen_alarms")
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  type      String   // whatsapp | browser | email
+  channel   String   // twilio | browser | pending
+  recipient String   // número de teléfono, email o "browser"
+  status    String   @default("SENT") // SENT | FAILED | DELIVERED
+  message   String
+  referenceId String? @map("reference_id") // ID de la entidad que originó la notif (alarma, incidencia, etc.)
+  referenceType String? @map("reference_type") // citizen_alarm | demo | system
+  error     String?
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([referenceType])
+  @@index([sentAt])
+  @@map("notification_logs")
 }

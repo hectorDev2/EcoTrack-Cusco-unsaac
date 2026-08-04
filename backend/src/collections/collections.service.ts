@@ -13,7 +13,7 @@ export class CollectionsService {
   async create(dto: CreateCollectionDto, driverId: string) {
     const stop = await this.prisma.routeStop.findUnique({
       where: { id: dto.routeStopId },
-      include: { route: { select: { driverId: true } } },
+      include: { route: { select: { id: true, driverId: true } } },
     });
 
     if (!stop) throw new NotFoundException('Parada no encontrada');
@@ -30,21 +30,45 @@ export class CollectionsService {
       );
     }
 
-    return this.prisma.collection.create({
-      data: {
-        routeStopId: dto.routeStopId,
-        wasteTypeId: dto.wasteTypeId,
-        collectedAt: new Date(),
-        notes: dto.notes ?? null,
-      },
-      include: {
-        routeStop: {
-          include: {
-            pickupPoint: { select: { id: true, name: true, address: true } },
-          },
+    // Registrar la recolección marca la parada como completada en el mismo
+    // paso — antes quedaban desincronizadas (el registro se creaba pero
+    // RouteStop.status se quedaba en PENDING para siempre), lo que además
+    // impedía saber cuándo el conductor había terminado toda la ruta.
+    const [collection] = await this.prisma.$transaction([
+      this.prisma.collection.create({
+        data: {
+          routeStopId: dto.routeStopId,
+          wasteTypeId: dto.wasteTypeId,
+          collectedAt: new Date(),
+          notes: dto.notes ?? null,
         },
-        wasteType: { select: { id: true, name: true, category: true } },
-      },
+        include: {
+          routeStop: {
+            include: {
+              pickupPoint: { select: { id: true, name: true, address: true } },
+            },
+          },
+          wasteType: { select: { id: true, name: true, category: true } },
+        },
+      }),
+      this.prisma.routeStop.update({
+        where: { id: dto.routeStopId },
+        data: { status: 'COMPLETED' },
+      }),
+    ]);
+
+    // Si esa era la última parada pendiente, la ruta se completa sola — el
+    // conductor no debería tener que tocar un botón aparte para cerrarla.
+    const pendingCount = await this.prisma.routeStop.count({
+      where: { routeId: stop.route.id, status: { not: 'COMPLETED' } },
     });
+    if (pendingCount === 0) {
+      await this.prisma.route.updateMany({
+        where: { id: stop.route.id, status: 'IN_PROGRESS' },
+        data: { status: 'COMPLETED', finishedAt: new Date() },
+      });
+    }
+
+    return collection;
   }
 }

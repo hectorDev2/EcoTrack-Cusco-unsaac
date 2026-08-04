@@ -10,12 +10,12 @@ import { ThemeToggle } from '@/components/theme-toggle';
 const navItems = [
   { href: '/dashboard', icon: 'dashboard', label: 'Panel' },
   { href: '/admin-incidencias', icon: 'report_problem', label: 'Incidencias' },
-  { href: '/flota', icon: 'local_shipping', label: 'Flota' },
   { href: '/vehiculos', icon: 'directions_bus', label: 'Vehículos' },
   { href: '/admin-rutas', icon: 'route', label: 'Rutas' },
   { href: '/analisis', icon: 'bar_chart', label: 'Analíticas' },
   { href: '/usuarios', icon: 'group', label: 'Usuarios' },
   { href: '/admin-residuos', icon: 'delete', label: 'Residuos' },
+  { href: '/notificaciones', icon: 'notifications', label: 'Notificaciones' },
   { href: '/configuracion', icon: 'settings', label: 'Configuración' },
 ];
 

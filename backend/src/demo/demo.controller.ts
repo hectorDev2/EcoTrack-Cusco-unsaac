@@ -17,7 +17,8 @@ export class DemoController {
   @Public()
   @Get('enabled')
   enabled() {
-    return { enabled: process.env.DEMO_MODE_ENABLED === 'true' };
+    // Activado por defecto — se desactiva explícitamente con "false" en .env
+    return { enabled: process.env.DEMO_MODE_ENABLED !== 'false' };
   }
 
   @ApiOperation({ summary: 'Iniciar simulación de movimiento de una ruta (conductor)' })
@@ -42,10 +43,10 @@ export class DemoController {
     return this.demoService.stopDemo(id, driverId);
   }
 
-  @ApiOperation({ summary: 'Estado de la simulación de una ruta (conductor)' })
+  @ApiOperation({ summary: 'Estado de la simulación de una ruta (conductor o admin viendo la flota)' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard, DemoModeGuard)
-  @Roles('DRIVER')
+  @Roles('DRIVER', 'ADMIN')
   @Get('routes/:id/status')
   status(@Param('id') id: string) {
     return this.demoService.getStatus(id);

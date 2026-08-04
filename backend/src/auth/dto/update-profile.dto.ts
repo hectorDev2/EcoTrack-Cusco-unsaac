@@ -1,4 +1,4 @@
-import { IsOptional, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsOptional, MinLength, MaxLength, Matches, IsNumber, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateProfileDto {
@@ -38,4 +38,29 @@ export class UpdateProfileDto {
   @MinLength(6)
   @MaxLength(100)
   newPassword?: string;
+
+  @ApiPropertyOptional({
+    description: 'Latitud de la dirección "Casa"',
+    example: -13.532,
+  })
+  @IsOptional()
+  @IsNumber()
+  homeLatitude?: number;
+
+  @ApiPropertyOptional({
+    description: 'Longitud de la dirección "Casa"',
+    example: -71.9675,
+  })
+  @IsOptional()
+  @IsNumber()
+  homeLongitude?: number;
+
+  @ApiPropertyOptional({
+    description: 'Dirección textual de la "Casa" (reverse-geocode)',
+    example: 'Av. El Sol 123, Wanchaq',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  homeAddress?: string;
 }

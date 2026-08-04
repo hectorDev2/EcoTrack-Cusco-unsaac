@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Vehicle } from '@/lib/types';
+import VehicleRouteMapModal from '@/components/vehicle-route-map-modal';
 
 interface Driver {
   id: string;
@@ -131,6 +132,7 @@ export default function VehiculosPage() {
   const [editForm, setEditForm] = useState<VehicleForm>(EMPTY_FORM);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [mapVehicle, setMapVehicle] = useState<VehicleWithDriver | null>(null);
 
   const { data: vehicles = [], isLoading } = useQuery<VehicleWithDriver[]>({
     queryKey: ['vehicles'],
@@ -311,6 +313,14 @@ export default function VehiculosPage() {
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
+                  onClick={() => v.driver && setMapVehicle(v)}
+                  disabled={!v.driver}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-primary/10 text-on-surface-variant hover:text-primary transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                  title={v.driver ? 'Ver ruta en el mapa' : 'Sin conductor asignado'}
+                >
+                  <span className="material-symbols-outlined text-sm">map</span>
+                </button>
+                <button
                   onClick={() => openEdit(v)}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors"
                   title="Editar"
@@ -340,6 +350,14 @@ export default function VehiculosPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {mapVehicle?.driver && (
+        <VehicleRouteMapModal
+          driverId={mapVehicle.driver.id}
+          plate={mapVehicle.plate}
+          onClose={() => setMapVehicle(null)}
+        />
       )}
     </div>
   );
