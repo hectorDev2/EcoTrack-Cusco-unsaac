@@ -70,17 +70,7 @@ export default function AdminDashboardPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-6 ml-lg">
-          <button className="relative p-2 text-on-surface-variant hover:text-primary transition-colors">
-            <span className="material-symbols-outlined">notifications</span>
-            {data && data.pendingIncidents > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-status-alert rounded-full" />
-            )}
-          </button>
-          <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-            <span className="material-symbols-outlined">help</span>
-          </button>
-          <div className="flex items-center gap-3 pl-lg border-l border-outline-variant/30">
+        <div className="flex items-center gap-3 border-l border-outline-variant/30">
             <div className="text-right hidden xl:block">
               <p className="text-[12px] leading-[16px] tracking-[0.05em] font-bold text-on-surface leading-none">
                 Admin Cusco
